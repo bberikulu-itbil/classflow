@@ -1,0 +1,7 @@
+{
+  "name": "ClassFlow",
+  "description": "Interactive classroom teaching, live presentation slides, student interaction, Python coding IDE, quizzes, and lesson planning.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
