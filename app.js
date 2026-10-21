@@ -56,6 +56,7 @@ function route() {
   if (k === 'remote' && STAFF.includes(me.role)) return remoteView(id);
   if (k === 'board' && STAFF.includes(me.role)) return boardView(id);
   if (k === 's') return studentView(id);
+  if (k === 'join') return joinByLink(id);
   if (k === 'plans' && STAFF.includes(me.role)) return plansHome();
   if (k === 'plan' && STAFF.includes(me.role)) return planEditor(id);
   if (k === 'edit' && STAFF.includes(me.role)) return editorView(id);
@@ -66,24 +67,55 @@ const topbar = right => h('div', { class: 'flex items-center justify-between p-3
   h('div', { class: 'flex items-center gap-2 text-sm' }, right, h('span', { class: 'text-slate-400' }, me.full_name),
     h('button', { class: BTN, onclick: async () => { await sb.auth.signOut(); me = null; loginView(); } }, 'Шығу')));
 
+async function joinByLink(code) {
+  mount(h('div', { class: 'p-10 text-center text-slate-400' }, 'Сабаққа қосылуда...'));
+  try { const s = await rpc('cf_join', { p_code: String(code || '').replace(/\s/g, '').toUpperCase() }); location.hash = 's/' + s.id; }
+  catch { setTimeout(() => location.hash = '', 1800); }
+}
+// таймер: time_limit болса кері санайды, болмаса өткен уақытты көрсетеді
+function clock(task) {
+  const el = h('span', { class: 'font-mono' });
+  if (!task || task.status !== 'open' || !task.opened_at) return el;
+  const t0 = new Date(task.opened_at).getTime(), lim = task.time_limit;
+  const tick = () => {
+    if (el._on && !el.isConnected) return clearInterval(iv);
+    if (el.isConnected) el._on = true;
+    const sec = Math.max(0, Math.floor((Date.now() - t0) / 1000));
+    el.textContent = lim ? fmt(Math.max(0, lim - sec)) : fmt(sec);
+    el.style.color = lim && lim - sec <= 10 ? '#B42318' : '';
+  };
+  const iv = setInterval(tick, 1000); tick(); return el;
+}
+const spaced = c => String(c || '').replace(/(.{3})(?=.)/g, '$1 ');
 // ---------------- оқушы: басты бет ----------------
 async function studentHome() {
-  const code = h('input', { class: INP + ' text-center text-2xl tracking-widest uppercase', placeholder: 'КОД', maxlength: 8 });
+  const code = h('input', { class: 'min-h-[52px] w-44 rounded-xl px-3 font-mono text-xl text-black bg-white uppercase outline-none', placeholder: '000 000', maxlength: 9 });
   const join = async args => { const s = await rpc('cf_join', args); location.hash = 's/' + s.id; };
-  const list = h('div', { class: 'space-y-2' });
-  mount(topbar(), h('div', { class: 'max-w-md mx-auto p-4 space-y-4' },
-    h('h2', { class: 'text-xl font-bold' }, 'Сабаққа қосыл'), code,
-    h('button', { class: BTN_P + ' w-full', onclick: () => join({ p_code: code.value.trim().toUpperCase() }) }, 'Кіру'),
-    h('h3', { class: 'text-sm text-slate-400 pt-4' }, 'Сыныбыңдағы тірі сабақтар'), list));
-  const rows = await rpc('cf_live_for_me');
-  list.replaceChildren(...(rows.length ? rows.map(r => h('button', { class: BTN + ' w-full text-left', onclick: () => join({ p_session: r.id }) },
-    `${r.title} · ${r.teacher_name} · ${r.class_name || ''}`)) : [h('p', { class: 'text-slate-500 text-sm' }, 'Қазір тірі сабақ жоқ')]));
+  const live = h('div', { class: 'space-y-2' }), dictBox = h('div', { class: 'space-y-2' });
+  mount(topbar(), h('main', { class: 'max-w-5xl mx-auto p-4 space-y-4' },
+    h('h1', { class: 'text-2xl font-bold' }, `Сәлем, ${(me.full_name || '').split(' ')[0]}!`),
+    h('section', { class: 'bg-blue-600 text-white rounded-2xl p-5 space-y-3' },
+      h('div', { class: 'text-xs font-semibold' }, 'Сабаққа қосылу'),
+      live,
+      h('div', { class: 'flex flex-wrap gap-2 items-end' },
+        h('div', { class: 'flex flex-col gap-1' }, h('label', { class: 'text-xs text-[#DCE6FB]' }, 'Сабақ коды'), code),
+        h('button', { class: 'min-h-[52px] px-5 rounded-xl bg-white text-blue-500 font-bold', onclick: () => join({ p_code: code.value.replace(/\s/g, '').toUpperCase() }) }, 'Қосылу')),
+      h('div', { class: 'text-xs text-[#DCE6FB]' }, 'Немесе тақтадағы QR-кодты телефон камерасымен сканерле.')),
+    h('section', { class: 'bg-slate-900 rounded-2xl p-5' }, dictBox)));
+  rpc('cf_live_for_me').then(rows => live.replaceChildren(...rows.map(r => h('button', { class: 'w-full text-left bg-white/15 hover:bg-white/25 rounded-xl p-3', onclick: () => join({ p_session: r.id }) },
+    h('div', { class: 'text-xs text-[#86EFAC] font-semibold' }, '● Сабақ жүріп жатыр' + (r.class_name ? ' · ' + r.class_name : '')), h('div', { class: 'font-bold' }, r.title), h('div', { class: 'text-xs text-[#DCE6FB]' }, r.teacher_name)))));
+  q(sb.from('cf_my_terms').select('term,definition').order('created_at', { ascending: false })).then(rows => dictBox.replaceChildren(
+    h('div', { class: 'flex justify-between items-center' }, h('h2', { class: 'font-bold' }, 'Сөздігім'), h('span', { class: 'text-sm text-slate-400' }, rows.length + ' термин')),
+    rows.length ? h('div', { class: 'flex flex-wrap gap-2' }, rows.slice(0, 20).map(r => h('span', { class: 'text-sm bg-indigo-950 text-indigo-300 px-2.5 py-1.5 rounded-lg', title: r.definition }, r.term + (r.definition ? ' — ' + r.definition : ''))))
+      : h('p', { class: 'text-sm text-slate-400' }, 'Сабақ кезінде терминді басып сөздікке қоса аласың.')));
 }
 
 // ---------------- мұғалім: басты бет ----------------
 async function teacherHome() {
   const box = h('div', { class: 'max-w-3xl mx-auto p-4 space-y-4' });
   mount(topbar([h('a', { href: '#plans', class: BTN }, '🗓 Жоспарлар'), h('button', { class: BTN_P, onclick: () => location.hash = 'edit/new' }, '+ Жаңа сабақ')]), box);
+  box.append(h('div', {}, h('div', { class: 'text-sm text-slate-400' }, new Date().toLocaleDateString('kk-KZ', { weekday: 'long', day: 'numeric', month: 'long' })),
+    h('h1', { class: 'text-2xl font-bold' }, `Сәлеметсіз бе, ${(me.full_name || '').split(' ')[0]}`)));
   const [lessons, classes, liveS] = await Promise.all([
     q(sb.from('cf_lessons').select('id,title,subject,class_id').order('updated_at', { ascending: false })),
     q(sb.from('classes').select('id,name').order('name')),
@@ -109,7 +141,7 @@ async function teacherHome() {
 const SAMPLE = [
   { type: 'title', title: 'Алгоритм', subtitle: '7-сынып · Информатика' },
   { type: 'content', title: 'Алгоритм деген не?', bullets: ['Әрекеттердің ретті тізбегі', 'Орындаушыға түсінікті болуы керек', 'Соңы бар (ақырлы)'], notes: 'Тұрмыстық мысал: шай қайнату' },
-  { type: 'quiz', title: 'Тест', prompt: 'Қайсысы алгоритм қасиеті?', options: ['Дискреттілік', 'Түс', 'Салмақ'], answer: 0, points: 2, explanation: 'Алгоритм қадамдарға бөлінеді.' },
+  { type: 'quiz', title: 'Тест', prompt: 'Қайсысы алгоритм қасиеті?', options: ['Дискреттілік', 'Түс', 'Салмақ'], answer: 0, points: 2, time: 20, speed: true, explanation: 'Алгоритм қадамдарға бөлінеді.' },
   { type: 'task', title: 'Қысқа жауап', prompt: 'Бағдарлама қай тілде жазылады: Python, ____ ? (бір сөз: C++)', accept: ['c++'], points: 3 },
   { type: 'code', title: 'Қосынды', prompt: 'Екі бүтін санды оқып (әрқайсысы жеке жолда), олардың қосындысын шығар.', starter: 'a = int(input())\nb = int(input())\n', hints: ['input() жол қайтарады, int() арқылы санға айналдыр', 'print(a + b)'], tests: [{ input: '3\n4', out: '7', label: 'Мысал 1' }, { input: '-5\n5', out: '0' }, { input: '100\n250', out: '350', hidden: true }], points: 5 },
   { type: 'logic', title: 'Логикалық вентиль', prompt: 'A және B-ні басып көр', gate: 'AND' },
@@ -131,7 +163,7 @@ async function editorView(id) {
   }, v => { if (!title.value.trim()) title.value = v.topic; });
   mount(topbar(), h('div', { class: 'max-w-3xl mx-auto p-4 space-y-3' },
     h('h2', { class: 'font-bold text-xl' }, isNew ? 'Жаңа сабақ' : 'Сабақты өңдеу'), aiBox, title, subj,
-    h('p', { class: 'text-xs text-slate-400' }, 'Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, leaderboard. quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; code: tests = [{input, out, hidden?}], hints = [...].'), sl,
+    h('p', { class: 'text-xs text-slate-400' }, 'Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, leaderboard. quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус (SQL 002 керек); code: tests = [{input, out, hidden?}], hints = [...].'), sl,
     h('p', { class: 'text-xs text-slate-400' }, 'Терминдер (JSON): [{term, definition}]'), tm,
     h('button', { class: BTN_G, onclick: async () => {
       let slides, terms;
@@ -154,7 +186,7 @@ function lbTable(rows) {
 
 // ---------------- мұғалім пульті (телефон) ----------------
 async function remoteView(sid) {
-  let S, priv = [], parts = [], task = null, subs = [], LB = [], GS = [], tab = 'class';
+  let S, priv = [], parts = [], task = null, subs = [], LB = [], GS = [], tab = 'class', className = '', autoT = null;
   const dyn = h('div', { class: 'space-y-3' });
   const msg = h('input', { class: INP, placeholder: 'Хабарлама (қалқымалы терезе үшін)' });
   const nameOf = id => (parts.find(p => p.student_id === id) || {}).full_name || '?';
@@ -167,38 +199,61 @@ async function remoteView(sid) {
     ]);
     task = S.active_task_id ? await q(sb.from('cf_tasks').select('*').eq('id', S.active_task_id).single()) : null;
     subs = task ? await q(sb.from('cf_submissions').select('*').eq('task_id', task.id)) : [];
+    if (S.class_id && !className) className = ((await q(sb.from('classes').select('name').eq('id', S.class_id)))[0] || {}).name || '';
+    clearTimeout(autoT);
+    if (task && task.status === 'open' && task.time_limit) { // уақыт біткенде тапсырманы өзі жабады (пульт ашық тұрса)
+      const left = new Date(task.opened_at).getTime() + task.time_limit * 1000 - Date.now();
+      autoT = setTimeout(() => rpc('cf_close_task', { p_task: task.id }).then(refresh, () => {}), Math.max(0, left) + 1500);
+    }
     draw();
   };
+  cleanup.push(() => clearTimeout(autoT));
   const go = i => rpc('cf_goto', { p_session: sid, p_index: Math.max(0, Math.min(S.slide_count - 1, i)) }).then(refresh);
   const draw = () => {
     const cur = priv[S.current_slide] || {};
     const isTask = ['quiz', 'task', 'code'].includes(cur.type);
     const online = parts.filter(p => p.presence === 'online').length;
     const tabBtn = (k, t) => h('button', { class: tab === k ? BTN_P : BTN, onclick: () => { tab = k; draw(); } }, t);
+    const stat = (k, v) => h('div', { class: 'bg-slate-900 rounded-2xl p-3 flex flex-col gap-0.5' }, h('div', { class: 'text-xs text-slate-400' }, k), h('div', { class: 'text-lg font-bold' }, v));
+    const act = (label, onclick, cls = '') => h('button', { class: 'min-h-[56px] rounded-2xl bg-slate-900 px-3 text-sm font-semibold text-left ' + cls, onclick }, label);
+    const hands = parts.filter(p => p.hand), warn = parts.filter(p => p.away_count > 0 || p.locked);
+    const prev = (cur.bullets && cur.bullets.join(' · ')) || cur.prompt || cur.subtitle || '';
     dyn.replaceChildren(
-      h('div', { class: 'p-3 rounded-2xl bg-slate-900 border border-slate-800' },
-        h('div', { class: 'flex justify-between text-xs text-slate-400' }, h('span', {}, `Слайд ${S.current_slide + 1} / ${S.slide_count}`), h('span', {}, `Онлайн ${online}/${parts.length}`)),
-        h('div', { class: 'text-lg font-bold mt-1' }, cur.title || cur.type || ''),
-        cur.notes && h('div', { class: 'mt-2 p-2 rounded-xl bg-amber-950 text-amber-200 text-sm' }, '📝 ' + cur.notes),
-        h('div', { class: 'grid grid-cols-2 gap-2 mt-3' },
-          h('button', { class: BTN + ' py-4 text-lg', onclick: () => go(S.current_slide - 1) }, '◀ Артқа'),
-          h('button', { class: BTN_P + ' py-4 text-lg', onclick: () => go(S.current_slide + 1) }, 'Алға ▶')),
-        isTask && (task && task.status === 'open'
-          ? h('button', { class: BTN + ' w-full mt-2 !bg-red-700', onclick: () => rpc('cf_close_task', { p_task: task.id }).then(refresh) }, `⏹ Тапсырманы жабу (${subs.length}/${parts.length} жауап)`)
-          : h('button', { class: BTN_G + ' w-full mt-2', onclick: () => rpc('cf_open_task', { p_session: sid, p_index: S.current_slide }).then(refresh) }, '📝 Тапсырманы ашу'))),
+      h('div', { class: 'flex items-center justify-between gap-2' },
+        h('div', {}, h('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, `${className} · ${S.title}`), h('div', { class: 'text-xl font-bold' }, cur.title || cur.type || '')),
+        h('div', { class: 'text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-950 text-emerald-400 whitespace-nowrap' }, '● Тікелей')),
+      h('div', { class: 'grid grid-cols-3 gap-2' }, stat('Код', h('span', { class: 'font-mono' }, spaced(S.join_code))), stat('Қатысу', `${online} / ${parts.length}`), stat('Тапсырды', task ? `${subs.length} / ${parts.length}` : '—')),
+      h('div', { class: 'p-3 rounded-2xl bg-slate-900 space-y-3' },
+        h('div', { class: 'flex justify-between text-sm text-slate-400' }, h('span', {}, `Слайд ${S.current_slide + 1} / ${S.slide_count} · ${cur.type || ''}`), clock(task)),
+        h('div', { class: 'rounded-xl bg-[#10213F] text-white p-4 min-h-[110px] space-y-2' }, h('div', { class: 'font-semibold' }, cur.title || ''), h('div', { class: 'text-xs text-[#B9C7E6] line-clamp-4 whitespace-pre-wrap' }, prev)),
+        h('div', { class: 'h-1.5 rounded bg-slate-700' }, h('div', { class: 'h-1.5 rounded bg-blue-600', style: `width:${Math.round((S.current_slide + 1) / Math.max(1, S.slide_count) * 100)}%` })),
+        cur.notes && h('div', { class: 'p-2 rounded-xl bg-amber-950 text-amber-200 text-sm' }, '📝 ' + cur.notes),
+        h('div', { class: 'grid grid-cols-2 gap-2' },
+          h('button', { class: 'h-16 rounded-2xl border border-slate-600 bg-slate-900 text-base font-semibold', onclick: () => go(S.current_slide - 1) }, '← Артқа'),
+          h('button', { class: 'h-16 rounded-2xl bg-blue-600 text-white text-base font-semibold', onclick: () => go(S.current_slide + 1) }, 'Келесі →'))),
+      h('div', { class: 'grid grid-cols-2 gap-2' },
+        act(S.locked ? '🔓 Бәрін ашу' : '🔒 Бәрін бұғаттау', () => rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !S.locked }).then(refresh)),
+        isTask ? (task && task.status === 'open' ? act('⏹ Тапсырманы жабу', () => rpc('cf_close_task', { p_task: task.id }).then(refresh), '!bg-red-700 !text-white')
+          : act('📝 Тапсырма жіберу', () => rpc('cf_open_task', { p_session: sid, p_index: S.current_slide }).then(refresh))) : act('📺 Тақтаны ашу', () => window.open('#board/' + sid, '_blank')),
+        act(`✋ Қол көтерді · ${hands.length}`, () => { tab = 'class'; draw(); }, hands.length ? '!bg-amber-950' : ''),
+        act('🏆 Ұпай', () => { tab = 'score'; draw(); })),
+      warn.length > 0 && h('div', { class: 'bg-slate-900 rounded-2xl p-3 space-y-2' }, h('div', { class: 'text-sm font-bold' }, 'Ескертулер'),
+        warn.slice(0, 6).map(p => h('div', { class: 'flex items-center justify-between gap-2 text-sm' },
+          h('span', {}, h('b', {}, p.full_name), p.away_count > 0 ? ` беттен шықты · ${p.away_count} рет, ${p.away_seconds} с` : ' бұғатталған'),
+          h('span', { class: 'text-xs font-semibold px-2 py-1 rounded-full bg-amber-950 text-amber-300' }, 'Focus')))),
       h('div', { class: 'flex gap-2 flex-wrap' }, tabBtn('class', '👥 Сынып'), tabBtn('subs', '✅ Жауаптар'), tabBtn('score', '🏆 Ұпай'), tabBtn('att', '📋 Қатысу'), tabBtn('slides', '🎞 Слайдтар')),
       tab === 'class' ? classTab() : tab === 'subs' ? subsTab() : tab === 'score' ? scoreTab() : tab === 'att' ? attBox() : h('div', { class: 'space-y-1' }, priv.map((s, i) =>
         h('button', { class: (i === S.current_slide ? BTN_P : BTN) + ' w-full text-left', onclick: () => go(i) }, `${i + 1}. ${s.title || s.type}`))));
   };
   const classTab = () => h('div', { class: 'space-y-2' },
     h('div', { class: 'flex gap-2' },
-      h('button', { class: S.locked ? BTN_G : BTN + ' !bg-red-700', onclick: () => rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !S.locked }).then(refresh) }, S.locked ? '🔓 Барлығын ашу' : '🔒 Барлығын бұғаттау'),
-      h('button', { class: BTN + ' !bg-amber-600', onclick: () => msg.value.trim() ? rpc('cf_popup', { p_session: sid, p_student: null, p_message: msg.value.trim() }).then(() => toast('Барлығына жіберілді')) : toast('Хабарлама жаз', 1) }, '🔔 Барлығына')),
+      h('button', { class: S.locked ? BTN_G : BTN + ' !bg-red-700 !text-white', onclick: () => rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !S.locked }).then(refresh) }, S.locked ? '🔓 Барлығын ашу' : '🔒 Барлығын бұғаттау'),
+      h('button', { class: BTN + ' !bg-amber-600 !text-white', onclick: () => msg.value.trim() ? rpc('cf_popup', { p_session: sid, p_student: null, p_message: msg.value.trim() }).then(() => toast('Барлығына жіберілді')) : toast('Хабарлама жаз', 1) }, '🔔 Барлығына')),
     parts.map(p => h('div', { class: 'p-2 rounded-xl bg-slate-900 border ' + (p.presence === 'away' ? 'border-red-500' : 'border-slate-800') + ' flex items-center gap-2 flex-wrap' },
       h('span', { class: 'w-2 h-2 rounded-full ' + (p.presence === 'online' ? 'bg-emerald-400' : 'bg-red-500') }),
       h('span', { class: 'font-semibold flex-1 min-w-[7rem]' }, p.full_name, p.att === 'late' && h('span', { class: 'ml-1 text-xs text-amber-400' }, 'кешікті')),
       p.away_count > 0 && h('span', { class: 'text-xs text-red-400' }, `⚠${p.away_count}× ${fmt(p.away_seconds)}`),
-      p.hand && h('button', { class: BTN + ' !bg-amber-600', onclick: () => rpc('cf_clear_hand', { p_session: sid, p_student: p.student_id }).then(refresh) }, '✋'),
+      p.hand && h('button', { class: BTN + ' !bg-amber-600 !text-white', onclick: () => rpc('cf_clear_hand', { p_session: sid, p_student: p.student_id }).then(refresh) }, '✋'),
       h('button', { class: BTN, title: 'Бұғаттау', onclick: () => rpc('cf_lock', { p_session: sid, p_student: p.student_id, p_locked: !p.locked }).then(refresh) }, p.locked ? '🔓' : '🔒'),
       h('button', { class: BTN, title: 'Қалқымалы хабар', onclick: () => msg.value.trim() ? rpc('cf_popup', { p_session: sid, p_student: p.student_id, p_message: msg.value.trim() }).then(() => toast('Жіберілді')) : toast('Төмендегі жолға хабар жаз', 1) }, '🔔'),
       h('button', { class: BTN, onclick: () => rpc('cf_award', { p_session: sid, p_student: p.student_id, p_group: null, p_points: 1, p_reason: 'Белсенділік' }).then(refresh) }, '+1'))));
@@ -227,12 +282,21 @@ async function remoteView(sid) {
   mount(topbar(h('a', { class: BTN, href: '#board/' + sid, target: '_blank' }, '📺 Тақта')),
     h('div', { class: 'max-w-xl mx-auto p-3 pb-32 space-y-3' }, dyn),
     h('div', { class: 'fixed bottom-0 inset-x-0 bg-slate-950 border-t border-slate-800 p-2 flex gap-2 max-w-xl mx-auto' }, msg,
-      h('button', { class: BTN + ' !bg-red-800 whitespace-nowrap', onclick: async () => { if (confirm('Сабақты аяқтау керек пе?')) { await rpc('cf_end_session', { p_session: sid }); location.hash = ''; } } }, '⏹ Аяқтау')));
+      h('button', { class: BTN + ' !bg-red-800 !text-white whitespace-nowrap', onclick: async () => { if (confirm('Сабақты аяқтау керек пе?')) { await rpc('cf_end_session', { p_session: sid }); location.hash = ''; } } }, '⏹ Аяқтау')));
   await refresh();
   live(sid, ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_submissions', 'cf_scores'], refresh);
 }
 
 // ---------------- тақта (проектор) ----------------
+function qrBox(code) {
+  const box = h('div', { class: 'mx-auto w-44 h-44 bg-white p-2 rounded-xl' });
+  if (window.qrcode) { // QR сілтемесі: сайт мекенжайы + #join/код
+    const qr = qrcode(0, 'M'); qr.addData(location.origin + location.pathname + '#join/' + code); qr.make();
+    box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    const svg = box.firstChild; if (svg) { svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); }
+  }
+  return box;
+}
 async function boardView(sid) {
   const root = h('div', { class: 'min-h-screen flex flex-col' });
   mount(root);
@@ -244,10 +308,11 @@ async function boardView(sid) {
     const task = S.active_task_id ? await q(sb.from('cf_tasks').select('*').eq('id', S.active_task_id).single()) : null;
     const subs = task ? await q(sb.from('cf_submissions').select('id').eq('task_id', task.id)) : [];
     const mine = parts; const k = JSON.stringify([S.current_slide, task && task.status, S.status]);
-    const side = h('div', { class: 'w-72 p-4 border-l border-slate-800 space-y-4 hidden lg:block' },
-      h('div', { class: 'text-center' }, h('div', { class: 'text-xs text-slate-400' }, 'Сабаққа қосыл: classflow'), h('div', { class: 'text-5xl font-black tracking-widest text-blue-400' }, S.join_code)),
+    const side = h('div', { class: 'w-80 p-4 border-l border-slate-800 space-y-4 hidden lg:block bg-slate-900' },
+      h('div', { class: 'text-center space-y-2' }, qrBox(S.join_code), h('div', { class: 'text-xs text-slate-400' }, 'немесе кодты енгіз'), h('div', { class: 'text-4xl font-black tracking-widest text-blue-400 font-mono' }, spaced(S.join_code))),
       h('div', { class: 'text-sm text-slate-400' }, `Қатысушы: ${mine.length}`),
-      task && h('div', { class: 'p-3 rounded-xl ' + (task.status === 'open' ? 'bg-emerald-900' : 'bg-slate-800') }, task.status === 'open' ? `📝 Жауап: ${subs.length}` : '⏹ Тапсырма жабық'),
+      task && h('div', { class: 'p-3 rounded-xl flex justify-between items-center ' + (task.status === 'open' ? 'bg-emerald-900' : 'bg-slate-800') },
+        task.status === 'open' ? h('span', {}, `Тапсырды ${subs.length} / ${mine.length}`) : h('span', {}, '⏹ Тапсырма жабық'), clock(task)),
       h('div', {}, h('h3', { class: 'font-bold mb-1' }, '👥 Топтар'), GS.map(g => h('div', { class: 'flex justify-between text-xl' }, h('span', {}, 'Топ ' + g.group_no), h('b', { class: 'text-amber-400' }, g.points)))),
       h('div', {}, h('h3', { class: 'font-bold mb-1' }, '🏆 Үздіктер'), lbTable(LB.slice(0, 5))));
     const body = h('div', { class: 'flex-1 flex items-center' }, S.status === 'ended' ? h('h1', { class: 'text-5xl font-black mx-auto' }, 'Сабақ аяқталды') :
@@ -298,9 +363,9 @@ async function studentView(sid) {
   function drawOverlay() {
     const locked = (mePart && mePart.locked) || (S && S.locked);
     if (showing) {
-      overlay.className = 'fixed inset-0 z-50 bg-amber-500 text-slate-900 flex flex-col items-center justify-center text-center p-6';
+      overlay.className = 'fixed inset-0 z-50 bg-amber-500 text-black flex flex-col items-center justify-center text-center p-6';
       overlay.replaceChildren(h('div', { class: 'text-6xl mb-4' }, '🔔'), h('div', { class: 'text-3xl font-black mb-8 max-w-xl' }, showing.message),
-        h('button', { class: 'px-8 py-4 rounded-2xl bg-slate-900 text-white text-xl font-bold', onclick: () => { quiet('cf_ack', { p_command: showing.id }); showing = null; drawOverlay(); nextPopup(); } }, 'Түсіндім ✓'));
+        h('button', { class: 'px-8 py-4 rounded-2xl bg-black text-white text-xl font-bold', onclick: () => { quiet('cf_ack', { p_command: showing.id }); showing = null; drawOverlay(); nextPopup(); } }, 'Түсіндім ✓'));
     } else if (locked) {
       overlay.className = 'fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center text-center p-6';
       overlay.replaceChildren(h('div', { class: 'text-7xl mb-4' }, '🔒'), h('div', { class: 'text-2xl font-bold' }, 'Мұғалім экранды бұғаттады'), h('div', { class: 'text-slate-400 mt-2' }, 'Тақтаға назар аудар'));
@@ -323,9 +388,9 @@ async function studentView(sid) {
     const mineRow = LB.find(r => r.student_id === me.id);
     hdr.replaceChildren(h('div', { class: 'flex items-center justify-between p-2 border-b border-slate-800 text-sm' },
       h('b', {}, S.title), h('div', { class: 'flex items-center gap-2' }, h('span', { class: 'text-amber-400 font-bold' }, `⭐ ${mineRow ? mineRow.points : 0}`),
-        h('button', { class: BTN + ' !bg-amber-700', onclick: () => rpc('cf_set_hand', { p_session: sid, p_on: !(mePart && mePart.hand) }).then(refresh) }, mePart && mePart.hand ? '✋ түсірем' : '✋'),
+        h('button', { class: BTN + ' !bg-amber-700 !text-white', onclick: () => rpc('cf_set_hand', { p_session: sid, p_on: !(mePart && mePart.hand) }).then(refresh) }, mePart && mePart.hand ? '✋ түсірем' : '✋'),
         h('button', { class: BTN, onclick: openDict }, '📖'),
-        fullscreenNeeded && h('button', { class: BTN_P, onclick: () => { fullscreenNeeded = false; document.documentElement.requestFullscreen().catch(() => {}); drawHeader(); } }, '⛶ Focus'))));
+        fullscreenNeeded ? h('button', { class: BTN_P, onclick: () => { fullscreenNeeded = false; document.documentElement.requestFullscreen().catch(() => {}); drawHeader(); } }, '⛶ Focus') : h('span', { class: 'text-xs font-semibold text-emerald-400 bg-emerald-950 px-2.5 py-1.5 rounded-full' }, '🛡 Focus қосулы'))));
   };
   const drawStage = () => {
     const s = (cur && cur.slide) || {};
@@ -333,6 +398,8 @@ async function studentView(sid) {
     if (s.type === 'code') {
       const ide = ideCache[cur.index] || (ideCache[cur.index] = codeIDE(s, {
         onPaste: () => quiet('cf_report_focus', { p_session: sid, p_kind: 'paste' }),
+        terms: (S && S.terms) || [],
+        onTerm: t => q(sb.from('cf_my_terms').insert({ student_id: me.id, term: t.term, definition: t.definition || '', source: S.title })).then(() => toast('Сөздікке қосылды')),
         onSubmit: async (code, meta) => { if (!task) return; await rpc('cf_submit', { p_task: task.id, p_answer: code, p_meta: meta }); refresh(); } }));
       ide.setSubmit(!!(task && task.status === 'open' && !mySub));
       stage.replaceChildren(h('div', { class: 'p-3 max-w-6xl mx-auto w-full' }, ide.el));
@@ -463,7 +530,7 @@ async function planEditor(id) {
         toast('Сақталды'); location.hash = 'plans';
       } }, 'Сақтау'),
       h('button', { class: BTN, onclick: () => printPlan(kind.value, title.value, C) }, '🖨 Басып шығару / PDF'),
-      !isNew && h('button', { class: BTN + ' !bg-red-800', onclick: async () => { if (confirm('Жоспарды өшіру керек пе?')) { await q(sb.from('cf_plans').delete().eq('id', id)); location.hash = 'plans'; } } }, 'Өшіру'))));
+      !isNew && h('button', { class: BTN + ' !bg-red-800 !text-white', onclick: async () => { if (confirm('Жоспарды өшіру керек пе?')) { await q(sb.from('cf_plans').delete().eq('id', id)); location.hash = 'plans'; } } }, 'Өшіру'))));
   draw();
 }
 

@@ -46,7 +46,7 @@ function runPy(code, stdin = '') {
 }
 
 function codeBox(starter) {
-  const ta = h('textarea', { class: 'w-full h-48 bg-slate-950 text-emerald-300 font-mono text-sm p-3 rounded-xl outline-none', spellcheck: 'false' }, starter || '');
+  const ta = h('textarea', { class: 'w-full h-48 bg-[#0F172A] text-[#E2E8F5] font-mono text-sm p-3 rounded-xl outline-none', spellcheck: 'false' }, starter || '');
   ta.addEventListener('keydown', e => {
     if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.setRangeText('    ', s, ta.selectionEnd, 'end'); }
   });
@@ -66,8 +66,8 @@ async function sha256(x) {
   return [...new Uint8Array(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 function codeIDE(s, o = {}) {
-  const ta = h('textarea', { class: 'flex-1 min-h-[16rem] bg-slate-950 text-emerald-300 font-mono text-sm p-3 outline-none resize-none leading-6', spellcheck: 'false', wrap: 'off' }, s.starter || '');
-  const gut = h('pre', { class: 'bg-slate-900 text-slate-500 font-mono text-sm leading-6 p-3 text-right select-none overflow-hidden' }, '1');
+  const ta = h('textarea', { class: 'flex-1 min-h-[16rem] bg-[#0F172A] text-[#E2E8F5] font-mono text-sm p-3 outline-none resize-none leading-6', spellcheck: 'false', wrap: 'off' }, s.starter || '');
+  const gut = h('pre', { class: 'bg-[#111C33] text-[#64748B] font-mono text-sm leading-6 p-3 text-right select-none overflow-hidden' }, '1');
   const nums = () => { gut.textContent = Array.from({ length: ta.value.split('\n').length }, (_, i) => i + 1).join('\n'); };
   ta.addEventListener('input', nums); ta.addEventListener('scroll', () => gut.scrollTop = ta.scrollTop); nums();
   ta.addEventListener('paste', () => o.onPaste && o.onPaste());
@@ -80,12 +80,12 @@ function codeIDE(s, o = {}) {
       ta.setRangeText('\n' + ind, st, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input'));
     }
   });
-  const cons = h('pre', { class: 'p-3 bg-black text-xs text-slate-200 whitespace-pre-wrap min-h-[5rem] max-h-48 overflow-auto' }, '▶ Нәтиже осында');
-  const stdin = h('input', { class: 'w-full px-2 py-1 bg-slate-900 text-xs font-mono outline-none', placeholder: 'stdin (input() үшін, жолдарды \\n-мен бөл)' });
+  const cons = h('pre', { class: 'p-3 bg-black text-xs text-[#E2E8F5] whitespace-pre-wrap min-h-[5rem] max-h-48 overflow-auto' }, '▶ Нәтиже осында');
+  const stdin = h('input', { class: 'w-full px-2 py-1 bg-[#111C33] text-[#E2E8F5] text-xs font-mono outline-none', placeholder: 'stdin (input() үшін, жолдарды \\n-мен бөл)' });
   const res = h('div', { class: 'space-y-1 text-sm' });
   const checks = s.checks || [];
   let last = null, busy = false, canSubmit = false, hintN = 0;
-  const bRun = h('button', { class: BTN_G }, '▶ Іске қосу'), bCheck = h('button', { class: BTN_P }, '✔ Тексеру'), bSend = h('button', { class: BTN + ' !bg-amber-600' }, '📤 Жіберу');
+  const bRun = h('button', { class: 'px-3 py-2 rounded-xl border border-[#33415F] text-[#E2E8F5] text-sm font-semibold hover:bg-[#1E2A44]' }, 'Іске қосу'), bCheck = h('button', { class: 'px-3 py-2 rounded-xl bg-[#1E2A44] text-white text-sm font-semibold hover:bg-[#2A3858]' }, 'Тексеру'), bSend = h('button', { class: BTN_P + ' disabled:opacity-50' }, 'Тексеру және тапсыру');
   const setBusy = v => { busy = v; [bRun, bCheck, bSend].forEach(b => b.disabled = v); bSend.disabled = v || !canSubmit; };
   bRun.onclick = async () => { setBusy(true); cons.textContent = '⏳ Орындалуда (алғашқыда Python жүктеледі)...'; const r = await runPy(ta.value, stdin.value.replace(/\\n/g, '\n')); cons.textContent = r.out || '(шығыс жоқ)'; setBusy(false); };
   const check = async () => {
@@ -97,8 +97,8 @@ function codeIDE(s, o = {}) {
       const ok = r.ok && (await sha256(norm(r.out))) === c.h; if (ok) passed++;
       rows.push(h('div', { class: 'p-2 rounded-lg ' + (ok ? 'bg-emerald-950 text-emerald-300' : 'bg-red-950 text-red-300') },
         (ok ? '✓ ' : '✗ ') + (c.label || (c.hidden ? 'Жасырын тест' : 'Тест')),
-        !ok && !c.hidden && h('pre', { class: 'text-xs mt-1 whitespace-pre-wrap text-slate-200' }, `Кіріс: ${c.input || '—'}\nКүтілген: ${c.out}\nСенікі: ${norm(r.out).slice(0, 300)}`),
-        !ok && c.hidden && r.ok === false && h('pre', { class: 'text-xs mt-1 whitespace-pre-wrap text-slate-200' }, norm(r.out).slice(-200))));
+        !ok && !c.hidden && h('pre', { class: 'text-xs mt-1 whitespace-pre-wrap' }, `Кіріс: ${c.input || '—'}\nКүтілген: ${c.out}\nСенікі: ${norm(r.out).slice(0, 300)}`),
+        !ok && c.hidden && r.ok === false && h('pre', { class: 'text-xs mt-1 whitespace-pre-wrap' }, norm(r.out).slice(-200))));
     }
     res.replaceChildren(h('div', { class: 'font-bold ' + (passed === checks.length ? 'text-emerald-400' : 'text-amber-400') }, passed === checks.length ? `🎉 Барлық тест өтті (${passed}/${checks.length})` : `${passed}/${checks.length} тест өтті`), ...rows);
     last = { passed, total: checks.length, code: ta.value }; setBusy(false); return { ...last, output: lastOut };
@@ -111,15 +111,18 @@ function codeIDE(s, o = {}) {
   };
   const hintBox = h('div', { class: 'space-y-2' });
   const bHint = h('button', { class: BTN }, '💡 Кеңес');
-  bHint.onclick = () => { const hs = s.hints || []; if (hintN < hs.length) hintBox.append(h('div', { class: 'p-2 rounded-lg bg-indigo-950 text-indigo-200 text-sm' }, `💡 ${hintN + 1}. ${hs[hintN++]}`)); if (hintN >= hs.length) bHint.disabled = true; };
+  bHint.onclick = () => { const hs = s.hints || []; if (hintN < hs.length) hintBox.append(h('div', { class: 'p-2 rounded-lg bg-indigo-950 text-indigo-300 text-sm' }, `💡 ${hintN + 1}. ${hs[hintN++]}`)); if (hintN >= hs.length) bHint.disabled = true; };
   const left = h('div', { class: 'p-4 space-y-3 overflow-auto' },
     h('h2', { class: 'text-2xl font-black' }, s.title || ''), s.prompt && h('p', { class: 'whitespace-pre-wrap' }, s.prompt),
     checks.filter(c => !c.hidden && c.out != null).slice(0, 2).length > 0 && h('div', { class: 'text-sm' }, h('div', { class: 'text-slate-400 mb-1' }, 'Мысал:'),
-      checks.filter(c => !c.hidden && c.out != null).slice(0, 2).map(c => h('pre', { class: 'p-2 mb-1 rounded-lg bg-slate-900 text-xs' }, `Кіріс:\n${c.input || '—'}\nШығыс:\n${c.out}`))),
+      checks.filter(c => !c.hidden && c.out != null).slice(0, 2).map(c => h('pre', { class: 'p-2 mb-1 rounded-lg bg-slate-800 text-xs' }, `Кіріс:\n${c.input || '—'}\nШығыс:\n${c.out}`))),
+    (o.terms || []).length > 0 && h('div', { class: 'space-y-2' }, h('div', { class: 'text-sm font-bold' }, 'Терминдер'),
+      h('div', { class: 'flex flex-wrap gap-2' }, o.terms.map(t => h('button', { class: 'text-sm bg-indigo-950 text-indigo-300 px-2.5 py-1.5 rounded-lg text-left', title: 'Сөздігіме қосу', onclick: () => o.onTerm && o.onTerm(t) }, t.term + (t.definition ? ' — ' + t.definition : ''))),),
+      h('div', { class: 'text-xs text-slate-400' }, 'Терминді басып сөздігіңе қос')),
     (s.hints || []).length > 0 && bHint, hintBox);
   const root = h('div', { class: 'grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] w-full border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50 min-h-[28rem]' }, left,
     h('div', { class: 'flex flex-col border-l border-slate-800 min-w-0' },
-      h('div', { class: 'flex gap-2 p-2 bg-slate-900 flex-wrap' }, bRun, bCheck, bSend, h('span', { class: 'text-xs text-slate-500 self-center' }, 'main.py')),
+      h('div', { class: 'flex gap-2 p-2 bg-[#111C33] flex-wrap' }, bRun, bCheck, bSend, h('span', { class: 'text-xs text-slate-500 self-center' }, 'main.py')),
       h('div', { class: 'flex flex-1 min-h-[16rem]' }, gut, ta), stdin, cons, h('div', { class: 'p-2' }, res)));
   return { el: root, setSubmit: v => { canSubmit = v; bSend.disabled = busy || !v; bSend.title = v ? '' : 'Мұғалім тапсырманы әлі ашқан жоқ'; }, code: () => ta.value };
 }
@@ -169,7 +172,7 @@ function logicGate(initial) {
         h('button', { class: a ? BTN_G : BTN, onclick: () => { a ^= 1; draw(); } }, 'A=' + a),
         g !== 'NOT' && h('button', { class: b ? BTN_G : BTN, onclick: () => { b ^= 1; draw(); } }, 'B=' + b),
         h('div', { class: 'px-4 py-2 rounded-xl bg-indigo-900 border border-indigo-500 font-black' }, g),
-        h('div', { class: 'w-14 h-14 rounded-full flex items-center justify-center text-2xl ' + (out ? 'bg-amber-400 text-slate-900' : 'bg-slate-700') }, out)),
+        h('div', { class: 'w-14 h-14 rounded-full flex items-center justify-center text-2xl ' + (out ? 'bg-amber-400 text-black' : 'bg-slate-700') }, out)),
       h('table', { class: 'text-center font-mono text-sm' }, rows.map(r => {
         const hit = r[0] === a && (g === 'NOT' || r[1] === b);
         return h('tr', { class: hit ? 'bg-emerald-900' : '' }, r.map(v => h('td', { class: 'px-4 py-1' }, v)), h('td', { class: 'px-4 py-1 font-bold text-emerald-400' }, '= ' + f(g, ...r)));
@@ -194,7 +197,7 @@ function renderSlide(s, ctx = {}) {
     case 'task':
       return wrap(title, prompt);
     case 'code':
-      return wrap(title, prompt, s.starter && h('pre', { class: 'p-3 bg-slate-950 rounded-xl text-emerald-300 font-mono ' + (big ? 'text-xl' : 'text-sm') }, s.starter));
+      return wrap(title, prompt, s.starter && h('pre', { class: 'p-3 bg-[#0F172A] rounded-xl text-[#E2E8F5] font-mono ' + (big ? 'text-xl' : 'text-sm') }, s.starter));
     case 'flashcards': return wrap(title, flashcards(s.cards));
     case 'matching': return wrap(title, matching(s.pairs));
     case 'logic': return wrap(title, prompt, logicGate(s.gate));

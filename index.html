@@ -5,12 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ClassFlow</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+// Дизайн: ашық тема. slate/түс палитрасы ашық түске аударылған, сондықтан кодтағы класстар өзгермейді.
+tailwind.config = { theme: { extend: { colors: {
+  slate: { 950:'#F4F5F7', 900:'#FFFFFF', 800:'#EEF0F3', 700:'#E2E5EA', 600:'#D5D8DE', 500:'#8A909B', 400:'#5A606B', 300:'#3F4652', 200:'#14161A', 100:'#14161A' },
+  blue: { 400:'#2457D6', 500:'#1E4FC2', 600:'#2457D6', 700:'#DCE6FB' },
+  emerald: { 300:'#1B6B34', 400:'#1B6B34', 700:'#B7E1C3', 800:'#9ED3B0', 900:'#CDEBD6', 950:'#E6F4EA' },
+  red: { 300:'#B42318', 400:'#B42318', 950:'#FFE4E6', 900:'#FFD0D5' },
+  amber: { 200:'#9A3412', 300:'#9A3412', 400:'#9A3412', 900:'#FFE0BD', 950:'#FFEDD5' },
+  indigo: { 200:'#1E4FC2', 300:'#1E4FC2', 500:'#7FA0EC', 700:'#B9C7E6', 900:'#DCE6FB', 950:'#EAF0FD' },
+} } } };
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<style>body{background:#0b1220;color:#e2e8f0;font-family:system-ui,sans-serif}</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>body{background:#F4F5F7;color:#14161A;font-family:Inter,system-ui,sans-serif}</style>
 </head>
 <body class="min-h-screen">
 <div id="app"></div>
 <div id="toast" class="fixed top-3 left-1/2 -translate-x-1/2 z-[100] hidden px-4 py-2 rounded-xl text-sm font-semibold"></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="config.js"></script>
 <script src="slides.js"></script>
 <script src="app.js"></script>
