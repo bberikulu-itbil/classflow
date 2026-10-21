@@ -22,24 +22,26 @@ const WORKER_SRC = `
 importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js');
 let py, out = [];
 onmessage = async (e) => {
+  const lines = String(e.data.stdin || '').split('\\n'); if (lines[lines.length-1] === '') lines.pop();
   try {
     if (!py) { py = await loadPyodide(); py.setStdout({ batched: s => out.push(s) }); py.setStderr({ batched: s => out.push(s) }); }
     out = [];
-    await py.runPythonAsync(e.data);
+    py.setStdin({ stdin: () => (lines.length ? lines.shift() : undefined) });
+    await py.runPythonAsync(e.data.code, { globals: py.toPy({ __name__: '__main__' }) });
     postMessage({ ok: true, out: out.join('\\n') });
   } catch (err) {
     postMessage({ ok: false, out: out.join('\\n') + '\\n' + String(err.message || err).split('\\n').slice(-4).join('\\n') });
   }
 };`;
 let pyW = null, pyReady = false;
-function runPy(code) {
+function runPy(code, stdin = '') {
   return new Promise(res => {
     if (!pyW) { pyW = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }))); pyReady = false; }
     const w = pyW;
     const t = setTimeout(() => { w.terminate(); if (pyW === w) pyW = null; res({ ok: false, out: '⏱ Уақыт бітті (шексіз цикл болуы мүмкін)' }); }, pyReady ? 6000 : 40000);
     w.onmessage = e => { clearTimeout(t); pyReady = true; res(e.data); };
     w.onerror = e => { clearTimeout(t); res({ ok: false, out: 'Қате: ' + e.message }); };
-    w.postMessage(code);
+    w.postMessage({ code, stdin });
   });
 }
 
@@ -51,9 +53,75 @@ function codeBox(starter) {
   const out = h('pre', { class: 'mt-2 p-3 bg-black rounded-xl text-xs text-slate-200 whitespace-pre-wrap min-h-[3rem]' }, '▶ Нәтиже осында шығады (input() қолдамайды)');
   const btn = h('button', { class: BTN_G + ' mt-2', onclick: async () => {
     btn.disabled = true; out.textContent = '⏳ Орындалуда (алғашқы рет Python жүктеледі)...';
-    const r = await runPy(ta.value); out.textContent = r.out || '(шығыс жоқ)'; btn.disabled = false;
+    const r = await runPy(ta.value, ''); out.textContent = r.out || '(шығыс жоқ)'; btn.disabled = false;
   } }, '▶ Іске қосу');
   return { el: h('div', {}, ta, btn, out), code: () => ta.value, output: () => out.textContent };
+}
+
+
+// ---------- CodeHS стиліндегі IDE: сол жақ шарт/кеңес, оң жақ редактор, консоль, Check ----------
+const norm = x => String(x || '').replace(/\r/g, '').replace(/[ \t]+(?=\n|$)/g, '').replace(/^[ \n\t]+|[ \n\t]+$/g, '');
+async function sha256(x) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(x));
+  return [...new Uint8Array(b)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function codeIDE(s, o = {}) {
+  const ta = h('textarea', { class: 'flex-1 min-h-[16rem] bg-slate-950 text-emerald-300 font-mono text-sm p-3 outline-none resize-none leading-6', spellcheck: 'false', wrap: 'off' }, s.starter || '');
+  const gut = h('pre', { class: 'bg-slate-900 text-slate-500 font-mono text-sm leading-6 p-3 text-right select-none overflow-hidden' }, '1');
+  const nums = () => { gut.textContent = Array.from({ length: ta.value.split('\n').length }, (_, i) => i + 1).join('\n'); };
+  ta.addEventListener('input', nums); ta.addEventListener('scroll', () => gut.scrollTop = ta.scrollTop); nums();
+  ta.addEventListener('paste', () => o.onPaste && o.onPaste());
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); ta.setRangeText('    ', ta.selectionStart, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input')); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const v = ta.value, st = ta.selectionStart, ls = v.lastIndexOf('\n', st - 1) + 1, line = v.slice(ls, st);
+      const ind = line.match(/^\s*/)[0] + (/:\s*$/.test(line) ? '    ' : '');
+      ta.setRangeText('\n' + ind, st, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input'));
+    }
+  });
+  const cons = h('pre', { class: 'p-3 bg-black text-xs text-slate-200 whitespace-pre-wrap min-h-[5rem] max-h-48 overflow-auto' }, '▶ Нәтиже осында');
+  const stdin = h('input', { class: 'w-full px-2 py-1 bg-slate-900 text-xs font-mono outline-none', placeholder: 'stdin (input() үшін, жолдарды \\n-мен бөл)' });
+  const res = h('div', { class: 'space-y-1 text-sm' });
+  const checks = s.checks || [];
+  let last = null, busy = false, canSubmit = false, hintN = 0;
+  const bRun = h('button', { class: BTN_G }, '▶ Іске қосу'), bCheck = h('button', { class: BTN_P }, '✔ Тексеру'), bSend = h('button', { class: BTN + ' !bg-amber-600' }, '📤 Жіберу');
+  const setBusy = v => { busy = v; [bRun, bCheck, bSend].forEach(b => b.disabled = v); bSend.disabled = v || !canSubmit; };
+  bRun.onclick = async () => { setBusy(true); cons.textContent = '⏳ Орындалуда (алғашқыда Python жүктеледі)...'; const r = await runPy(ta.value, stdin.value.replace(/\\n/g, '\n')); cons.textContent = r.out || '(шығыс жоқ)'; setBusy(false); };
+  const check = async () => {
+    if (!checks.length) { res.replaceChildren(h('p', { class: 'text-slate-400' }, 'Бұл тапсырмада автотест жоқ — мұғалім қолмен бағалайды.')); return null; }
+    setBusy(true); res.replaceChildren(h('p', { class: 'text-slate-400' }, '⏳ Тексерілуде...'));
+    const rows = []; let passed = 0, lastOut = '';
+    for (const c of checks) {
+      const r = await runPy(ta.value, c.input); lastOut = r.out;
+      const ok = r.ok && (await sha256(norm(r.out))) === c.h; if (ok) passed++;
+      rows.push(h('div', { class: 'p-2 rounded-lg ' + (ok ? 'bg-emerald-950 text-emerald-300' : 'bg-red-950 text-red-300') },
+        (ok ? '✓ ' : '✗ ') + (c.label || (c.hidden ? 'Жасырын тест' : 'Тест')),
+        !ok && !c.hidden && h('pre', { class: 'text-xs mt-1 whitespace-pre-wrap text-slate-200' }, `Кіріс: ${c.input || '—'}\nКүтілген: ${c.out}\nСенікі: ${norm(r.out).slice(0, 300)}`),
+        !ok && c.hidden && r.ok === false && h('pre', { class: 'text-xs mt-1 whitespace-pre-wrap text-slate-200' }, norm(r.out).slice(-200))));
+    }
+    res.replaceChildren(h('div', { class: 'font-bold ' + (passed === checks.length ? 'text-emerald-400' : 'text-amber-400') }, passed === checks.length ? `🎉 Барлық тест өтті (${passed}/${checks.length})` : `${passed}/${checks.length} тест өтті`), ...rows);
+    last = { passed, total: checks.length, code: ta.value }; setBusy(false); return { ...last, output: lastOut };
+  };
+  bCheck.onclick = check;
+  bSend.onclick = async () => {
+    let meta = { passed: null, total: checks.length };
+    if (checks.length) { const r = (last && last.code === ta.value) ? last : await check(); if (r) meta = { passed: r.passed, total: r.total }; }
+    o.onSubmit && o.onSubmit(ta.value, meta);
+  };
+  const hintBox = h('div', { class: 'space-y-2' });
+  const bHint = h('button', { class: BTN }, '💡 Кеңес');
+  bHint.onclick = () => { const hs = s.hints || []; if (hintN < hs.length) hintBox.append(h('div', { class: 'p-2 rounded-lg bg-indigo-950 text-indigo-200 text-sm' }, `💡 ${hintN + 1}. ${hs[hintN++]}`)); if (hintN >= hs.length) bHint.disabled = true; };
+  const left = h('div', { class: 'p-4 space-y-3 overflow-auto' },
+    h('h2', { class: 'text-2xl font-black' }, s.title || ''), s.prompt && h('p', { class: 'whitespace-pre-wrap' }, s.prompt),
+    checks.filter(c => !c.hidden && c.out != null).slice(0, 2).length > 0 && h('div', { class: 'text-sm' }, h('div', { class: 'text-slate-400 mb-1' }, 'Мысал:'),
+      checks.filter(c => !c.hidden && c.out != null).slice(0, 2).map(c => h('pre', { class: 'p-2 mb-1 rounded-lg bg-slate-900 text-xs' }, `Кіріс:\n${c.input || '—'}\nШығыс:\n${c.out}`))),
+    (s.hints || []).length > 0 && bHint, hintBox);
+  const root = h('div', { class: 'grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] w-full border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50 min-h-[28rem]' }, left,
+    h('div', { class: 'flex flex-col border-l border-slate-800 min-w-0' },
+      h('div', { class: 'flex gap-2 p-2 bg-slate-900 flex-wrap' }, bRun, bCheck, bSend, h('span', { class: 'text-xs text-slate-500 self-center' }, 'main.py')),
+      h('div', { class: 'flex flex-1 min-h-[16rem]' }, gut, ta), stdin, cons, h('div', { class: 'p-2' }, res)));
+  return { el: root, setSubmit: v => { canSubmit = v; bSend.disabled = busy || !v; bSend.title = v ? '' : 'Мұғалім тапсырманы әлі ашқан жоқ'; }, code: () => ta.value };
 }
 
 // ---------- виджеттер ----------

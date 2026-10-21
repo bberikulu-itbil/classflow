@@ -56,6 +56,8 @@ function route() {
   if (k === 'remote' && STAFF.includes(me.role)) return remoteView(id);
   if (k === 'board' && STAFF.includes(me.role)) return boardView(id);
   if (k === 's') return studentView(id);
+  if (k === 'plans' && STAFF.includes(me.role)) return plansHome();
+  if (k === 'plan' && STAFF.includes(me.role)) return planEditor(id);
   if (k === 'edit' && STAFF.includes(me.role)) return editorView(id);
   STAFF.includes(me.role) ? teacherHome() : studentHome();
 }
@@ -81,7 +83,7 @@ async function studentHome() {
 // ---------------- мұғалім: басты бет ----------------
 async function teacherHome() {
   const box = h('div', { class: 'max-w-3xl mx-auto p-4 space-y-4' });
-  mount(topbar(h('button', { class: BTN_P, onclick: () => location.hash = 'edit/new' }, '+ Жаңа сабақ')), box);
+  mount(topbar([h('a', { href: '#plans', class: BTN }, '🗓 Жоспарлар'), h('button', { class: BTN_P, onclick: () => location.hash = 'edit/new' }, '+ Жаңа сабақ')]), box);
   const [lessons, classes, liveS] = await Promise.all([
     q(sb.from('cf_lessons').select('id,title,subject,class_id').order('updated_at', { ascending: false })),
     q(sb.from('classes').select('id,name').order('name')),
@@ -109,7 +111,7 @@ const SAMPLE = [
   { type: 'content', title: 'Алгоритм деген не?', bullets: ['Әрекеттердің ретті тізбегі', 'Орындаушыға түсінікті болуы керек', 'Соңы бар (ақырлы)'], notes: 'Тұрмыстық мысал: шай қайнату' },
   { type: 'quiz', title: 'Тест', prompt: 'Қайсысы алгоритм қасиеті?', options: ['Дискреттілік', 'Түс', 'Салмақ'], answer: 0, points: 2, explanation: 'Алгоритм қадамдарға бөлінеді.' },
   { type: 'task', title: 'Қысқа жауап', prompt: 'Бағдарлама қай тілде жазылады: Python, ____ ? (бір сөз: C++)', accept: ['c++'], points: 3 },
-  { type: 'code', title: 'Python', prompt: '1-ден 5-ке дейінгі сандарды шығар', starter: 'for i in range(1, 6):\n    print(i)', points: 5 },
+  { type: 'code', title: 'Қосынды', prompt: 'Екі бүтін санды оқып (әрқайсысы жеке жолда), олардың қосындысын шығар.', starter: 'a = int(input())\nb = int(input())\n', hints: ['input() жол қайтарады, int() арқылы санға айналдыр', 'print(a + b)'], tests: [{ input: '3\n4', out: '7', label: 'Мысал 1' }, { input: '-5\n5', out: '0' }, { input: '100\n250', out: '350', hidden: true }], points: 5 },
   { type: 'logic', title: 'Логикалық вентиль', prompt: 'A және B-ні басып көр', gate: 'AND' },
   { type: 'matching', title: 'Сәйкестендір', pairs: [{ l: 'print', r: 'шығару' }, { l: 'input', r: 'енгізу' }, { l: 'len', r: 'ұзындық' }] },
   { type: 'flashcards', title: 'Терминдер', cards: [{ front: 'Алгоритм', back: 'Қадамдар тізбегі' }, { front: 'Айнымалы', back: 'Атауы бар жад ұясы' }] },
@@ -123,9 +125,13 @@ async function editorView(id) {
   const subj = h('input', { class: INP, value: l.subject || '' });
   const sl = h('textarea', { class: INP + ' font-mono h-96' }, JSON.stringify(l.slides, null, 1));
   const tm = h('textarea', { class: INP + ' font-mono h-28' }, JSON.stringify(l.terms || [], null, 1));
+  const aiBox = aiPanel('slides', 'Слайд саны', 10, r => {
+    sl.value = JSON.stringify(r.slides || [], null, 1); tm.value = JSON.stringify(r.terms || [], null, 1);
+    toast('Слайдтар дайын. Тест жауаптары мен код-тесттерді тексеріп шық!');
+  }, v => { if (!title.value.trim()) title.value = v.topic; });
   mount(topbar(), h('div', { class: 'max-w-3xl mx-auto p-4 space-y-3' },
-    h('h2', { class: 'font-bold text-xl' }, isNew ? 'Жаңа сабақ' : 'Сабақты өңдеу'), title, subj,
-    h('p', { class: 'text-xs text-slate-400' }, 'Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, leaderboard. quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар.'), sl,
+    h('h2', { class: 'font-bold text-xl' }, isNew ? 'Жаңа сабақ' : 'Сабақты өңдеу'), aiBox, title, subj,
+    h('p', { class: 'text-xs text-slate-400' }, 'Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, leaderboard. quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; code: tests = [{input, out, hidden?}], hints = [...].'), sl,
     h('p', { class: 'text-xs text-slate-400' }, 'Терминдер (JSON): [{term, definition}]'), tm,
     h('button', { class: BTN_G, onclick: async () => {
       let slides, terms;
@@ -199,9 +205,11 @@ async function remoteView(sid) {
   const subsTab = () => h('div', { class: 'space-y-2' }, !task ? h('p', { class: 'text-slate-500' }, 'Белсенді тапсырма жоқ') : [
     h('p', { class: 'text-sm text-slate-400' }, task.prompt),
     subs.map(s => {
-      const pts = h('input', { class: INP + ' !w-16', type: 'number', min: 0, max: task.points, value: s.points ?? '' });
+      const m = s.meta && s.meta.total ? s.meta : null;
+      const pts = h('input', { class: INP + ' !w-16', type: 'number', min: 0, max: task.points, value: s.points ?? (m ? Math.round(task.points * m.passed / m.total) : '') });
       return h('div', { class: 'p-2 rounded-xl bg-slate-900 border border-slate-800' },
         h('div', { class: 'flex justify-between' }, h('b', {}, nameOf(s.student_id)), h('span', { class: s.is_correct ? 'text-emerald-400' : 'text-slate-400' }, s.points != null ? `${s.points}/${task.points}` : 'бағаланбаған')),
+        m && h('div', { class: m.passed === m.total ? 'text-emerald-400 text-sm' : 'text-amber-400 text-sm' }, `🧪 Автотест: ${m.passed}/${m.total}`),
         h('pre', { class: 'text-sm whitespace-pre-wrap text-slate-300 mt-1' }, task.kind === 'quiz' ? (task.options || [])[+s.answer] ?? s.answer : s.answer),
         ['text', 'code', 'short'].includes(task.kind) && h('div', { class: 'flex gap-2 mt-2' }, pts,
           h('button', { class: BTN_G, onclick: () => rpc('cf_grade', { p_sub: s.id, p_points: +pts.value || 0, p_feedback: null }).then(refresh) }, 'Бағалау')));
@@ -254,6 +262,7 @@ async function boardView(sid) {
 
 // ---------------- оқушы: сабақ ----------------
 async function studentView(sid) {
+  const ideCache = {};
   let S, cur = null, task = null, mySub = null, mePart = null, LB = [], fullscreenNeeded = true, drawnSig = '', ended = false;
   const stage = h('div', { class: 'flex-1' }), taskBox = h('div', { class: 'max-w-3xl mx-auto w-full p-4' });
   const banner = h('div', { class: 'hidden bg-red-600 text-center font-bold p-2' });
@@ -321,22 +330,26 @@ async function studentView(sid) {
   const drawStage = () => {
     const s = (cur && cur.slide) || {};
     const isTask = ['quiz', 'task', 'code'].includes(s.type);
+    if (s.type === 'code') {
+      const ide = ideCache[cur.index] || (ideCache[cur.index] = codeIDE(s, {
+        onPaste: () => quiet('cf_report_focus', { p_session: sid, p_kind: 'paste' }),
+        onSubmit: async (code, meta) => { if (!task) return; await rpc('cf_submit', { p_task: task.id, p_answer: code, p_meta: meta }); refresh(); } }));
+      ide.setSubmit(!!(task && task.status === 'open' && !mySub));
+      stage.replaceChildren(h('div', { class: 'p-3 max-w-6xl mx-auto w-full' }, ide.el));
+      return taskBox.replaceChildren(taskPanel(s));
+    }
     stage.replaceChildren(isTask ? h('div', { class: 'max-w-3xl mx-auto p-4' }, h('h2', { class: 'text-3xl font-black mb-4' }, s.title || ''), s.prompt && h('p', { class: 'text-xl whitespace-pre-wrap' }, s.prompt))
       : renderSlide(s, { mode: 'student', lb: () => lbTable(LB) }));
     taskBox.replaceChildren(...(isTask ? [taskPanel(s)] : []));
   };
   const taskPanel = s => {
-    if (!task) return h('p', { class: 'text-slate-500' }, 'Тапсырма әлі ашылған жоқ...');
+    if (!task) return h('p', { class: 'text-slate-500' }, s.type === 'code' ? 'Тапсырма әлі ашылмаған — жаттығып көруге болады.' : 'Тапсырма әлі ашылған жоқ...');
     if (mySub) return h('div', { class: 'p-4 rounded-2xl bg-slate-900 border border-slate-700' }, h('div', { class: 'font-bold text-emerald-400' }, '✓ Жауап жіберілді'),
       mySub.points != null && h('div', {}, `Ұпай: ${mySub.points}/${task.points}`), mySub.feedback && h('div', { class: 'text-slate-300' }, mySub.feedback), revealBox());
     if (task.status !== 'open') return h('div', { class: 'p-4 rounded-2xl bg-slate-900' }, h('div', { class: 'text-red-400 font-bold' }, '⏹ Уақыт бітті'), revealBox());
     const send = async (ans, meta) => { await rpc('cf_submit', { p_task: task.id, p_answer: ans, p_meta: meta || null }); refresh(); };
     if (task.kind === 'quiz') return h('div', { class: 'grid gap-2' }, (task.options || []).map((o, i) => h('button', { class: 'p-4 rounded-2xl bg-slate-800 hover:bg-blue-700 text-left text-lg border border-slate-600', onclick: () => send(String(i)) }, `${String.fromCharCode(65 + i)}. ${o}`)));
-    if (task.kind === 'code') {
-      const cb = codeBox(s.starter);
-      cb.el.querySelector('textarea').addEventListener('paste', () => quiet('cf_report_focus', { p_session: sid, p_kind: 'paste' }));
-      return h('div', {}, cb.el, h('button', { class: BTN_P + ' mt-2 w-full', onclick: () => send(cb.code(), { output: cb.output().slice(0, 2000) }) }, '📤 Жіберу'));
-    }
+    if (task.kind === 'code') return h('p', { class: 'text-emerald-400 text-sm' }, '📝 Тапсырма ашық: кодты жазып, «✔ Тексеру», сосын «📤 Жіберу» бас.');
     const inp = h('textarea', { class: INP + ' h-24 text-lg', placeholder: 'Жауабың...' });
     inp.addEventListener('paste', () => quiet('cf_report_focus', { p_session: sid, p_kind: 'paste' }));
     return h('div', {}, inp, h('button', { class: BTN_P + ' mt-2 w-full', onclick: () => inp.value.trim() ? send(inp.value.trim()) : toast('Жауап жаз', 1) }, '📤 Жіберу'));
@@ -366,6 +379,92 @@ async function studentView(sid) {
   try { await rpc('cf_join', { p_session: sid }); } catch { location.hash = ''; return; }
   await refresh();
   live(sid, ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_scores', 'cf_submissions'], refresh);
+}
+
+// ---------------- ЖИ көмекші (Supabase edge function cf-ai) ----------------
+async function ai(mode, body) {
+  const { data, error } = await sb.functions.invoke('cf-ai', { body: { mode, ...body } });
+  if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch {} toast(m, 1); throw error; }
+  if (data.error) { toast(data.error, 1); throw new Error(data.error); }
+  return data.result;
+}
+function aiPanel(mode, countLabel, countDef, onResult, onParams, extraFields = []) {
+  const f = (ph, val, w) => h('input', { class: INP + (w ? ' ' + w : ''), placeholder: ph, value: val ?? '' });
+  const topic = f('Тақырып, мыс: Циклдер (for)', ''), grade = f('Сынып', '7', '!w-20'), cnt = f(countLabel, countDef, '!w-24'), extra = f('Қосымша тілек (міндетті емес)', '');
+  const btn = h('button', { class: BTN_P }, '✨ ЖИ-мен жасау');
+  btn.onclick = async () => {
+    if (!topic.value.trim()) return toast('Тақырып жаз', 1);
+    btn.disabled = true; btn.textContent = '⏳ ЖИ жазып жатыр (30-90 сек)...';
+    const params = { topic: topic.value.trim(), grade: grade.value, count: +cnt.value, extra: extra.value, ...Object.fromEntries(extraFields.map(([k, , inp]) => [k, inp.value])) };
+    try { onParams && onParams(params); onResult(await ai(mode, params)); } catch {} finally { btn.disabled = false; btn.textContent = '✨ ЖИ-мен жасау'; }
+  };
+  return h('div', { class: 'p-3 rounded-2xl bg-indigo-950 border border-indigo-700 space-y-2' }, h('div', { class: 'font-bold' }, '✨ ЖИ көмекші'),
+    h('div', { class: 'flex gap-2 flex-wrap' }, topic, grade, cnt, ...extraFields.map(x => x[2])), extra, btn,
+    h('p', { class: 'text-xs text-indigo-300' }, 'ЖИ қателесуі мүмкін: нәтижені міндетті түрде тексер.'));
+}
+
+// ---------------- жоспарлар (сабақ және тоқсандық) ----------------
+const PLAN_COLS = {
+  lesson: [['stage', 'Кезең', 'w-28'], ['minutes', 'Мин', 'w-14'], ['teacher', 'Мұғалім', 'w-48'], ['student', 'Оқушы', 'w-48'], ['assessment', 'Бағалау', 'w-28']],
+  quarter: [['week', 'Апта', 'w-14'], ['topic', 'Тақырып', 'w-48'], ['hours', 'Сағат', 'w-14'], ['outcome', 'Оқу мақсаты', 'w-56'], ['assessment', 'Бағалау', 'w-24']],
+};
+async function plansHome() {
+  const box = h('div', { class: 'max-w-3xl mx-auto p-4 space-y-3' });
+  mount(topbar(h('button', { class: BTN_P, onclick: () => location.hash = 'plan/new' }, '+ Жаңа жоспар')), box);
+  const rows = await q(sb.from('cf_plans').select('id,kind,title,quarter,updated_at').order('updated_at', { ascending: false }));
+  box.append(h('h2', { class: 'font-bold text-xl' }, '🗓 Жоспарлар'), rows.length ? rows.map(r => h('a', { href: '#plan/' + r.id, class: 'block p-3 rounded-2xl bg-slate-900 border border-slate-800' },
+    h('b', {}, r.title), h('span', { class: 'ml-2 text-xs text-slate-400' }, r.kind === 'quarter' ? `Тоқсандық · ${r.quarter || ''}-тоқсан` : 'Сабақ жоспары'))) : h('p', { class: 'text-slate-500' }, 'Жоспар жоқ.'));
+}
+function printPlan(kind, title, c) {
+  const cols = PLAN_COLS[kind], esc = x => String(x ?? '').replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
+  const list = (t, a) => a && a.length ? `<h3>${t}</h3><ul>${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  const rows = c.rows || [];
+  const w = window.open('', '_blank');
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:14px system-ui;margin:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #444;padding:4px 6px;vertical-align:top}th{background:#eee}</style><h1>${esc(title)}</h1>
+    ${kind === 'lesson' ? list('Мақсаттар', c.goals) + list('Күтілетін нәтиже', c.outcomes) : ''}
+    <table><tr>${cols.map(x => `<th>${x[1]}</th>`).join('')}</tr>${rows.map(r => `<tr>${cols.map(x => `<td>${esc(r[x[0]])}</td>`).join('')}</tr>`).join('')}</table>
+    ${kind === 'lesson' && c.homework ? `<h3>Үй тапсырмасы</h3><p>${esc(c.homework)}</p>` : ''}<script>onload=()=>print()<\/script>`);
+  w.document.close();
+}
+async function planEditor(id) {
+  const isNew = id === 'new';
+  const P = isNew ? { kind: 'quarter', title: '', class_id: null, quarter: 1, content: { rows: [] } } : await q(sb.from('cf_plans').select('*').eq('id', id).single());
+  const classes = await q(sb.from('classes').select('id,name').order('name'));
+  const C = P.content || {}; C.rows = C.rows || C.steps || [];
+  const kind = h('select', { class: INP + ' !w-auto' }, h('option', { value: 'quarter', selected: P.kind === 'quarter' }, 'Тоқсандық жоспар'), h('option', { value: 'lesson', selected: P.kind === 'lesson' }, 'Сабақ жоспары'));
+  const title = h('input', { class: INP, placeholder: 'Атауы', value: P.title });
+  const cls = h('select', { class: INP + ' !w-auto' }, h('option', { value: '' }, 'Сынып'), classes.map(c => h('option', { value: c.id, selected: c.id === P.class_id }, c.name)));
+  const quarter = h('input', { class: INP + ' !w-20', type: 'number', min: 1, max: 4, value: P.quarter || 1, title: 'Тоқсан' });
+  const wrap = h('div', { class: 'space-y-3' }), aiHold = h('div', {});
+  const lines = (key, label) => { const t = h('textarea', { class: INP + ' h-20', placeholder: label + ' (әр жол — бір пункт)' }, (C[key] || []).join('\n')); t.oninput = () => C[key] = t.value.split('\n').filter(Boolean); return t; };
+  const draw = () => {
+    const k = kind.value, cols = PLAN_COLS[k];
+    aiHold.replaceChildren(k === 'quarter'
+      ? aiPanel('quarter', 'Апта', 9, r => { C.rows = r.rows || []; draw(); toast('Жоспар дайын, тексеріп шық'); }, v => { v.quarter = +quarter.value; v.weeks = v.count; if (!title.value) title.value = `${v.grade}-сынып · ${quarter.value}-тоқсан · ${v.topic}`; }, [['hours', '', h('input', { class: INP + ' !w-24', placeholder: 'Сағат/апта', value: 1 })]])
+      : aiPanel('lesson', 'Минут', 45, r => { Object.assign(C, { goals: r.goals, outcomes: r.outcomes, homework: r.homework, rows: r.steps || [] }); draw(); toast('Жоспар дайын, тексеріп шық'); }, v => { v.minutes = v.count; if (!title.value) title.value = v.topic; }));
+    const head = h('tr', {}, cols.map(c => h('th', { class: 'text-left text-xs text-slate-400 px-1' }, c[1])), h('th'));
+    const body = C.rows.map((r, i) => h('tr', {}, cols.map(([key, , w]) => {
+      const inp = h('textarea', { class: INP + ' !px-2 !py-1 h-14 ' + w, rows: 2 }, r[key] ?? ''); inp.oninput = () => r[key] = inp.value; return h('td', { class: 'p-0.5 align-top' }, inp);
+    }), h('td', {}, h('button', { class: BTN + ' !px-2', onclick: () => { C.rows.splice(i, 1); draw(); } }, '✕'))));
+    wrap.replaceChildren(
+      k === 'lesson' && h('div', { class: 'space-y-2' }, (() => { const g = lines('goals', 'Мақсаттар'), o = lines('outcomes', 'Күтілетін нәтиже'); return [g, o]; })()),
+      h('div', { class: 'overflow-x-auto' }, h('table', {}, head, body)),
+      h('button', { class: BTN, onclick: () => { C.rows.push({}); draw(); } }, '+ Жол'),
+      k === 'lesson' && (() => { const t = h('input', { class: INP, placeholder: 'Үй тапсырмасы', value: C.homework || '' }); t.oninput = () => C.homework = t.value; return t; })());
+  };
+  kind.onchange = () => { C.rows = []; draw(); };
+  mount(topbar(), h('div', { class: 'max-w-5xl mx-auto p-4 space-y-3' }, h('h2', { class: 'font-bold text-xl' }, isNew ? 'Жаңа жоспар' : 'Жоспарды өңдеу'),
+    h('div', { class: 'flex gap-2 flex-wrap' }, kind, cls, quarter), title, aiHold, wrap,
+    h('div', { class: 'flex gap-2' },
+      h('button', { class: BTN_G, onclick: async () => {
+        if (!title.value.trim()) return toast('Атауын жаз', 1);
+        const row = { kind: kind.value, title: title.value.trim(), class_id: cls.value || null, quarter: +quarter.value || null, content: C, updated_at: new Date().toISOString() };
+        await q(isNew ? sb.from('cf_plans').insert({ ...row, school_id: me.school_id }) : sb.from('cf_plans').update(row).eq('id', id));
+        toast('Сақталды'); location.hash = 'plans';
+      } }, 'Сақтау'),
+      h('button', { class: BTN, onclick: () => printPlan(kind.value, title.value, C) }, '🖨 Басып шығару / PDF'),
+      !isNew && h('button', { class: BTN + ' !bg-red-800', onclick: async () => { if (confirm('Жоспарды өшіру керек пе?')) { await q(sb.from('cf_plans').delete().eq('id', id)); location.hash = 'plans'; } } }, 'Өшіру'))));
+  draw();
 }
 
 boot();
