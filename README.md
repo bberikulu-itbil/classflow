@@ -20,4 +20,4 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 - Keyboard: the first Tab stop is «Негізгі мазмұнға өту» (skips the menu).
 - The lesson and plan editors, the remote, the board and the student live-session view open full screen, without the menu.
 - Tests: `python3 replica/e2e/nav.py` (needs a built `dist/`, see the header of each script), plus `happy.py` and `edge.py`.
-- Tasks › Jeopardy (`src/views/Jeopardy.tsx`): build a board (up to 6 categories x 5 questions), play it in class with 1–4 teams. Games are saved in this browser only (`localStorage.cf_jeopardy_<user id>`), not in the database. Test: `replica/e2e/jeopardy.py`.
+- Tasks › Jeopardy (`src/views/Jeopardy.tsx`): build a board (up to 6 categories x 5 questions), play it in class with 1–4 teams. Games are saved in this browser only (`localStorage.cf_jeopardy_<user id>`), not in the database. «🔗 Сілтеме» puts the whole game into a link (`#jeopardy/<packed game>`, opens after login, teachers can keep a copy); «⛶ Толық экран» uses the browser Fullscreen API. Test: `replica/e2e/jeopardy.py`.

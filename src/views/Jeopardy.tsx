@@ -20,6 +20,31 @@ const read = (key: string): Game[] => {
 const write = (key: string, games: Game[]) => { try { localStorage.setItem(key, JSON.stringify(games)); return true; } catch { return false; } };
 const NO_SAVE = 'Браузер сақтауға рұқсат бермеді (құпия режимде болуы мүмкін)';
 
+// The whole game travels inside the link (deflate + base64url), so no server is needed.
+// shortcut: the link is a snapshot (later edits need a new link) and grows with the text; move to a database row if links get too long.
+const pipe = async (data: Uint8Array, s: CompressionStream | DecompressionStream) =>
+  new Uint8Array(await new Response(new Blob([data as BlobPart]).stream().pipeThrough(s)).arrayBuffer());
+const toB64 = (u: Uint8Array) => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromB64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
+export async function encodeGame(g: Game) {
+  const json = JSON.stringify({ t: g.title, c: g.cats.map(c => [c.name, c.qs.map(x => [x.q, x.a])]) });
+  return toB64(await pipe(new TextEncoder().encode(json), new CompressionStream('deflate-raw')));
+}
+export async function decodeGame(payload: string): Promise<Game> {
+  if (!payload || payload.length > 20000) throw new Error('bad');
+  const d = JSON.parse(new TextDecoder().decode(await pipe(fromB64(payload), new DecompressionStream('deflate-raw'))));
+  const str = (v: unknown) => { if (typeof v !== 'string') throw new Error('bad'); return v; };
+  if (!Array.isArray(d.c) || d.c.length < 1) throw new Error('bad');
+  return {
+    id: crypto.randomUUID(), title: str(d.t),
+    cats: d.c.slice(0, MAX_CATS).map((c: unknown[]) => {
+      const qs = (Array.isArray(c[1]) ? c[1] : []).slice(0, ROWS).map((x: unknown[]) => ({ q: str(x[0]), a: str(x[1]) }));
+      while (qs.length < ROWS) qs.push({ q: '', a: '' });
+      return { name: str(c[0]), qs };
+    }),
+  };
+}
+
 const problem = (g: Game) =>
   !g.title.trim() ? 'Ойынға атау беріңіз.'
   : g.cats.some(c => !c.name.trim()) ? 'Әр тақырыптың атауы болуы керек (қажетсізін өшіріңіз).'
@@ -68,7 +93,15 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
   const [open, setOpen] = useState<{ c: number; r: number } | null>(null);
   const [answer, setAnswer] = useState(false);
   const head = useRef<HTMLHeadingElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const [fs, setFs] = useState(false);
   useEffect(() => { if (open) head.current?.focus(); }, [open]);
+  useEffect(() => {
+    const h = () => setFs(document.fullscreenElement === root.current);
+    document.addEventListener('fullscreenchange', h);
+    return () => { document.removeEventListener('fullscreenchange', h); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
+  }, []);
+  const toggleFs = () => (fs ? document.exitFullscreen() : root.current?.requestFullscreen())?.catch(() => {});
 
   const key = (c: number, r: number) => `${c}-${r}`;
   const playable = (c: number, r: number) => !!game.cats[c].qs[r].q.trim();
@@ -83,10 +116,13 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
   const q = open && game.cats[open.c].qs[open.r];
 
   return (
-    <div className="space-y-4">
+    <div ref={root} className={`space-y-4 ${fs ? 'bg-bg text-text p-6 overflow-auto' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold break-words">{game.title}</h2>
-        <Button variant="secondary" onClick={onExit}>← Ойыннан шығу</Button>
+        <div className="flex gap-2">
+          {document.fullscreenEnabled && <Button variant="secondary" onClick={toggleFs}>{fs ? '⤢ Толық экраннан шығу' : '⛶ Толық экран'}</Button>}
+          {!fs && <Button variant="secondary" onClick={onExit}>← Ойыннан шығу</Button>}
+        </div>
       </div>
 
       <div aria-live="polite" className="flex flex-wrap gap-2">
@@ -103,10 +139,10 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
       {open && q ? (
         <Card className="space-y-4">
           <h3 ref={head} tabIndex={-1} className="text-sm font-semibold text-text-secondary">{game.cats[open.c].name} · {points(open.r)}</h3>
-          <p className="text-2xl sm:text-3xl font-bold break-words">{q.q}</p>
+          <p className={`font-bold break-words ${fs ? 'text-5xl' : 'text-2xl sm:text-3xl'}`}>{q.q}</p>
           {!answer ? <Button onClick={() => setAnswer(true)}>Жауапты көрсету</Button> : (
             <>
-              <p className="text-xl rounded-md bg-success-soft text-success p-3 break-words"><span className="font-semibold">Жауап:</span> {q.a}</p>
+              <p className={`rounded-md bg-success-soft text-success p-3 break-words ${fs ? 'text-3xl' : 'text-xl'}`}><span className="font-semibold">Жауап:</span> {q.a}</p>
               <ul className="space-y-2">
                 {teams.map((t, i) => (
                   <li key={i} className="flex flex-wrap items-center gap-2">
@@ -136,7 +172,7 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
                     return (
                       <button key={ri} type="button" disabled={off} aria-label={`${c.name}, ${points(ri)}${used.has(key(ci, ri)) ? ', өтті' : ''}`}
                         onClick={() => setOpen({ c: ci, r: ri })}
-                        className="w-full min-h-[64px] rounded-md bg-accent text-on-accent hover:bg-accent-hover text-2xl font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                        className={`w-full rounded-md bg-accent text-on-accent hover:bg-accent-hover font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${fs ? 'min-h-[11vh] text-5xl' : 'min-h-[64px] text-2xl'}`}>
                         {points(ri)}
                       </button>
                     );
@@ -157,6 +193,15 @@ export function Jeopardy({ meId }: { meId: string }) {
   const [mode, setMode] = useState<{ kind: 'list' } | { kind: 'edit' | 'play'; game: Game }>({ kind: 'list' });
   const [delId, setDelId] = useState('');
   const [err, setErr] = useState('');
+  const [link, setLink] = useState<{ id: string; url: string; copied: boolean } | null>(null);
+
+  const share = async (g: Game) => {
+    try {
+      const url = `${location.origin}${location.pathname}#jeopardy/${await encodeGame(g)}`;
+      const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
+      setLink({ id: g.id, url, copied });
+    } catch { setErr('Сілтеме жасау мүмкін болмады'); }
+  };
 
   const persist = (next: Game[]) => { if (!write(storeKey, next)) { setErr(NO_SAVE); return false; } setGames(next); setErr(''); return true; };
   const save = (g: Game, play: boolean) => {
@@ -175,18 +220,51 @@ export function Jeopardy({ meId }: { meId: string }) {
       {err && <p role="alert" className="text-sm text-danger">{err}</p>}
       {games.length === 0 && <EmptyState icon="🎯" text="Әзірге ойын жоқ. «+ Жаңа ойын» басып тақырыптар мен сұрақтар жазыңыз." />}
       {games.map(g => (
-        <Card key={g.id} className="flex flex-wrap items-center gap-3">
+        <React.Fragment key={g.id}>
+        <Card className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[10rem]">
             <div className="font-semibold break-words">{g.title || 'Атаусыз'}</div>
             <div className="text-sm text-text-muted">{g.cats.length} тақырып · {filled(g)} сұрақ</div>
           </div>
           <Button variant="success" disabled={filled(g) === 0} onClick={() => setMode({ kind: 'play', game: g })}>▶ Ойнау</Button>
           <Button variant="secondary" onClick={() => setMode({ kind: 'edit', game: g })}>Өңдеу</Button>
+          <Button variant="secondary" aria-label={`${g.title || 'Атаусыз'}: бөлісу сілтемесі`} onClick={() => share(g)}>🔗 Сілтеме</Button>
           {delId === g.id
             ? <><Button variant="danger" onClick={() => { persist(games.filter(x => x.id !== g.id)); setDelId(''); }}>Иә, жою</Button><Button variant="ghost" onClick={() => setDelId('')}>Жоқ</Button></>
             : <Button variant="ghost" aria-label={`${g.title || 'Атаусыз'} ойынын жою`} onClick={() => setDelId(g.id)}>Жою</Button>}
         </Card>
+        {link?.id === g.id && (
+          <div className="rounded-md bg-accent-soft p-3 space-y-2">
+            <p role="status" className="text-sm font-semibold text-on-accent-soft">{link.copied ? 'Сілтеме көшірілді.' : 'Сілтемені өзіңіз көшіріңіз:'} Сілтемеде сұрақтар мен жауаптар бар, оны тек білетін адамға жіберіңіз.</p>
+            <input readOnly aria-label="Бөлісу сілтемесі" className={inputCls} value={link.url} onFocus={e => e.currentTarget.select()} />
+          </div>
+        )}
+        </React.Fragment>
       ))}
     </div>
+  );
+}
+
+/** Opens a game from a share link: play it right away, and teachers can keep a copy. */
+export function SharedGame({ payload, meId, canSave }: { payload: string; meId: string; canSave: boolean }) {
+  const [state, setState] = useState<{ game?: Game; bad?: boolean }>({});
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { decodeGame(payload).then(game => setState({ game }), () => setState({ bad: true })); }, [payload]);
+  const keep = () => {
+    const key = 'cf_jeopardy_' + meId;
+    if (state.game && write(key, [state.game, ...read(key)])) setSaved(true);
+  };
+  return (
+    <main className="max-w-5xl mx-auto p-4 space-y-4">
+      {state.bad && <EmptyState icon="🔗" text="Сілтеме бүлінген немесе толық емес. Жібергеннен жаңасын сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
+      {state.game && (
+        <>
+          {canSave && (saved
+            ? <p role="status" className="text-sm font-semibold text-success">Ойын «Тапсырмалар › Jeopardy» тізіміне сақталды.</p>
+            : <Button variant="secondary" onClick={keep}>Менің ойындарыма сақтау</Button>)}
+          <Play game={state.game} onExit={() => { window.location.hash = canSave ? 'tasks/jeopardy' : ''; }} />
+        </>
+      )}
+    </main>
   );
 }
