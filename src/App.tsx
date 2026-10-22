@@ -8,6 +8,7 @@ import { BoardView } from './components/BoardView';
 import { StudentSessionView } from './components/StudentSessionView';
 import { PlansView } from './components/PlansView';
 import { PlanEditorView } from './components/PlanEditorView';
+import { ProfileView } from './components/ProfileView';
 import { LessonEditorView } from './components/LessonEditorView';
 
 export default function App() {
@@ -79,6 +80,10 @@ export default function App() {
   }
 
   const isStaff = STAFF.includes(me.role);
+
+  if (routeKey === 'profile') {
+    return <ProfileView me={me} onLogout={() => setMe(null)} />;
+  }
 
   if (routeKey === 'remote' && isStaff) {
     return <RemoteView sid={routeId} me={me} onLogout={() => setMe(null)} />;
