@@ -4,7 +4,7 @@ Login for students without email,onboarding,must,yes,yes,uses KeyToLife logins
 Section (class) with roster,classroom,must,yes,no,ClassFlow takes the roster from KeyToLife classes; no section management screen
 Browser code editor with Run and console,IDE,must,yes,yes,Pyodide in a worker; Python only
 Check button with autograder test cases,IDE,must,yes,yes,hashed expected output; client-run
-Submit is blocked until tests pass,IDE,should,yes,partial,per-assignment require_pass option; demo data layer
+Submit is blocked until tests pass,IDE,should,yes,partial,per-assignment require_pass option; DB live, UI untested against it
 Hidden tests,IDE,should,yes,yes,tests with hidden flag
 Stdin input for input() programs,IDE,must,yes,yes,
 Hints for a task,IDE,should,yes,yes,
@@ -21,10 +21,10 @@ Slides with video and examples,curriculum,should,yes,yes,slide types incl. flash
 Quizzes with auto score,assessment,must,yes,yes,quiz slide type with speed bonus
 Shuffled quiz questions,assessment,could,yes,no,
 Due dates and open/lock schedule,pacing,must,yes,partial,open and due times and late policy in S16; no lock button yet
-Assignment of work to a section,pacing,must,yes,partial,"S16 assigns a code slide to chosen classes; works on the demo data layer, schema.sql not yet applied to the database"
+Assignment of work to a section,pacing,must,yes,partial,"S16 assigns a code slide to chosen classes; DB and RPC live and access-tested 2026-10-22; UI not yet clicked through against the live DB"
 Student sees grades and feedback,grading,must,yes,yes,points and feedback shown after grading
 Teacher reviews latest submission and comments,grading,must,yes,yes,"live subs tab plus homework review S19 with code, points and feedback"
-Finalized / Needs Work status,grading,could,yes,partial,S19 grade and send-back buttons; demo data layer
+Finalized / Needs Work status,grading,could,yes,partial,S19 grade and send-back buttons; DB live, UI untested against it
 Fast Grade queue with diff against solution,grading,should,yes,no,
 Gradebook with categories and weights,grading,should,yes,no,
 Export grades (CSV),grading,could,yes,no,

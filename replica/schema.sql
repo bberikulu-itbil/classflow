@@ -1,5 +1,5 @@
 -- ClassFlow "homework layer" (CodeHS-style courses + due dates + gradebook + integrity).
--- NOT applied to the database. Review, then run in the Supabase SQL Editor.
+-- APPLIED 2026-10-22 as migration cf_homework_layer (see supabase/003 and replica/backend.md).
 -- Reuses: profiles, classes (a class IS the section), schools, my_school(), is_staff(), is_deputy(), cf_norm().
 -- Rules of the house: times are timestamptz (UTC), student-owned rows cascade with the profile,
 -- teacher-owned rows RESTRICT (reassign before deleting a teacher), all writes by students go through RPC.
