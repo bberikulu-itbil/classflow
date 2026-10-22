@@ -1,18 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Link2, Maximize, Minimize, Play as PlayIcon, Target, Unlink } from 'lucide-react';
+import { ArrowLeft, Link2, Maximize, Minimize, Play as PlayIcon, Save, SlidersHorizontal, Target, Unlink } from 'lucide-react';
 import { sb, DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad } from '../ui';
+import { JeopardyPanel } from './JeopardyPanel';
+import { MAX_TEAMS, addRun, applyScore, newTeam, penalty, useSetup } from './jeopardyStore';
+import type { Ctx, Me, Setup } from './jeopardyStore';
 
 interface Cat { name: string; qs: { q: string; a: string }[] }
 interface Game { id: string; title: string; cats: Cat[] }
 
-const ROWS = 5, MAX_CATS = 6, MAX_TEAMS = 4;
+const ROWS = 5, MAX_CATS = 6;
 const points = (row: number) => (row + 1) * 100;
 const newCat = (): Cat => ({ name: '', qs: Array.from({ length: ROWS }, () => ({ q: '', a: '' })) });
 const newGame = (): Game => ({ id: crypto.randomUUID(), title: '', cats: [newCat(), newCat(), newCat()] });
 const filled = (g: Game) => g.cats.reduce((n, c) => n + c.qs.filter(x => x.q.trim()).length, 0);
-
-interface Me { id: string; school_id: string }
 
 // Games are rows of cf_jeopardy (supabase/006_jeopardy.sql). Until that table exists (and in ?demo) they stay in this browser.
 const read = (key: string): Game[] => {
@@ -123,8 +124,20 @@ function Editor({ initial, onSave, onCancel }: { initial: Game; onSave: (g: Game
   );
 }
 
-function Play({ game, onExit }: { game: Game; onExit: () => void }) {
-  const [teams, setTeams] = useState([{ name: 'Команда 1', score: 0 }, { name: 'Команда 2', score: 0 }]);
+type SetupState = readonly [Setup, (fn: (p: Setup) => Setup) => void];
+
+function PanelButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return <Button variant="secondary" aria-expanded={open} onClick={onClick}><SlidersHorizontal size={16} aria-hidden="true" />Параметрлер</Button>;
+}
+
+function Play({ game, onExit, ctx, state }: { game: Game; onExit: () => void; ctx: Ctx; state: SetupState }) {
+  const [setup, update] = state;
+  const { teams, rules } = setup;
+  const setTeams = (fn: (t: Setup['teams']) => Setup['teams']) => update(p => ({ ...p, teams: fn(p.teams) }));
+  const [panel, setPanel] = useState(false);
+  const [saved, setSaved] = useState('');
+  const autoSaved = useRef(false);
+  useEffect(() => { setTeams(t => t.map(x => ({ ...x, score: 0 }))); }, []); // every game starts from zero
   const [used, setUsed] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<{ c: number; r: number } | null>(null);
   const [answer, setAnswer] = useState(false);
@@ -144,7 +157,12 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
   const total = game.cats.reduce((n, c, ci) => n + c.qs.filter((_, ri) => playable(ci, ri)).length, 0);
   const done = used.size >= total;
   const best = Math.max(...teams.map(t => t.score));
-  const bump = (i: number, d: number) => setTeams(t => t.map((x, j) => (j === i ? { ...x, score: x.score + d } : x)));
+  const bump = (i: number, d: number) => setTeams(t => t.map((x, j) => (j === i ? { ...x, score: applyScore(x.score, d, rules) } : x)));
+  const saveRun = async () => {
+    try { await addRun(ctx, { id: crypto.randomUUID(), title: game.title, at: new Date().toISOString(), teams, rules }); setSaved('ok'); }
+    catch (e) { setSaved((e as Error).message || 'Қате'); }
+  };
+  useEffect(() => { if (done && total > 0 && !autoSaved.current) { autoSaved.current = true; saveRun(); } }, [done]);
   const close = (markUsed: boolean) => {
     if (markUsed && open) setUsed(u => new Set(u).add(key(open.c, open.r)));
     setOpen(null); setAnswer(false);
@@ -155,20 +173,28 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
     <div ref={root} className={`space-y-4 ${fs ? 'bg-bg text-text p-6 overflow-auto' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold break-words">{game.title}</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <PanelButton open={panel} onClick={() => setPanel(p => !p)} />
           {document.fullscreenEnabled && <Button variant="secondary" onClick={toggleFs}>{fs ? <><Minimize size={16} aria-hidden="true" />Толық экраннан шығу</> : <><Maximize size={16} aria-hidden="true" />Толық экран</>}</Button>}
           {!fs && <Button variant="secondary" onClick={onExit}><ArrowLeft size={16} aria-hidden="true" />Ойыннан шығу</Button>}
         </div>
       </div>
 
+      {(rules.penaltyPct !== 100 || !rules.allowNegative || rules.note) && (
+        <p className="text-sm text-text-secondary">Қате жауап: −{rules.penaltyPct}% ұпай{rules.allowNegative ? '' : ' (нөлден төмен түспейді)'}.{rules.note && ` ${rules.note}`}</p>
+      )}
+
       <div aria-live="polite" className="flex flex-wrap gap-2">
         {teams.map((t, i) => (
-          <Card key={i} className="flex items-center gap-2 !p-2">
-            <input className={inputCls + ' !w-36'} aria-label={`${i + 1}-команда атауы`} value={t.name} onChange={e => setTeams(ts => ts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-            <span className="text-xl font-bold min-w-[3.5rem] text-right" aria-label={`${t.name}: ${t.score} ұпай`}>{t.score}</span>
+          <Card key={i} className="!p-2">
+            <div className="flex items-center gap-2">
+              <input className={inputCls + ' !w-36'} aria-label={`${i + 1}-команда атауы`} value={t.name} onChange={e => setTeams(ts => ts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+              <span className="text-xl font-bold min-w-[3.5rem] text-right" aria-label={`${t.name}: ${t.score} ұпай`}>{t.score}</span>
+            </div>
+            {t.members.length > 0 && <div className="mt-1 max-w-[16rem] text-sm text-text-secondary break-words">{t.members.join(', ')}</div>}
           </Card>
         ))}
-        {teams.length < MAX_TEAMS && <Button variant="secondary" onClick={() => setTeams(t => [...t, { name: `Команда ${t.length + 1}`, score: 0 }])}>+ Команда</Button>}
+        {teams.length < MAX_TEAMS && <Button variant="secondary" onClick={() => setTeams(t => [...t, newTeam(t.length + 1)])}>+ Команда</Button>}
         {teams.length > 1 && <Button variant="secondary" onClick={() => setTeams(t => t.slice(0, -1))}>− Команда</Button>}
       </div>
 
@@ -184,7 +210,7 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
                   <li key={i} className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold min-w-[8rem] break-words">{t.name}</span>
                     <Button variant="success" aria-label={`${t.name}: дұрыс, +${points(open.r)}`} onClick={() => bump(i, points(open.r))}>+{points(open.r)}</Button>
-                    <Button variant="danger" aria-label={`${t.name}: қате, −${points(open.r)}`} onClick={() => bump(i, -points(open.r))}>−{points(open.r)}</Button>
+                    <Button variant="danger" aria-label={`${t.name}: қате, −${penalty(points(open.r), rules)}`} onClick={() => bump(i, -penalty(points(open.r), rules))}>−{penalty(points(open.r), rules)}</Button>
                   </li>
                 ))}
               </ul>
@@ -198,6 +224,11 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
       ) : (
         <>
           {done && <p role="status" className="rounded-md bg-accent-soft text-on-accent-soft p-3 font-semibold">Ойын аяқталды. Жеңімпаз: {teams.filter(t => t.score === best).map(t => t.name).join(', ')} ({best})</p>}
+          <div className="flex flex-wrap items-center gap-3">
+            {saved === 'ok' ? <p role="status" className="text-sm font-semibold text-success">Нәтиже тарихқа сақталды.</p>
+              : !done && <Button variant="secondary" onClick={saveRun}><Save size={16} aria-hidden="true" />Нәтижені сақтау</Button>}
+            {saved && saved !== 'ok' && <p role="alert" className="text-sm text-danger">{saved}</p>}
+          </div>
           <div className="overflow-x-auto">
             <div className="grid gap-2 min-w-[36rem]" style={{ gridTemplateColumns: `repeat(${game.cats.length}, minmax(0, 1fr))` }}>
               {game.cats.map((c, ci) => (
@@ -219,6 +250,7 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
           </div>
         </>
       )}
+      {panel && <JeopardyPanel ctx={ctx} setup={setup} update={update} onClose={() => setPanel(false)} />}
     </div>
   );
 }
@@ -226,6 +258,9 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
 export function Jeopardy({ me }: { me: Me }) {
   const { data, error, loading, reload } = useLoad(() => listGames(me), [me.id]);
   const [mode, setMode] = useState<{ kind: 'list' } | { kind: 'edit' | 'play'; game: Game }>({ kind: 'list' });
+  const ctx: Ctx = { me, staff: true };
+  const state = useSetup(me);
+  const [panel, setPanel] = useState(false);
   const [delId, setDelId] = useState('');
   const [err, setErr] = useState('');
   const [link, setLink] = useState<{ id: string; url: string; copied: boolean } | null>(null);
@@ -246,13 +281,16 @@ export function Jeopardy({ me }: { me: Me }) {
   };
 
   if (mode.kind === 'edit') return <><Editor initial={mode.game} onSave={save} onCancel={() => setMode({ kind: 'list' })} />{err && <p role="alert" className="mt-2 text-sm text-danger">{err}</p>}</>;
-  if (mode.kind === 'play') return <Play game={mode.game} onExit={() => setMode({ kind: 'list' })} />;
+  if (mode.kind === 'play') return <Play game={mode.game} ctx={ctx} state={state} onExit={() => setMode({ kind: 'list' })} />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Jeopardy</h2>
-        <Button onClick={() => setMode({ kind: 'edit', game: newGame() })}>+ Жаңа ойын</Button>
+        <div className="flex gap-2">
+          <PanelButton open={panel} onClick={() => setPanel(p => !p)} />
+          <Button onClick={() => setMode({ kind: 'edit', game: newGame() })}>+ Жаңа ойын</Button>
+        </div>
       </div>
       {data?.local && !DEMO && <p role="status" className="rounded-md bg-warning-soft text-warning p-3 text-sm">Ойындар серверге әлі қосылмаған, сондықтан тек осы браузерде сақталады (006_jeopardy.sql жүргізілмеген).</p>}
       {stuck > 0 && (
@@ -287,6 +325,7 @@ export function Jeopardy({ me }: { me: Me }) {
         )}
         </React.Fragment>
       ))}
+      {panel && <JeopardyPanel ctx={ctx} setup={state[0]} update={state[1]} onClose={() => setPanel(false)} />}
     </div>
   );
 }
@@ -294,6 +333,7 @@ export function Jeopardy({ me }: { me: Me }) {
 /** Opens a game from a share link: play it right away, and teachers can keep a copy. */
 export function SharedGame({ payload, me, canSave }: { payload: string; me: Me; canSave: boolean }) {
   const [state, setState] = useState<{ game?: Game; bad?: boolean }>({});
+  const setup = useSetup(me);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState('');
   useEffect(() => { decodeGame(payload).then(game => setState({ game }), () => setState({ bad: true })); }, [payload]);
@@ -307,7 +347,7 @@ export function SharedGame({ payload, me, canSave }: { payload: string; me: Me; 
             ? <p role="status" className="text-sm font-semibold text-success">Ойын «Тапсырмалар › Jeopardy» тізіміне сақталды.</p>
             : <Button variant="secondary" onClick={keep}>Менің ойындарыма сақтау</Button>)}
           {err && <p role="alert" className="text-sm text-danger">{err}</p>}
-          <Play game={state.game} onExit={() => { window.location.hash = canSave ? 'tasks/jeopardy' : ''; }} />
+          <Play game={state.game} ctx={{ me, staff: canSave }} state={setup} onExit={() => { window.location.hash = canSave ? 'tasks/jeopardy' : ''; }} />
         </>
       )}
     </main>

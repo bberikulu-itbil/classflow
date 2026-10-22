@@ -42,8 +42,8 @@ with sync_playwright() as p:
     pg=page(); pg.goto(B+'?demo=teacher#profile'); pg.wait_for_selector('h2:has-text("Тақырып")')
     ok('H1 default is Light, nothing stored', pg.evaluate("document.documentElement.getAttribute('data-theme')") in (None,'light') and pg.evaluate("localStorage.getItem('cf_theme')") is None and bg(pg)=='#F4F5F7')
     radios=pg.locator('input[name=theme]')
-    ok('H1 picker: 4 themes, Light selected', radios.count()==4 and pg.locator('input[name=theme]:checked').get_attribute('value')=='light' and [t.split(chr(10))[0].strip() for t in pg.locator('[role=radiogroup] label').all_inner_texts()]==[LABEL[k] for k in ('light','dark','ocean','sand')])
-    ok('H1 each swatch previews its own theme', pg.evaluate("[...document.querySelectorAll('[role=radiogroup] [data-theme]')].map(e=>getComputedStyle(e).backgroundColor)")==[rgb(TOK[k]['bg']) for k in ('light','dark','ocean','sand')])
+    ok('H1 picker: 4 themes, Light selected', radios.count()==4 and pg.locator('input[name=theme]:checked').get_attribute('value')=='light' and [t.split(chr(10))[0].strip() for t in pg.locator('[role=radiogroup][aria-labelledby=theme-h] label').all_inner_texts()]==[LABEL[k] for k in ('light','dark','ocean','sand')])
+    ok('H1 each swatch previews its own theme', pg.evaluate("[...document.querySelectorAll('[role=radiogroup][aria-labelledby=theme-h] [data-theme]')].map(e=>getComputedStyle(e).backgroundColor)")==[rgb(TOK[k]['bg']) for k in ('light','dark','ocean','sand')])
     for k in ('dark','ocean','sand','light'):
         pg.locator('[role=radiogroup] label',has_text=LABEL[k]).click(); pg.wait_for_timeout(100)
         ok(f'H2 {k}: applied to the page and remembered', pg.evaluate("document.documentElement.getAttribute('data-theme')")==k and pg.evaluate("localStorage.getItem('cf_theme')")==k and bg(pg)==TOK[k]['bg'], bg(pg))

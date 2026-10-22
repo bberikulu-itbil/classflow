@@ -4,8 +4,8 @@ import type { ActivityView, AssignedRow, HwApi, LessonSlide, Me, MyAssignment, M
 
 export const DEMO_TEACHER: Me = { id: 't1', full_name: 'Бағдәулет Е.', role: 'teacher', school_id: 's1', class_id: null };
 export const DEMO_STUDENT: Me = { id: 'st-aidar', full_name: 'Айдар Нұрланов', role: 'student', school_id: 's1', class_id: 'c7b' };
-const CLASSES = [{ id: 'c7a', name: '7A' }, { id: 'c7b', name: '7B' }];
-const STUDENTS: Me[] = [
+export const CLASSES = [{ id: 'c7a', name: '7A' }, { id: 'c7b', name: '7B' }];
+export const STUDENTS: Me[] = [
   DEMO_STUDENT,
   { id: 'st-dana', full_name: 'Дана Сәрсенова', role: 'student', school_id: 's1', class_id: 'c7b' },
   { id: 'st-erlan', full_name: 'Ерлан Қасымов', role: 'student', school_id: 's1', class_id: 'c7b' },

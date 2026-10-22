@@ -15,7 +15,7 @@ B='http://127.0.0.1:5208/'; errors=[]; bad5xx=[]; results=[]
 def ok(n,c,x=''): results.append((n,bool(c),x)); print(('PASS' if c else 'FAIL'),n,x)
 
 
-ROWS={}; MODE={'v':'ok'}; POSTS=[]
+ROWS={}; MODE={'v':'ok'}; POSTS=[]; RUNS={}; RMODE={'v':'ok'}; RPOSTS=[]
 ME={'id':'t-1','full_name':'Бағдәулет Е.','role':'teacher','school_id':'sc','class_id':None}
 def jwt(sub):
     e=lambda o: base64.urlsafe_b64encode(json.dumps(o).encode()).decode().rstrip('=')
@@ -27,6 +27,13 @@ def stub(r):
     def out(d,status=200): r.fulfill(status=status,content_type='application/json',headers=h,body=json.dumps(d))
     if q.method=='OPTIONS': return r.fulfill(status=204,headers=h)
     if name=='profiles': return out(ME)
+    if name=='cf_jeopardy_runs':
+        if RMODE['v']=='missing': return out({'code':'PGRST205','message':"Could not find the table 'public.cf_jeopardy_runs' in the schema cache"},404)
+        if q.method=='GET': return out(sorted(RUNS.values(),key=lambda x:x['_t'],reverse=True))
+        if q.method=='POST':
+            d=json.loads(q.post_data); RPOSTS.append(d); d['_t']=time.time(); RUNS[d['id']]=d; return r.fulfill(status=201,headers=h,body='')
+        if q.method=='DELETE': RUNS.pop(qs['id'][0].replace('eq.',''),None); return r.fulfill(status=204,headers=h)
+        return out([])
     if name!='cf_jeopardy': return out([])
     if MODE['v']=='missing': return out({'code':'PGRST205','message':"Could not find the table 'public.cf_jeopardy' in the schema cache"},404)
     if MODE['v']=='boom': return out({'code':'XX000','message':'database is on fire'},500)
@@ -86,12 +93,26 @@ with sync_playwright() as p:
     S.click('button[aria-label$="бөлісу сілтемесі"]'); frag=S.input_value('input[aria-label="Бөлісу сілтемесі"]').split('#')[1]; ROWS.clear()
     K=page(); K.goto(B+'#'+frag); K.wait_for_selector('button:text-is("Менің ойындарыма сақтау")'); K.click('button:text-is("Менің ойындарыма сақтау")'); K.wait_for_selector('text=тізіміне сақталды')
     ok('C5 "keep a copy" of a shared game writes a row', len(ROWS)==1 and list(ROWS.values())[0]['title']=='Сілтеме үшін')
+    # C5b results of played games go to cf_jeopardy_runs and show on another device
+    ROWS.clear(); G=page(); G.goto(URL); G.wait_for_selector('text=Әзірге ойын жоқ'); make(G,'Нәтиже ойыны','Т','Q','A'); G.wait_for_selector('text=Нәтиже ойыны')
+    G.click('button:text-is("Ойнау")'); G.wait_for_selector('section[aria-label="Т"]'); G.click('button[aria-label="Т, 100"]'); G.click('button:text-is("Жауапты көрсету")')
+    G.click('button[aria-label="Команда 1: дұрыс, +100"]'); G.click('button:text-is("Дайын")'); G.wait_for_selector('text=Нәтиже тарихқа сақталды')
+    r0=RPOSTS[0] if len(RPOSTS)==1 else {}
+    ok('C5b finished game: one row of the owner and school, title, teams with scores, rules', r0.get('owner_id')=='t-1' and r0.get('school_id')=='sc' and r0.get('game_title')=='Нәтиже ойыны' and r0['teams'][0]['score']==100 and r0['rules']['penaltyPct']==100 and len(RUNS)==1, str(RPOSTS)[:200])
+    ok('C5b nothing was put in the browser storage', G.evaluate("Object.keys(localStorage).some(k=>k.startsWith('cf_jeopardy_runs_'))")==False)
+    H2=page(); H2.goto(URL); H2.wait_for_selector('text=Нәтиже ойыны'); H2.click('button:has-text("Параметрлер")'); H2.click('[role=tab]:text-is("Тарих")')
+    H2.wait_for_selector('aside >> text=Нәтиже ойыны'); ok('C5b another device sees the result in the history, no "browser only" warning', H2.locator('aside >> text=жеңімпаз').count()>=1 and H2.locator('aside >> text=тек осы браузерде').count()==0)
+    axe(H2,'jeopardy history (cloud)')
+    H2.click('aside button[aria-label$="нәтижені жою"]'); H2.click('aside button:text-is("Иә")'); H2.wait_for_selector('aside >> text=Әзірге нәтиже жоқ'); ok('C5b delete removes the row', len(RUNS)==0)
     # C6 table missing: still works, says why
     MODE['v']='missing'; L=page(); L.goto(URL); L.wait_for_selector('text=Әзірге ойын жоқ')
     ok('C6 table missing: tells that games stay in this browser', L.locator('[role=status]:has-text("006_jeopardy.sql жүргізілмеген")').count()==1)
     axe(L,'jeopardy list (table missing)')
     make(L,'Уақытша','Т','Q','A'); L.wait_for_selector('text=Уақытша'); L.reload(); L.wait_for_selector('text=Уақытша')
     ok('C6 table missing: games still save and survive reload', L.locator('text=1 тақырып · 1 сұрақ').count()==1)
+    RMODE['v']='missing'; L.click('button:text-is("Ойнау")'); L.wait_for_selector('section[aria-label="Т"]'); L.click('button:has-text("Нәтижені сақтау")'); L.wait_for_selector('text=Нәтиже тарихқа сақталды')
+    L.click('button:has-text("Параметрлер")'); L.click('[role=tab]:text-is("Тарих")'); L.wait_for_selector('aside >> text=Уақытша')
+    ok('C6 results table missing: result kept in the browser and the history says so', L.locator('aside >> text=Нәтижелер серверге қосылмаған').count()==1 and L.evaluate("Object.keys(localStorage).some(k=>k.startsWith('cf_jeopardy_runs_'))"))
     # C7 real server error is shown, not hidden by the fallback
     MODE['v']='boom'; E=page(); E.goto(URL); E.wait_for_selector('text=database is on fire')
     ok('C7 server error: message and retry button, nothing pretends to be saved', E.locator('text=database is on fire').count()==1 and E.locator('text=Әзірге ойын жоқ').count()==0)
