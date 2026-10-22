@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { runPy, norm, sha256 } from '../utils/pyodide';
 
 export const BTN = 'px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition cursor-pointer';
-export const BTN_P = 'px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold transition cursor-pointer';
+export const BTN_P = 'px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition cursor-pointer';
 export const BTN_G = 'px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition disabled:opacity-50 cursor-pointer';
 export const INP = 'w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-600 text-sm outline-none focus:border-blue-500 text-slate-100';
 
@@ -291,7 +291,7 @@ export function CodeIDE({ s, o = {} }: { s: any; o?: any }) {
   };
 
   return (
-    <div className="grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] w-full border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50 min-h-[28rem]">
+    <div className="grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] w-full border border-slate-800 rounded-2xl overflow-hidden bg-slate-900 min-h-[28rem]">
       <div className="p-4 space-y-3 overflow-auto">
         <h2 className="text-2xl font-black">{s.title || ''}</h2>
         {s.prompt && <p className="whitespace-pre-wrap">{s.prompt}</p>}

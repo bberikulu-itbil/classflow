@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, BookOpen, ClipboardCheck, House, Layers, Presentation, SlidersHorizontal, Trophy, Users } from 'lucide-react';
+import { Award, BookOpen, ClipboardCheck, Gamepad2, GraduationCap, House, Inbox, Layers, Library, PencilRuler, Presentation, Send, SlidersHorizontal, Trophy, Users } from 'lucide-react';
 
 export type Role = 'teacher' | 'student';
 
 /** `to` = hash route of a screen that exists. No `to` = planned ("Жақында"), `items` says what it will hold. */
-export interface Sub { key: string; label: string; to?: string; items?: string[] }
+export interface Sub { key: string; label: string; icon?: LucideIcon; to?: string; items?: string[] }
 export interface Section {
   key: string; label: string; icon: LucideIcon;
   routes: string[];          // hash route keys that light this section up in the menu
@@ -31,12 +31,12 @@ export const TEACHER: Section[] = [
     { key: 'progress', label: 'Прогресс және журнал', items: ['Прогресс', 'Баға журналы', 'CSV жүктеу'] },
   ] },
   { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'assign', 'review'], to: 'assign', subs: [
-    { key: 'bank', label: 'Тапсырмалар банкі', items: ['Түрі, сыныбы, оқу мақсаты бойынша іздеу'] },
-    { key: 'builder', label: 'Конструктор', items: ['Жеке, жұптық және топтық тапсырмалар'] },
-    { key: 'jeopardy', label: 'Jeopardy', to: 'tasks/jeopardy' },
-    { key: 'assigned', label: 'Берілген тапсырмалар', to: 'assign' },
-    { key: 'queue', label: 'Тексеру кезегі', to: 'tasks/queue' },
-    { key: 'exams', label: 'БЖБ/ТЖБ', items: ['Емтихан нұсқалары', 'Прокторинг'] },
+    { key: 'bank', label: 'Тапсырмалар банкі', icon: Library, items: ['Түрі, сыныбы, оқу мақсаты бойынша іздеу'] },
+    { key: 'builder', label: 'Конструктор', icon: PencilRuler, items: ['Жеке, жұптық және топтық тапсырмалар'] },
+    { key: 'jeopardy', label: 'Jeopardy', icon: Gamepad2, to: 'tasks/jeopardy' },
+    { key: 'assigned', label: 'Берілген тапсырмалар', icon: Send, to: 'assign' },
+    { key: 'queue', label: 'Тексеру кезегі', icon: Inbox, to: 'tasks/queue' },
+    { key: 'exams', label: 'БЖБ/ТЖБ', icon: GraduationCap, items: ['Емтихан нұсқалары', 'Прокторинг'] },
   ] },
   { key: 'contests', label: 'Сайыстар', icon: Trophy, routes: ['contests'], subs: [
     { key: 'quiz', label: 'Live викторина', items: ['Сабақ кезінде сыныппен ойнау'] },

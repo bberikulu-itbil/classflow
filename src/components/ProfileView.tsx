@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ThemePicker } from '../ui/ThemePicker';
 import { sb } from '../config';
 import { ROLE_NAMES } from '../nav/config';
 import { Button, Card, Field, inputCls } from '../ui';
@@ -35,6 +36,7 @@ export function ProfileCard({ me, onLogout }: { me: any; onLogout: () => void })
         {row('Рөл', ROLE_NAMES[me.role] || me.role)}
         {me.role === 'student' && row('Сынып', className)}
       </Card>
+      <ThemePicker />
       <Card className="space-y-3">
         <h2 className="font-semibold">Құпиясөзді өзгерту</h2>
         <Field label="Жаңа құпиясөз">{id => <input id={id} className={inputCls} type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} />}</Field>

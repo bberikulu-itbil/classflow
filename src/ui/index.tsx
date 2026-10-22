@@ -1,4 +1,5 @@
 import React from 'react';
+import { Flag, Loader2 } from 'lucide-react';
 import type { Status } from '../hw/types';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -13,8 +14,8 @@ const V: Record<Variant, string> = {
 export function Button({ variant = 'primary', loading, className = '', children, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; loading?: boolean }) {
   return (
     <button type="button" aria-busy={loading || undefined} disabled={p.disabled || loading}
-      className={`min-h-[44px] px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${V[variant]} ${className}`} {...p}>
-      {loading ? '⏳ ' : ''}{children}
+      className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${V[variant]} ${className}`} {...p}>
+      {loading && <Loader2 size={16} aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}{children}
     </button>
   );
 }
@@ -34,7 +35,7 @@ export function Field({ label, error, children }: { label: string; error?: strin
   );
 }
 
-export const inputCls = 'w-full min-h-[44px] px-3 rounded-md bg-surface text-text border border-line-input placeholder:text-text-muted';
+export const inputCls = 'w-full min-h-[44px] px-3 rounded-md bg-surface text-text border border-border-input placeholder:text-text-muted';
 
 export function Card({ className = '', ...p }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={`bg-surface border border-border rounded-lg shadow-card p-4 ${className}`} {...p} />;
@@ -45,13 +46,13 @@ const LABEL: Record<Status | 'late' | 'flag', string> = {
 };
 export function StatusChip({ status }: { status: Status | 'late' | 'flag' }) {
   const cls = status === 'flag' ? 'status-late' : 'status-' + status.replace('_', '-');
-  return <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cls}`}>{status === 'flag' ? '⚑ ' : ''}{LABEL[status]}</span>;
+  return <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cls}`}>{status === 'flag' && <Flag size={12} aria-hidden="true" className="inline -mt-0.5 mr-1" />}{LABEL[status]}</span>;
 }
 
-export function EmptyState({ icon = '📭', text, action }: { icon?: string; text: string; action?: React.ReactNode }) {
+export function EmptyState({ icon = '📭', text, action }: { icon?: React.ReactNode; text: string; action?: React.ReactNode }) {
   return (
     <Card className="text-center py-10 space-y-3">
-      <div aria-hidden="true" className="text-3xl">{icon}</div>
+      <div aria-hidden="true" className="text-3xl grid place-items-center text-text-muted">{icon}</div>
       <p className="text-text-secondary">{text}</p>
       {action}
     </Card>

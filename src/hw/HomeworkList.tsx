@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MessageSquare, SearchX } from 'lucide-react';
 import { api } from './types';
 import type { MyAssignment } from './types';
 import { Card, EmptyState, ErrorBox, Skeleton, StatusChip, useLoad } from '../ui';
@@ -23,7 +24,7 @@ function Row({ a }: { a: MyAssignment }) {
           {a.tests_total ? `Тест: ${a.tests_passed}/${a.tests_total}` : ''}{a.tests_total && a.points != null ? ' · ' : ''}{a.points != null ? `Ұпай: ${a.points}/${a.max_points}${a.status === 'finalized' ? '' : ' (уақытша)'}` : ''}
         </div>
       )}
-      {a.feedback && <div className="mt-2 text-sm rounded-md bg-info-soft text-text p-2 break-words">💬 {a.feedback}</div>}
+      {a.feedback && <div className="mt-2 text-sm rounded-md bg-info-soft text-text p-2 break-words"><MessageSquare size={14} aria-hidden="true" className="inline -mt-0.5 mr-1" />{a.feedback}</div>}
     </a>
   );
 }
@@ -53,7 +54,7 @@ export function HomeworkList() {
       {loading && <Skeleton />}
       {error && <ErrorBox message={error} onRetry={reload} />}
       {data && data.length === 0 && <EmptyState text="Әзірге үй тапсырмасы жоқ. Мұғалім бергенде осында шығады." />}
-      {data && data.length > 0 && shown.length === 0 && <EmptyState icon="🔍" text="Бұл сүзгі бойынша тапсырма жоқ." />}
+      {data && data.length > 0 && shown.length === 0 && <EmptyState icon={<SearchX size={32} />} text="Бұл сүзгі бойынша тапсырма жоқ." />}
       {todo.length > 0 && <section aria-label="Орындау керек" className="space-y-2"><h2 className="font-semibold text-text-secondary">Орындау керек · {todo.length}</h2>{todo.map(a => <Row key={a.assignment_id} a={a} />)}</section>}
       {done.length > 0 && <section aria-label="Тапсырылған" className="space-y-2"><h2 className="font-semibold text-text-secondary">Тапсырылған · {done.length}</h2>{done.map(a => <Row key={a.assignment_id} a={a} />)}</section>}
       {data && data.length > 0 && <Card className="text-sm text-text-muted">Бағасы «уақытша» болса, мұғалім әлі растаған жоқ.</Card>}

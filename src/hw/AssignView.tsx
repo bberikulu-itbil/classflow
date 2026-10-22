@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ClipboardList, Puzzle } from 'lucide-react';
 import { api } from './types';
 import type { LessonSlide } from './types';
 import { Button, Card, EmptyState, ErrorBox, Field, inputCls, Skeleton, useLoad } from '../ui';
@@ -39,7 +40,7 @@ export function AssignView() {
         <h2 className="font-semibold">1. Сабақтағы код слайдын таңда</h2>
         {slides.loading && <Skeleton rows={2} />}
         {slides.error && <ErrorBox message={slides.error} onRetry={slides.reload} />}
-        {slides.data?.length === 0 && <EmptyState icon="🧩" text="Сабақтарыңда код слайды жоқ. Сабақ өңдегішінде type: code слайд қос." />}
+        {slides.data?.length === 0 && <EmptyState icon={<Puzzle size={32} />} text="Сабақтарыңда код слайды жоқ. Сабақ өңдегішінде type: code слайд қос." />}
         {slides.data?.map(s => (
           <label key={s.lessonId + s.index} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer bg-surface ${pick === s ? 'border-accent' : 'border-border'}`}>
             <input type="radio" name="slide" className="mt-1" checked={pick === s} onChange={() => choose(s)} />
@@ -73,7 +74,7 @@ export function AssignView() {
         <h2 className="font-semibold">Берілген тапсырмалар</h2>
         {assigned.loading && <Skeleton rows={2} />}
         {assigned.error && <ErrorBox message={assigned.error} onRetry={assigned.reload} />}
-        {assigned.data?.length === 0 && <EmptyState icon="📋" text="Әзірге ештеңе берілмеген." />}
+        {assigned.data?.length === 0 && <EmptyState icon={<ClipboardList size={32} />} text="Әзірге ештеңе берілмеген." />}
         {assigned.data?.map(a => (
           <a key={a.id} href={`#review/${a.id}`} className="flex flex-wrap justify-between gap-2 rounded-lg bg-surface border border-border p-3 hover:border-accent">
             <span className="font-semibold break-words min-w-0">{a.title} · {a.class_name}</span><span className="text-sm text-text-muted">мерзімі: {fmtDate(a.due_at)}</span>

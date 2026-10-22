@@ -116,7 +116,7 @@ export default function App() {
   if (routeKey === 'assign' && isStaff) return framed('3xl', <AssignView />);
   if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
-  if (routeKey === 'jeopardy') return shell(<SharedGame key={routeId} payload={routeId} meId={me.id} canSave={isStaff} />);
+  if (routeKey === 'jeopardy') return shell(<SharedGame key={routeId} payload={routeId} me={me} canSave={isStaff} />);
   if (routeKey === 'profile') {
     return shell(
       <main className="max-w-5xl mx-auto p-4 space-y-4">

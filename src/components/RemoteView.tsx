@@ -111,7 +111,7 @@ export function RemoteView({ sid, me, onLogout }: { sid: string; me: any; onLogo
   const nameOf = (id: string) => (parts.find(p => p.student_id === id) || {}).full_name || '?';
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] pb-24 text-white">
+    <div className="min-h-screen bg-bg pb-24 text-white">
       <TopBar me={me} onLogout={onLogout} right={<a href={`#board/${sid}`} target="_blank" className={BTN}>📺 Тақта</a>} />
       <div className="max-w-xl mx-auto p-3 space-y-3">
         <div className="flex items-center justify-between gap-2">

@@ -100,7 +100,7 @@ export function PlanEditorView({ id, me, onLogout }: { id: string; me: any; onLo
   );
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-white">
+    <div className="min-h-screen bg-bg text-white">
       <TopBar me={me} onLogout={onLogout} />
       <div className="max-w-5xl mx-auto p-4 space-y-3">
         <h2 className="font-bold text-xl text-black">{isNew ? 'Жаңа жоспар' : 'Жоспарды өңдеу'}</h2>

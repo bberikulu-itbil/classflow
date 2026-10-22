@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import { norm, runPy, sha256, warmPy } from '../utils/pyodide';
 import { Button } from '../ui';
 import type { ActivityView } from './types';
@@ -87,8 +88,8 @@ export function HomeworkIDE({ activity, initial, readOnly, canSubmit, onEdit, on
           )}
           {hs.length > 0 && (
             <div className="space-y-2">
-              <Button variant="secondary" disabled={hints >= hs.length} onClick={() => setHints(hints + 1)}>💡 Кеңес ({hints}/{hs.length})</Button>
-              {hs.slice(0, hints).map((h, i) => <div key={i} className="p-2 rounded-md bg-info-soft text-accent text-sm">💡 {i + 1}. {h}</div>)}
+              <Button variant="secondary" disabled={hints >= hs.length} onClick={() => setHints(hints + 1)}><Lightbulb size={16} aria-hidden="true" />Кеңес ({hints}/{hs.length})</Button>
+              {hs.slice(0, hints).map((h, i) => <div key={i} className="p-2 rounded-md bg-info-soft text-accent text-sm"><Lightbulb size={14} aria-hidden="true" className="inline -mt-0.5 mr-1" />{i + 1}. {h}</div>)}
             </div>
           )}
         </section>

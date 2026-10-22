@@ -19,12 +19,12 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <div className="max-w-sm mx-auto pt-24 px-4 space-y-3 text-white">
+    <div className="max-w-sm mx-auto pt-24 px-4 space-y-3 text-text">
       <h1 className="text-4xl font-black text-center">
         Class<span className="text-blue-400">Flow</span>
       </h1>
       <p className="text-center text-slate-400 text-sm">KeyToLife аккаунтыңмен кір</p>
-      {error && <div className="p-2 bg-red-900 text-red-200 text-sm rounded-xl text-center">{error}</div>}
+      {error && <div className="p-2 bg-danger-soft text-danger text-sm rounded-xl text-center">{error}</div>}
       <input
         className={INP}
         placeholder="Логин (KeyToLife-тағыдай)"

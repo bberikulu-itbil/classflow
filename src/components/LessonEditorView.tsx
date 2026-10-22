@@ -42,7 +42,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   }, [id, isNew]);
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-white">
+    <div className="min-h-screen bg-bg text-white">
       <TopBar me={me} onLogout={onLogout} />
       <div className="max-w-3xl mx-auto p-4 space-y-3">
         <h2 className="font-bold text-xl text-black">{isNew ? 'Жаңа сабақ' : 'Сабақты өңдеу'}</h2>

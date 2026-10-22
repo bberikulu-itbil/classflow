@@ -32,6 +32,20 @@
   --color-console-text: #E2E8F5;
   --color-console-pass: #6EE7A8;
   --color-console-fail: #FCA5A5;
+  /* old screens use slate/blue/emerald... classes; index.html maps them onto these, so themes reach them too */
+  --p-slate-600: #D5D8DE;
+  --p-slate-500: #8A909B;
+  --p-blue-solid: #2457D6;
+  --p-blue-hover: #1E4FC2;
+  --p-emerald-700: #B7E1C3;
+  --p-emerald-800: #9ED3B0;
+  --p-emerald-900: #CDEBD6;
+  --p-red-900: #FFD0D5;
+  --p-amber-900: #FFE0BD;
+  --p-indigo-200: #1E4FC2;
+  --p-indigo-500: #7FA0EC;
+  --p-indigo-700: #B9C7E6;
+  color-scheme: light;
   --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --font-mono: JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
   --text-xs: 12px/16px; --weight-xs: 500;
@@ -65,6 +79,89 @@
   --layout-remote-max: 576px;
   --layout-header-h: 56px;
   --layout-tap-min: 44px;
+}
+/* themes: pick with <html data-theme=...>; also works on any element (the picker previews use that) */
+[data-theme="dark"] {
+  --color-bg: #0E1116;
+  --color-surface: #161B22;
+  --color-surface-2: #1F2630;
+  --color-border: #2B3340;
+  --color-border-input: #6E7888;
+  --color-text: #E6EAF0;
+  --color-text-secondary: #B4BCC9;
+  --color-text-muted: #98A2B3;
+  --color-accent: #6C9AFF;
+  --color-accent-hover: #8AB0FF;
+  --color-accent-soft: #1B2B52;
+  --color-on-accent: #0B1220;
+  --color-on-accent-soft: #C3D5FF;
+  --color-danger: #FF8F85;
+  --color-danger-soft: #3B1F22;
+  --color-success: #5FD38D;
+  --color-success-soft: #14301F;
+  --color-warning: #F6B26B;
+  --color-warning-soft: #3A2A12;
+  --color-info-soft: #1A2640;
+  --color-on-danger: #1B0B0A;
+  --color-on-success: #04140A;
+  --p-slate-600: #3A4453;
+  --p-slate-500: #8893A3;
+  --p-blue-solid: #3B6FE0;
+  --p-blue-hover: #2F63D6;
+  --p-emerald-700: #1F5133;
+  --p-emerald-800: #2A6B45;
+  --p-emerald-900: #173D27;
+  --p-red-900: #5A2226;
+  --p-amber-900: #4A2E12;
+  --p-indigo-200: #A9C2FF;
+  --p-indigo-500: #5E82D6;
+  --p-indigo-700: #34456E;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
+  --shadow-pop: 0 12px 32px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+[data-theme="ocean"] {
+  --color-bg: #EEF4F6;
+  --color-surface-2: #E4EEF1;
+  --color-border: #D3E1E6;
+  --color-border-input: #6F8790;
+  --color-text: #10191C;
+  --color-text-secondary: #3A4A50;
+  --color-text-muted: #51636A;
+  --color-accent: #0B6E7F;
+  --color-accent-hover: #095A68;
+  --color-accent-soft: #D3ECF0;
+  --color-on-accent-soft: #07424D;
+  --color-info-soft: #E3F2F5;
+  --p-slate-600: #D5D8DE;
+  --p-slate-500: #8A909B;
+  --p-blue-solid: #0B6E7F;
+  --p-blue-hover: #095A68;
+  --p-indigo-200: #095A68;
+  --p-indigo-500: #62AEBB;
+  --p-indigo-700: #A9D3DA;
+}
+[data-theme="sand"] {
+  --color-bg: #F7F2EA;
+  --color-surface: #FFFDF9;
+  --color-surface-2: #F0E8DA;
+  --color-border: #E4D9C5;
+  --color-border-input: #8A7A62;
+  --color-text: #1E1A14;
+  --color-text-secondary: #4A4234;
+  --color-text-muted: #655B49;
+  --color-accent: #A8470B;
+  --color-accent-hover: #8C3A07;
+  --color-accent-soft: #FBE2CB;
+  --color-on-accent-soft: #6B2A04;
+  --color-info-soft: #FBEFE0;
+  --p-slate-600: #D5D8DE;
+  --p-slate-500: #8A909B;
+  --p-blue-solid: #A8470B;
+  --p-blue-hover: #8C3A07;
+  --p-indigo-200: #8C3A07;
+  --p-indigo-500: #E0A070;
+  --p-indigo-700: #E9C7A8;
 }
 @media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }
 /* status chips: label text always shown, colour is the second signal */

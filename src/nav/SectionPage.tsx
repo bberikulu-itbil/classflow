@@ -17,7 +17,7 @@ export function SectionTabs({ section, active }: { section: Section; active: str
           <li key={s.key}>
             <a href={'#' + (s.to ?? `${section.key}/${s.key}`)} aria-current={s.key === active ? 'page' : undefined}
               className={`flex items-center gap-2 min-h-[44px] px-3 text-sm whitespace-nowrap border-b-2 ${s.key === active ? 'border-accent text-text font-semibold' : 'border-transparent text-text-secondary hover:text-text'}`}>
-              {s.label}{!s.to && <SoonChip />}
+              {s.icon && <s.icon size={18} aria-hidden="true" className="shrink-0" />}{s.label}{!s.to && <SoonChip />}
             </a>
           </li>
         ))}
@@ -47,7 +47,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:lessons:mine': () => <LessonsMine />,
   'teacher:lessons:journal': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
-  'teacher:tasks:jeopardy': c => <Jeopardy meId={c.me.id} />,
+  'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,
   'teacher:classes:list': () => <ClassesView />,
   'teacher:settings:profile': c => <ProfileCard me={c.me} onLogout={c.onLogout} />,
   'student:grades:feedback': () => <StudentFeedback />,

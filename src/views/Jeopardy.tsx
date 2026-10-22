@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Card, EmptyState, Field, inputCls } from '../ui';
+import { ArrowLeft, Link2, Maximize, Minimize, Play as PlayIcon, Target, Unlink } from 'lucide-react';
+import { sb, DEMO } from '../config';
+import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad } from '../ui';
 
 interface Cat { name: string; qs: { q: string; a: string }[] }
 interface Game { id: string; title: string; cats: Cat[] }
@@ -10,7 +12,9 @@ const newCat = (): Cat => ({ name: '', qs: Array.from({ length: ROWS }, () => ({
 const newGame = (): Game => ({ id: crypto.randomUUID(), title: '', cats: [newCat(), newCat(), newCat()] });
 const filled = (g: Game) => g.cats.reduce((n, c) => n + c.qs.filter(x => x.q.trim()).length, 0);
 
-// shortcut: games live in this browser only (localStorage, per teacher); move to a cf_ table to share between devices
+interface Me { id: string; school_id: string }
+
+// Games are rows of cf_jeopardy (supabase/006_jeopardy.sql). Until that table exists (and in ?demo) they stay in this browser.
 const read = (key: string): Game[] => {
   try {
     const v = JSON.parse(localStorage.getItem(key) || '[]');
@@ -19,6 +23,38 @@ const read = (key: string): Game[] => {
 };
 const write = (key: string, games: Game[]) => { try { localStorage.setItem(key, JSON.stringify(games)); return true; } catch { return false; } };
 const NO_SAVE = 'Браузер сақтауға рұқсат бермеді (құпия режимде болуы мүмкін)';
+const localKey = (me: Me) => 'cf_jeopardy_' + me.id;
+let noTable = !!DEMO; // flips to true on the first "table does not exist" answer
+const missing = (e: { code?: string }) => e.code === 'PGRST205' || e.code === '42P01';
+
+async function listGames(me: Me): Promise<{ games: Game[]; local: boolean }> {
+  if (!noTable) {
+    const { data, error } = await sb.from('cf_jeopardy').select('id,title,data').order('updated_at', { ascending: false });
+    if (!error) return { games: (data || []).map((r: any) => ({ id: r.id, title: r.title, cats: r.data })), local: false };
+    if (!missing(error)) throw new Error(error.message);
+    noTable = true;
+  }
+  return { games: read(localKey(me)), local: true };
+}
+async function saveGame(me: Me, g: Game) {
+  if (!noTable) {
+    const { error } = await sb.from('cf_jeopardy').upsert({ id: g.id, school_id: me.school_id, owner_id: me.id, title: g.title, data: g.cats });
+    if (!error) return;
+    if (!missing(error)) throw new Error(error.message);
+    noTable = true;
+  }
+  const all = read(localKey(me));
+  if (!write(localKey(me), all.some(x => x.id === g.id) ? all.map(x => (x.id === g.id ? g : x)) : [g, ...all])) throw new Error(NO_SAVE);
+}
+async function removeGame(me: Me, id: string) {
+  if (!noTable) {
+    const { error } = await sb.from('cf_jeopardy').delete().eq('id', id);
+    if (!error) return;
+    if (!missing(error)) throw new Error(error.message);
+    noTable = true;
+  }
+  if (!write(localKey(me), read(localKey(me)).filter(x => x.id !== id))) throw new Error(NO_SAVE);
+}
 
 // The whole game travels inside the link (deflate + base64url), so no server is needed.
 // shortcut: the link is a snapshot (later edits need a new link) and grows with the text; move to a database row if links get too long.
@@ -120,8 +156,8 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold break-words">{game.title}</h2>
         <div className="flex gap-2">
-          {document.fullscreenEnabled && <Button variant="secondary" onClick={toggleFs}>{fs ? '⤢ Толық экраннан шығу' : '⛶ Толық экран'}</Button>}
-          {!fs && <Button variant="secondary" onClick={onExit}>← Ойыннан шығу</Button>}
+          {document.fullscreenEnabled && <Button variant="secondary" onClick={toggleFs}>{fs ? <><Minimize size={16} aria-hidden="true" />Толық экраннан шығу</> : <><Maximize size={16} aria-hidden="true" />Толық экран</>}</Button>}
+          {!fs && <Button variant="secondary" onClick={onExit}><ArrowLeft size={16} aria-hidden="true" />Ойыннан шығу</Button>}
         </div>
       </div>
 
@@ -156,7 +192,7 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
           )}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => close(true)}>Дайын</Button>
-            <Button variant="ghost" onClick={() => close(false)}>← Тақтаға қайту</Button>
+            <Button variant="ghost" onClick={() => close(false)}><ArrowLeft size={16} aria-hidden="true" />Тақтаға қайту</Button>
           </div>
         </Card>
       ) : (
@@ -187,25 +223,26 @@ function Play({ game, onExit }: { game: Game; onExit: () => void }) {
   );
 }
 
-export function Jeopardy({ meId }: { meId: string }) {
-  const storeKey = 'cf_jeopardy_' + meId;
-  const [games, setGames] = useState<Game[]>(() => read(storeKey));
+export function Jeopardy({ me }: { me: Me }) {
+  const { data, error, loading, reload } = useLoad(() => listGames(me), [me.id]);
   const [mode, setMode] = useState<{ kind: 'list' } | { kind: 'edit' | 'play'; game: Game }>({ kind: 'list' });
   const [delId, setDelId] = useState('');
   const [err, setErr] = useState('');
   const [link, setLink] = useState<{ id: string; url: string; copied: boolean } | null>(null);
+  const games = data?.games || [];
+  const stuck = data && !data.local ? read(localKey(me)).length : 0; // games made in this browser before the table existed
 
+  const run = async (fn: () => Promise<void>) => {
+    try { await fn(); setErr(''); reload(); return true; } catch (e) { setErr((e as Error).message || 'Қате'); return false; }
+  };
+  const save = async (g: Game, play: boolean) => { if (await run(() => saveGame(me, g))) setMode(play ? { kind: 'play', game: g } : { kind: 'list' }); };
+  const moveUp = () => run(async () => { for (const g of read(localKey(me))) await saveGame(me, g); write(localKey(me), []); });
   const share = async (g: Game) => {
     try {
       const url = `${location.origin}${location.pathname}#jeopardy/${await encodeGame(g)}`;
       const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
       setLink({ id: g.id, url, copied });
     } catch { setErr('Сілтеме жасау мүмкін болмады'); }
-  };
-
-  const persist = (next: Game[]) => { if (!write(storeKey, next)) { setErr(NO_SAVE); return false; } setGames(next); setErr(''); return true; };
-  const save = (g: Game, play: boolean) => {
-    if (persist(games.some(x => x.id === g.id) ? games.map(x => (x.id === g.id ? g : x)) : [g, ...games])) setMode({ kind: play ? 'play' : 'list', game: g } as typeof mode);
   };
 
   if (mode.kind === 'edit') return <><Editor initial={mode.game} onSave={save} onCancel={() => setMode({ kind: 'list' })} />{err && <p role="alert" className="mt-2 text-sm text-danger">{err}</p>}</>;
@@ -217,8 +254,17 @@ export function Jeopardy({ meId }: { meId: string }) {
         <h2 className="text-lg font-semibold">Jeopardy</h2>
         <Button onClick={() => setMode({ kind: 'edit', game: newGame() })}>+ Жаңа ойын</Button>
       </div>
+      {data?.local && !DEMO && <p role="status" className="rounded-md bg-warning-soft text-warning p-3 text-sm">Ойындар серверге әлі қосылмаған, сондықтан тек осы браузерде сақталады (006_jeopardy.sql жүргізілмеген).</p>}
+      {stuck > 0 && (
+        <div className="rounded-md bg-accent-soft text-on-accent-soft p-3 flex flex-wrap items-center gap-3">
+          <span className="flex-1 min-w-[12rem] text-sm font-semibold">Осы браузерде {stuck} ойын бар, ол басқа құрылғыда көрінбейді.</span>
+          <Button onClick={moveUp}>Аккаунтқа көшіру</Button>
+        </div>
+      )}
       {err && <p role="alert" className="text-sm text-danger">{err}</p>}
-      {games.length === 0 && <EmptyState icon="🎯" text="Әзірге ойын жоқ. «+ Жаңа ойын» басып тақырыптар мен сұрақтар жазыңыз." />}
+      {loading && !data && <Skeleton />}
+      {error && <ErrorBox message={error} onRetry={reload} />}
+      {data && games.length === 0 && <EmptyState icon={<Target size={32} />} text="Әзірге ойын жоқ. «+ Жаңа ойын» басып тақырыптар мен сұрақтар жазыңыз." />}
       {games.map(g => (
         <React.Fragment key={g.id}>
         <Card className="flex flex-wrap items-center gap-3">
@@ -226,11 +272,11 @@ export function Jeopardy({ meId }: { meId: string }) {
             <div className="font-semibold break-words">{g.title || 'Атаусыз'}</div>
             <div className="text-sm text-text-muted">{g.cats.length} тақырып · {filled(g)} сұрақ</div>
           </div>
-          <Button variant="success" disabled={filled(g) === 0} onClick={() => setMode({ kind: 'play', game: g })}>▶ Ойнау</Button>
+          <Button variant="success" disabled={filled(g) === 0} onClick={() => setMode({ kind: 'play', game: g })}><PlayIcon size={16} aria-hidden="true" />Ойнау</Button>
           <Button variant="secondary" onClick={() => setMode({ kind: 'edit', game: g })}>Өңдеу</Button>
-          <Button variant="secondary" aria-label={`${g.title || 'Атаусыз'}: бөлісу сілтемесі`} onClick={() => share(g)}>🔗 Сілтеме</Button>
+          <Button variant="secondary" aria-label={`${g.title || 'Атаусыз'}: бөлісу сілтемесі`} onClick={() => share(g)}><Link2 size={16} aria-hidden="true" />Сілтеме</Button>
           {delId === g.id
-            ? <><Button variant="danger" onClick={() => { persist(games.filter(x => x.id !== g.id)); setDelId(''); }}>Иә, жою</Button><Button variant="ghost" onClick={() => setDelId('')}>Жоқ</Button></>
+            ? <><Button variant="danger" onClick={() => { run(() => removeGame(me, g.id)); setDelId(''); }}>Иә, жою</Button><Button variant="ghost" onClick={() => setDelId('')}>Жоқ</Button></>
             : <Button variant="ghost" aria-label={`${g.title || 'Атаусыз'} ойынын жою`} onClick={() => setDelId(g.id)}>Жою</Button>}
         </Card>
         {link?.id === g.id && (
@@ -246,22 +292,21 @@ export function Jeopardy({ meId }: { meId: string }) {
 }
 
 /** Opens a game from a share link: play it right away, and teachers can keep a copy. */
-export function SharedGame({ payload, meId, canSave }: { payload: string; meId: string; canSave: boolean }) {
+export function SharedGame({ payload, me, canSave }: { payload: string; me: Me; canSave: boolean }) {
   const [state, setState] = useState<{ game?: Game; bad?: boolean }>({});
   const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState('');
   useEffect(() => { decodeGame(payload).then(game => setState({ game }), () => setState({ bad: true })); }, [payload]);
-  const keep = () => {
-    const key = 'cf_jeopardy_' + meId;
-    if (state.game && write(key, [state.game, ...read(key)])) setSaved(true);
-  };
+  const keep = () => state.game && saveGame(me, state.game).then(() => setSaved(true), e => setErr(e.message || 'Қате'));
   return (
     <main className="max-w-5xl mx-auto p-4 space-y-4">
-      {state.bad && <EmptyState icon="🔗" text="Сілтеме бүлінген немесе толық емес. Жібергеннен жаңасын сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
+      {state.bad && <EmptyState icon={<Unlink size={32} />} text="Сілтеме бүлінген немесе толық емес. Жібергеннен жаңасын сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
       {state.game && (
         <>
           {canSave && (saved
             ? <p role="status" className="text-sm font-semibold text-success">Ойын «Тапсырмалар › Jeopardy» тізіміне сақталды.</p>
             : <Button variant="secondary" onClick={keep}>Менің ойындарыма сақтау</Button>)}
+          {err && <p role="alert" className="text-sm text-danger">{err}</p>}
           <Play game={state.game} onExit={() => { window.location.hash = canSave ? 'tasks/jeopardy' : ''; }} />
         </>
       )}

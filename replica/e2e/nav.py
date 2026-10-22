@@ -173,6 +173,7 @@ with sync_playwright() as p:
     ok('L5 queue lists assignments with counts and a Check link', pg.locator('text=7B · 3 жұмыс').count()==1 and pg.locator('a[href="#review/a1"]:text-is("Тексеру")').count()==1)
     axe(pg,'tasks/queue')
     pg.goto(B+'#plans'); pg.wait_for_selector('h1:has-text("Жоспарлар")')
+    pg.wait_for_selector('a[href="#plan/pl1"]')
     ok('L6 plans inside the menu: list + new button', pg.locator('a[href="#plan/pl1"]').count()==1 and pg.locator('a[href="#plan/new"]').count()==1 and pg.locator('aside nav a[aria-current=page]').inner_text().strip()=='Сабақтар')
     axe(pg,'plans')
 

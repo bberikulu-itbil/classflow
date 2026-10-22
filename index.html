@@ -7,15 +7,16 @@
 <meta name="description" content="Interactive classroom teaching, live presentation slides, student interaction, Python coding IDE, quizzes, and lesson planning.">
 <meta property="og:title" content="ClassFlow">
 <meta property="og:description" content="Interactive classroom teaching, live presentation slides, student interaction, Python coding IDE, quizzes, and lesson planning.">
+<script>try{var t=localStorage.getItem('cf_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = { theme: { extend: { colors: {
-  slate: { 950:'#F4F5F7', 900:'#FFFFFF', 800:'#EEF0F3', 700:'#E2E5EA', 600:'#D5D8DE', 500:'#8A909B', 400:'#5A606B', 300:'#3F4652', 200:'#14161A', 100:'#14161A' },
-  blue: { 400:'#2457D6', 500:'#1E4FC2', 600:'#2457D6', 700:'#DCE6FB' },
-  emerald: { 300:'#1B6B34', 400:'#1B6B34', 700:'#B7E1C3', 800:'#9ED3B0', 900:'#CDEBD6', 950:'#E6F4EA' },
-  red: { 300:'#B42318', 400:'#B42318', 950:'#FFE4E6', 900:'#FFD0D5' },
-  amber: { 200:'#9A3412', 300:'#9A3412', 400:'#9A3412', 900:'#FFE0BD', 950:'#FFEDD5' },
-  indigo: { 200:'#1E4FC2', 300:'#1E4FC2', 500:'#7FA0EC', 700:'#B9C7E6', 900:'#DCE6FB', 950:'#EAF0FD' },
+  slate: { 950:'var(--color-bg)', 900:'var(--color-surface)', 800:'var(--color-surface-2)', 700:'var(--color-border)', 600:'var(--p-slate-600)', 500:'var(--p-slate-500)', 400:'var(--color-text-muted)', 300:'var(--color-text-secondary)', 200:'var(--color-text)', 100:'var(--color-text)' },
+  blue: { 400:'var(--color-accent)', 500:'var(--p-blue-hover)', 600:'var(--p-blue-solid)', 700:'var(--color-accent-soft)' },
+  emerald: { 300:'var(--color-success)', 400:'var(--color-success)', 700:'var(--p-emerald-700)', 800:'var(--p-emerald-800)', 900:'var(--p-emerald-900)', 950:'var(--color-success-soft)' },
+  red: { 300:'var(--color-danger)', 400:'var(--color-danger)', 950:'var(--color-danger-soft)', 900:'var(--p-red-900)' },
+  amber: { 200:'var(--color-warning)', 300:'var(--color-warning)', 400:'var(--color-warning)', 900:'var(--p-amber-900)', 950:'var(--color-warning-soft)' },
+  indigo: { 200:'var(--p-indigo-200)', 300:'var(--p-indigo-200)', 500:'var(--p-indigo-500)', 700:'var(--p-indigo-700)', 900:'var(--color-accent-soft)', 950:'var(--color-info-soft)' },
   'bg': 'var(--color-bg)',
   'surface': 'var(--color-surface)',
   'surface-2': 'var(--color-surface-2)',
