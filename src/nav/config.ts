@@ -23,6 +23,7 @@ export const TEACHER: Section[] = [
     { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine', also: ['lesson'] },
     { key: 'courses', label: 'Курстар', to: 'lessons/courses' },
     { key: 'modules', label: 'Модульдер мен дәрістер', to: 'lessons/modules' },
+    { key: 'schedule', label: 'КТП (кесте)', to: 'lessons/schedule' },
     { key: 'editor', label: 'Сабақ редакторы', to: 'edit/new' },
     { key: 'plans', label: 'Жоспарлар', to: 'plans' },
     { key: 'gallery', label: 'Ортақ галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },

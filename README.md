@@ -37,3 +37,9 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 - A lecture is an existing `cf_lessons` row; `cf_curr_lessons` only records which module it sits in (one module per lesson). Deleting a module or course never deletes lessons.
 - Data: `supabase/008_curriculum.sql` (RLS check: `replica/unit/curriculum_rls.mjs`, PGlite). Without the tables the structure stays in the browser and the screen says so.
 - Next: КТП (year schedule slots per class), then "start" on a slot creates the `cf_sessions` row and snapshots the lecture.
+
+## Schedule (Сабақтар › КТП)
+- Weekly timetable (class, weekday, lesson number) → dated slots of a class per quarter (`src/schedule/plan.ts`: `generate`) → a lecture from the content library is put into each slot. Existing slots are never overwritten; a holiday slot is deleted by hand.
+- Data: `supabase/009_schedule.sql` (`cf_timetable`, `cf_slots`; RLS check `replica/unit/schedule_rls.mjs`). Date logic check: `node replica/unit/plan.test.mjs`. Without the tables the schedule stays in the browser and says so.
+- Quarter date ranges in the form are approximate defaults (teacher edits); replace with the school calendar when it is stored.
+- Next: "start" on a slot creates the `cf_sessions` row and snapshots the lecture; then journal columns come from the slots.
