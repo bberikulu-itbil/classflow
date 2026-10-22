@@ -49,7 +49,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:journal:lessons': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
   'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,
-  'teacher:classes:list': () => <ClassesView />,
+  'teacher:journal:classes': () => <ClassesView />,
   'teacher:settings:profile': c => <ProfileCard me={c.me} onLogout={c.onLogout} />,
   'student:grades:feedback': () => <StudentFeedback />,
   'student:vocab:mine': () => <StudentTerms />,

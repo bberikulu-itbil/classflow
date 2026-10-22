@@ -48,8 +48,8 @@ function NavItem({ s, active, collapsed }: { s: Section; active: boolean; collap
   );
 }
 
-function Body({ sections, active, collapsed, me, onToggle, onClose, closeRef }: {
-  sections: Section[]; active?: Section; collapsed: boolean; me: Who;
+function Body({ sections, active, collapsed, me, profile, onToggle, onClose, closeRef }: {
+  sections: Section[]; active?: Section; collapsed: boolean; me: Who; profile: { href: string; active: boolean };
   onToggle?: () => void; onClose?: () => void; closeRef?: React.Ref<HTMLButtonElement>;
 }) {
   return (
@@ -71,7 +71,7 @@ function Body({ sections, active, collapsed, me, onToggle, onClose, closeRef }: 
       </nav>
       {!collapsed && <p className="px-4 pb-1 text-xs text-text-muted">ClassFlow v{__APP_VERSION__}</p>}
       <div className="shrink-0 border-t border-border p-2">
-        <a href="#profile" aria-label={collapsed ? `Профиль: ${me.full_name}` : undefined} className={linkCls(collapsed, false)}>
+        <a href={profile.href} aria-current={profile.active ? 'page' : undefined} aria-label={collapsed ? `Профиль және баптаулар: ${me.full_name}` : undefined} className={linkCls(collapsed, profile.active)}>
           <span aria-hidden="true" className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-accent-soft text-on-accent-soft text-xs font-bold">{initials(me.full_name)}</span>
           {!collapsed && (
             <span className="min-w-0">
@@ -79,7 +79,7 @@ function Body({ sections, active, collapsed, me, onToggle, onClose, closeRef }: 
               <span className="block truncate text-xs text-text-muted font-normal">{ROLE_NAMES[me.role] || me.role}</span>
             </span>
           )}
-          {collapsed && <Tip text="Профиль" />}
+          {collapsed && <Tip text="Профиль және баптаулар" />}
         </a>
       </div>
     </>
@@ -89,7 +89,11 @@ function Body({ sections, active, collapsed, me, onToggle, onClose, closeRef }: 
 export function AppShell({ me, role, routeKey, children }: { me: Who; role: Role; routeKey: string; children: React.ReactNode }) {
   const [pref, setPref] = useState(readPref);
   const [open, setOpen] = useState(false);
-  const sections = sectionsFor(role);
+  const all = sectionsFor(role);
+  const sections = all.filter(s => !s.hidden);
+  // the profile block at the bottom opens the settings section when the role has one (teachers), else the plain profile page
+  const prof = all.find(s => s.key === 'settings');
+  const profile = { href: '#' + (prof ? sectionTo(prof) : 'profile'), active: routeKey === 'profile' || (!!prof && activeSection(role, routeKey) === prof) };
   const active = activeSection(role, routeKey);
   const menuBtn = useRef<HTMLButtonElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
@@ -122,14 +126,14 @@ export function AppShell({ me, role, routeKey, children }: { me: Who; role: Role
         Негізгі мазмұнға өту
       </button>
       <aside className={`hidden md:flex flex-col sticky top-0 h-screen shrink-0 z-30 border-r border-border bg-surface transition-[width] duration-150 ${pref ? 'w-16' : 'w-60'}`}>
-        <Body sections={sections} active={active} collapsed={pref} me={me} onToggle={toggle} />
+        <Body sections={sections} active={active} collapsed={pref} me={me} profile={profile} onToggle={toggle} />
       </aside>
 
       <div className="flex-1 min-w-0">
         <header className="md:hidden sticky top-0 z-20 flex items-center gap-2 h-14 px-3 bg-surface border-b border-border">
           <IconBtn label="Мәзірді ашу" expanded={open} controls="mobile-menu" onClick={() => setOpen(true)} ref={menuBtn}><Menu size={20} aria-hidden="true" /></IconBtn>
           <Logo />
-          <a href="#profile" aria-label="Профиль" className="ml-auto grid place-items-center h-11 w-11">
+          <a href={profile.href} aria-label="Профиль және баптаулар" className="ml-auto grid place-items-center h-11 w-11">
             <span aria-hidden="true" className="grid place-items-center h-8 w-8 rounded-full bg-accent-soft text-on-accent-soft text-xs font-bold">{initials(me.full_name)}</span>
           </a>
         </header>
@@ -140,7 +144,7 @@ export function AppShell({ me, role, routeKey, children }: { me: Who; role: Role
         <div className="md:hidden fixed inset-0 z-40" onKeyDown={onKey}>
           <div className="absolute inset-0 bg-black/40" onClick={() => close(true)} />
           <div ref={drawer} id="mobile-menu" role="dialog" aria-modal="true" aria-label="Мәзір" className="absolute inset-y-0 left-0 w-64 max-w-[85vw] flex flex-col bg-surface border-r border-border shadow-pop">
-            <Body sections={sections} active={active} collapsed={false} me={me} onClose={() => close(true)} closeRef={closeBtn} />
+            <Body sections={sections} active={active} collapsed={false} me={me} profile={profile} onClose={() => close(true)} closeRef={closeBtn} />
           </div>
         </div>
       )}

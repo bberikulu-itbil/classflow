@@ -68,7 +68,7 @@ def axe(pg,name):
     res=pg.evaluate("axe.run(document,{runOnly:['wcag2a','wcag2aa']}).then(r=>r.violations.map(v=>v.id+':'+v.nodes.length+':'+(v.nodes[0].html||'').slice(0,90)))")
     ok('axe '+name, not res, str(res))
 
-TEACHER_LINKS=['Басты бет','Сабақтар','Тапсырмалар','Сынақтар мен сайыстар','Журнал','EduStudio','Сыныптар','Сөздігім','Баптаулар']
+TEACHER_LINKS=['Басты бет','Сабақтар','Тапсырмалар','Сынақтар мен сайыстар','Журнал','EduStudio','Сөздігім']
 STUDENT_LINKS=['Басты бет','Тапсырмалар','Курстарым','Сайыстар','Бағаларым','Сөздігім']
 nl=lambda pg,name,scope='aside nav': pg.locator(scope).get_by_role('link',name=name,exact=True)
 links=lambda pg: [t.strip() for t in pg.locator('aside nav a').all_inner_texts()]
@@ -85,7 +85,7 @@ with sync_playwright() as p:
 
     # ---------- teacher, demo ----------
     pg=page(demo='teacher'); pg.wait_for_selector('aside nav a')
-    ok('T1 teacher menu: 9 sections in the agreed order', links(pg)==TEACHER_LINKS, str(links(pg)))
+    ok('T1 teacher menu: 7 links (no Сыныптар, no Баптаулар in the list) in the agreed order', links(pg)==TEACHER_LINKS, str(links(pg)))
     ok('T1 home is marked current', pg.locator('aside nav a[aria-current=page]').inner_text().strip()=='Басты бет')
     w=lambda: round(pg.locator('aside').bounding_box()['width'])
     ok('T2 expanded width 240', w()==240, str(w()))
@@ -117,7 +117,7 @@ with sync_playwright() as p:
     ok('K1 skip button moves focus to the content and leaves the route alone', pg.evaluate('document.activeElement.tagName')=='MAIN' and pg.evaluate('location.hash')==h0)
 
     exp={'Сабақтар':('#lessons/mine','Сабақтар'),'Тапсырмалар':('#assign','Үй тапсырмасын беру'),'Сынақтар мен сайыстар':('#exams','Сынақтар мен сайыстар'),'Журнал':('#journal/lessons','Журнал'),'EduStudio':('#edustudio','EduStudio'),
-         'Сыныптар':('#classes/list','Сыныптар'),'Сөздігім':('#vocab','Сөздігім'),'Баптаулар':('#settings/profile','Баптаулар')}
+         'Сөздігім':('#vocab','Сөздігім')}
     for name,(h,title) in exp.items():
         nl(pg,name).click(); pg.wait_for_timeout(300)
         ok(f'T4 {name}: opens {h}', pg.evaluate('location.hash')==h and pg.locator(f'h1:has-text("{title}")').count()>=1, pg.evaluate('location.hash'))
@@ -138,6 +138,14 @@ with sync_playwright() as p:
     pg.goto(B+'?demo=teacher#assign'); pg.wait_for_selector('text=Үй тапсырмасын беру')
     ok('T5 Tasks tabs in the 0.1.0 order', [t.strip().replace('\n',' ').replace(' Жақында','') for t in pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a').all_inner_texts()]==['Күнделікті тапсырмалар','Жобалар','Jeopardy','Тапсырмалар банкі','Конструктор','Тексеру кезегі','Бағалау жүйесі'], str(pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a').all_inner_texts()))
     ok('T5 version is shown in the menu', pg.locator('aside >> text=ClassFlow v0.1.0').count()==1)
+    prof=pg.locator('aside a[href="#settings/profile"]')
+    ok('T6 settings and profile are one block at the bottom (no Баптаулар in the list)', prof.count()==1 and 'Профиль' not in ''.join(links(pg)) and 'Баптаулар' not in links(pg) and 'Сыныптар' not in links(pg))
+    prof.click(); pg.wait_for_selector('h1:has-text("Профиль және баптаулар")')
+    ok('T6 the block opens the merged page, is current, tabs: profile + planned settings', prof.get_attribute('aria-current')=='page' and pg.locator('nav[aria-label="Профиль және баптаулар бөлімдері"] a').count()==3 and pg.locator('button:text-is("Шығу")').count()==1)
+    axe(pg,'merged profile and settings')
+    pg.goto(B+'?demo=teacher#profile'); pg.wait_for_selector('h1:has-text("Профиль")'); ok('T6 old #profile link still works and keeps the block current', pg.locator('aside a[href="#settings/profile"][aria-current=page]').count()==1)
+    pg.goto(B+'?demo=teacher#journal/classes'); pg.wait_for_selector('nav[aria-label="Журнал бөлімдері"]')
+    ok('T6 classes live in Журнал now (4 tabs), Журнал is current', pg.locator('nav[aria-label="Журнал бөлімдері"] a').count()==4 and pg.locator('nav[aria-label="Журнал бөлімдері"] a[aria-current=page]').inner_text().strip()=='Сыныптар' and pg.locator('aside nav a[aria-current=page]').inner_text().strip()=='Журнал')
     pg.goto(B+'?demo=teacher#courses'); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе")'); ok('T5 old #courses no longer a teacher section: falls back to home', True)
     pg.goto(B+'?demo=teacher#assign'); pg.wait_for_selector('text=Үй тапсырмасын беру')
     ok('T5 assign screen sits inside Tasks tabs', pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a[aria-current=page]').inner_text().startswith('Күнделікті'))
@@ -172,7 +180,7 @@ with sync_playwright() as p:
     pg.goto(B+'#journal/lessons'); pg.wait_for_selector('text=Өткен сабақтар журналы'); pg.wait_for_selector('main >> text=Айнымалылар')
     rows=[t.replace('\n',' ') for t in pg.locator('main div.rounded-lg').all_inner_texts()]
     ok('L3 past lessons: newest first', len(rows)==2 and 'Айнымалылар' in rows[0] and 'Циклдер' in rows[1], str(rows))
-    pg.goto(B+'#classes/list'); pg.wait_for_selector('summary')
+    pg.goto(B+'#journal/classes'); pg.wait_for_selector('summary')
     ok('L4 classes: natural order and student counts', [t.replace('\n',' ') for t in pg.locator('summary').all_inner_texts()]==['7A 1 оқушы','7B 2 оқушы','10A 0 оқушы'], str(pg.locator('summary').all_inner_texts()))
     pg.locator('summary:has-text("7B")').click()
     ok('L4 roster opens with names', pg.locator('li:has-text("Айдар Нұрланов")').is_visible() and pg.locator('li:has-text("Дана Серікова")').is_visible())
@@ -189,21 +197,21 @@ with sync_playwright() as p:
     pg=page(who='teacher',vp=(390,844)); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе")')
     ok('P1 phone: sidebar hidden, top bar with menu button', not pg.locator('aside').is_visible() and pg.locator('button[aria-label="Мәзірді ашу"]').is_visible())
     ok('P1 phone: skip button is still the first tab stop', pg.evaluate("document.querySelector('button,a[href]').textContent.trim()")=='Негізгі мазмұнға өту')
-    for h in ('#','#lessons/mine','#classes/list','#tasks/queue','#exams','#journal/lessons','#edustudio','#plans','#lessons/gallery'):
+    for h in ('#','#lessons/mine','#journal/classes','#tasks/queue','#exams','#journal/lessons','#edustudio','#plans','#lessons/gallery'):
         pg.goto(B+h); pg.wait_for_timeout(700)
         sw=pg.evaluate('document.documentElement.scrollWidth'); ok(f'P1 390px no sideways scroll at {h}', sw<=390, str(sw))
     pg.goto(B+'#'); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе")')
     pg.click('button[aria-label="Мәзірді ашу"]'); pg.wait_for_selector('[role=dialog]')
     ok('P2 drawer opens, focus moves to Close', pg.evaluate('document.activeElement.getAttribute("aria-label")')=='Мәзірді жабу')
-    ok('P2 drawer lists all 9 sections with labels', [t.strip() for t in pg.locator('[role=dialog] nav a').all_inner_texts()]==TEACHER_LINKS)
+    ok('P2 drawer lists all 7 links with labels', [t.strip() for t in pg.locator('[role=dialog] nav a').all_inner_texts()]==TEACHER_LINKS)
     axe(pg,'phone drawer open')
     # keyboard trap: Tab from the last control wraps to the first
-    pg.focus('[role=dialog] a[href="#profile"]'); pg.keyboard.press('Tab')
+    pg.focus('[role=dialog] a[href="#settings/profile"]'); pg.keyboard.press('Tab')
     ok('P2 focus stays inside the open drawer', pg.evaluate('!!document.activeElement.closest("[role=dialog]")'))
     pg.keyboard.press('Escape'); pg.wait_for_timeout(100)
     ok('P2 Escape closes and returns focus to the menu button', pg.locator('[role=dialog]').count()==0 and pg.evaluate('document.activeElement.getAttribute("aria-label")')=='Мәзірді ашу')
-    pg.click('button[aria-label="Мәзірді ашу"]'); nl(pg,'Сыныптар','[role=dialog] nav').click(); pg.wait_for_timeout(300)
-    ok('P2 choosing a section navigates and closes the drawer', pg.evaluate('location.hash')=='#classes/list' and pg.locator('[role=dialog]').count()==0)
+    pg.click('button[aria-label="Мәзірді ашу"]'); nl(pg,'Журнал','[role=dialog] nav').click(); pg.wait_for_timeout(300)
+    ok('P2 choosing a section navigates and closes the drawer', pg.evaluate('location.hash')=='#journal/lessons' and pg.locator('[role=dialog]').count()==0)
     pg.click('button[aria-label="Мәзірді ашу"]'); pg.click('[role=dialog] button[aria-label="Мәзірді жабу"]'); ok('P2 Close button works', pg.locator('[role=dialog]').count()==0)
 
     # ---------- student, live-like ----------

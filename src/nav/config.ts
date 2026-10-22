@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, BookOpen, ClipboardCheck, FolderKanban, Gamepad2, GraduationCap, House, Inbox, Layers, Library, NotebookText, PencilRuler, Presentation, Scale, Send, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Users } from 'lucide-react';
+import { Award, BookOpen, ClipboardCheck, FolderKanban, Gamepad2, GraduationCap, House, Inbox, Layers, Library, NotebookText, PencilRuler, Presentation, Scale, Send, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy } from 'lucide-react';
 
 export type Role = 'teacher' | 'student';
 
@@ -10,6 +10,7 @@ export interface Section {
   routes: string[];          // hash route keys that light this section up in the menu
   subs: Sub[];
   to?: string;               // overrides the default link of the section
+  hidden?: boolean;          // not in the menu list; reached from the profile block at the bottom
 }
 
 export const ROLE_NAMES: Record<string, string> = {
@@ -46,16 +47,12 @@ export const TEACHER: Section[] = [
   { key: 'journal', label: 'Журнал', icon: NotebookText, routes: ['journal'], subs: [
     { key: 'lessons', label: 'Сабақ журналы', to: 'journal/lessons' },
     { key: 'grid', label: 'Сынып журналы', items: ['Сынып, пән, тоқсан және бағалау кезеңі сүзгілері', 'Оқушылар тізімі мен жалпы үлгерім (пайызбен)', 'Сабақ күндері мен БЖБ/ТЖБ бағандары'] },
+    { key: 'classes', label: 'Сыныптар', to: 'journal/classes' },
+    { key: 'reports', label: 'Есептер және топтар', items: ['Сынып және оқушы есептері', 'Сақталған жұптар мен топтар', 'Сынып жетекшісіне арналған көрініс'] },
   ] },
   { key: 'edustudio', label: 'EduStudio', icon: Sparkles, routes: ['edustudio'], subs: [
     { key: 'materials', label: 'Материал жасау', items: ['Модуль немесе тақырып бойынша конспект'] },
     { key: 'tests', label: 'Тест генерациясы', items: ['Сұрақтар, интерактив және сабақтар', 'Бірнеше тест нұсқасын автоматты құрастыру'] },
-  ] },
-  { key: 'classes', label: 'Сыныптар', icon: Users, routes: ['classes'], subs: [
-    { key: 'list', label: 'Сыныптар', to: 'classes/list' },
-    { key: 'groups', label: 'Жұптар мен топтар', items: ['Сақталған жұптар мен топтар'] },
-    { key: 'reports', label: 'Есептер', items: ['Сынып және оқушы есептері'] },
-    { key: 'tutor', label: 'Сынып жетекшісі', items: ['7B сыныбының жетекшісіне арналған көрініс'] },
   ] },
   { key: 'vocab', label: 'Сөздігім', icon: BookOpen, routes: ['vocab'], subs: [
     { key: 'base', label: 'Терминдер базасы', items: ['Үш тілдегі терминдер'] },
@@ -63,7 +60,7 @@ export const TEACHER: Section[] = [
     { key: 'test', label: 'Сөздік тесті', items: ['Сөздік бойынша тест жасау'] },
     { key: 'share', label: 'Тарату', items: ['Терминдерді оқушыларға тарату'] },
   ] },
-  { key: 'settings', label: 'Баптаулар', icon: SlidersHorizontal, routes: ['settings', 'profile'], subs: [
+  { key: 'settings', label: 'Профиль және баптаулар', icon: SlidersHorizontal, routes: ['settings', 'profile'], hidden: true, subs: [
     { key: 'profile', label: 'Профиль және аккаунт', to: 'settings/profile' },
     { key: 'lang', label: 'Интерфейс тілі', items: ['Қазақша, орысша, ағылшынша'] },
     { key: 'focus', label: 'Focus ережелері', items: ['Сабақ кезіндегі Focus режимінің ережелері'] },

@@ -61,7 +61,7 @@ with sync_playwright() as p:
     for k in ('light','dark','ocean','sand'):
         init="try{localStorage.setItem('cf_theme','%s')}catch(e){}"%k
         t=page(); t.add_init_script(init)
-        for name,h in (('teacher home','#'),('lessons gallery (soon tab)','#lessons/gallery'),('courses (soon cards)','#courses'),('settings/profile','#settings/profile')):
+        for name,h in (('teacher home','#'),('lessons gallery (soon tab)','#lessons/gallery'),('exams (soon cards)','#exams'),('settings/profile','#settings/profile')):
             t.goto(B+'?demo=teacher'+h); t.wait_for_selector('main'); t.wait_for_timeout(200); axe(t,f'{k}: {name}')
         t.goto(B+'?demo=teacher#tasks/jeopardy'); t.wait_for_selector('h2:has-text("Jeopardy")'); t.click('button:has-text("Жаңа ойын")')
         t.fill('label:text-is("Ойын атауы") >> xpath=..//input','Тақырыптарды тексеру'); t.click('button[aria-label="3-тақырыпты өшіру"]'); t.click('button[aria-label="2-тақырыпты өшіру"]')
