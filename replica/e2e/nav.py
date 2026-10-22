@@ -152,6 +152,7 @@ with sync_playwright() as p:
     # ---------- teacher, live-like ----------
     pg=page(who='teacher'); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе, Бағдәулет")')
     ok('L1 home: lessons in the start card (latest first)', pg.locator('main select >> nth=0').inner_text().split('\n')[0]=='Циклдер')
+    pg.wait_for_selector('a[href="#review/a1"]')
     ok('L1 home: pending works are counted and linked', pg.locator('text=Қосынды · 7B').count()==1 and pg.locator('a[href="#review/a1"]').count()==1 and pg.locator('text=Тексеруді күтетін жұмыстар >> xpath=..').inner_text().strip().endswith('4'))
     ok('L1 home: open paste flags counted', pg.locator('text=Көшіру белгісі бар жұмыс:').count()==1 and pg.locator('b:text-is("2")').count()>=1)
     axe(pg,'teacher home (live-like)')
@@ -198,6 +199,7 @@ with sync_playwright() as p:
 
     # ---------- student, live-like ----------
     pg=page(who='student'); pg.wait_for_selector('h1:has-text("Сәлем, Айдар")')
+    pg.wait_for_selector('main li a span.min-w-0')
     due=[t.strip().split('\n')[0] for t in pg.locator('main li a span.min-w-0').all_inner_texts()]
     ok('SL1 home: nearest deadlines first, finished ones left out', due==['Циклдер','Қосынды','Қатемен'], str(due))
     pg.fill('input[placeholder="000 000"]','000 000'); pg.click('button:text-is("Қосылу")'); pg.wait_for_selector('[role=alert]')

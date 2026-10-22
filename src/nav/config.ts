@@ -30,9 +30,10 @@ export const TEACHER: Section[] = [
     { key: 'assign', label: 'Тағайындау', items: ['Сыныпқа тағайындау', 'Мерзімдер'] },
     { key: 'progress', label: 'Прогресс және журнал', items: ['Прогресс', 'Баға журналы', 'CSV жүктеу'] },
   ] },
-  { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'assign', 'review'], subs: [
+  { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'assign', 'review'], to: 'assign', subs: [
     { key: 'bank', label: 'Тапсырмалар банкі', items: ['Түрі, сыныбы, оқу мақсаты бойынша іздеу'] },
     { key: 'builder', label: 'Конструктор', items: ['Жеке, жұптық және топтық тапсырмалар'] },
+    { key: 'jeopardy', label: 'Jeopardy', to: 'tasks/jeopardy' },
     { key: 'assigned', label: 'Берілген тапсырмалар', to: 'assign' },
     { key: 'queue', label: 'Тексеру кезегі', to: 'tasks/queue' },
     { key: 'exams', label: 'БЖБ/ТЖБ', items: ['Емтихан нұсқалары', 'Прокторинг'] },

@@ -1,0 +1,100 @@
+# Jeopardy builder + player (Tasks > Jeopardy), demo mode, no network.
+# Run: python3 jeopardy.py   (needs dist/ built, playwright, TOOLS with tw.css + axe-core)
+import json, os, sys, time, base64, threading, http.server, socketserver
+from playwright.sync_api import sync_playwright
+DIST=os.environ.get('DIST','/tmp/claude-0/-home-claude/3a2d47be-3b49-56e8-bda5-86e8ad6471fd/scratchpad/cf/dist')
+T=os.environ.get('TOOLS','/var/tmp/tools'); CSS=open(T+'/tw.css').read(); AXE=open(T+'/node_modules/axe-core/axe.min.js').read()
+class H(http.server.SimpleHTTPRequestHandler):
+    def __init__(s,*a,**k): super().__init__(*a,directory=DIST,**k)
+    def log_message(s,*a): pass
+socketserver.TCPServer.allow_reuse_address=True
+srv=socketserver.TCPServer(('127.0.0.1',5204),H); threading.Thread(target=srv.serve_forever,daemon=True).start()
+B='http://127.0.0.1:5204/'; errors=[]; bad5xx=[]; results=[]
+def ok(n,c,x=''): results.append((n,bool(c),x)); print(('PASS' if c else 'FAIL'),n,x)
+
+
+def route(r):
+    u=r.request.url
+    if 'cdn.tailwindcss.com' in u: r.fulfill(content_type='application/javascript',body="window.tailwind={};var s=document.createElement('style');s.textContent="+json.dumps(CSS)+";document.head.appendChild(s);")
+    elif u.startswith(B): r.continue_()
+    else: r.abort()
+def axe(pg,name):
+    pg.evaluate(AXE)
+    res=pg.evaluate("axe.run(document,{runOnly:['wcag2a','wcag2aa']}).then(r=>r.violations.map(v=>v.id+':'+v.nodes.length+':'+(v.nodes[0].html||'').slice(0,90)))")
+    ok('axe '+name, not res, str(res))
+URL=B+'?demo=teacher#tasks/jeopardy'
+with sync_playwright() as p:
+    b=p.chromium.launch()
+    def page(vp=(1440,900)):
+        c=b.new_context(viewport={'width':vp[0],'height':vp[1]}); c.route('**/*',route); pg=c.new_page()
+        pg.on('console',lambda m: errors.append(m.text) if m.type=='error' else None); pg.on('pageerror',lambda e: errors.append(str(e))); return pg
+    pg=page(); pg.goto(URL); pg.wait_for_selector('h2:has-text("Jeopardy")')
+    tab=pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a:has-text("Jeopardy")')
+    ok('J1 Jeopardy is a real tab in Tasks (no "soon" chip), current', tab.count()==1 and tab.get_attribute('aria-current')=='page' and 'Жақында' not in tab.inner_text())
+    ok('J1 Tasks is current in the menu', pg.locator('aside nav a[aria-current=page]').inner_text().strip()=='Тапсырмалар')
+    ok('J1 empty state', pg.locator('text=Әзірге ойын жоқ').count()==1)
+    axe(pg,'jeopardy list (empty)')
+    # build
+    pg.click('button:has-text("+ Жаңа ойын")'); pg.wait_for_selector('h2:has-text("Jeopardy құрастыру")')
+    ok('J2 editor starts with 3 categories x 5 rows', pg.locator('input[aria-label$=": сұрақ"]').count()==15)
+    pg.click('button:text-is("Сақтау")'); ok('J2 empty game: asks for a title', pg.locator('[role=alert]:has-text("атау беріңіз")').count()==1)
+    pg.fill('label:text-is("Ойын атауы") >> xpath=..//input','Python негіздері')
+    pg.click('button[aria-label="3-тақырыпты өшіру"]'); pg.click('button[aria-label="2-тақырыпты өшіру"]')
+    ok('J2 categories can be removed (1 left, no remove button then)', pg.locator('input[aria-label$=": сұрақ"]').count()==5 and pg.locator('button:text-is("Өшіру")').count()==0)
+    pg.click('button:text-is("+ Тақырып қосу")'); pg.click('button:text-is("+ Тақырып қосу")'); pg.click('button:text-is("+ Тақырып қосу")'); pg.click('button:text-is("+ Тақырып қосу")'); pg.click('button:text-is("+ Тақырып қосу")')
+    ok('J2 at most 6 categories', pg.locator('input[aria-label$=": сұрақ"]').count()==30 and pg.locator('button:text-is("+ Тақырып қосу")').count()==0)
+    for n in range(6,1,-1): pg.click(f'button[aria-label="{n}-тақырыпты өшіру"]')
+    cats=pg.locator('label:has-text("-тақырып атауы") >> xpath=..//input').count()
+    ok('J2 trimmed back to one category', cats==1, str(cats))
+    pg.fill('label:has-text("-тақырып атауы") >> xpath=..//input','Айнымалылар')
+    pg.fill('input[aria-label="Айнымалылар, 100: сұрақ"]','Деректі сақтайтын атаулы жад ұяшығы қалай аталады?')
+    pg.click('button:text-is("Сақтау")'); ok('J2 question without answer is refused', pg.locator('[role=alert]:has-text("Жауабы жоқ")').count()==1)
+    pg.fill('input[aria-label="Айнымалылар, 100: жауап"]','Айнымалы')
+    pg.fill('input[aria-label="Айнымалылар, 300: сұрақ"]','Python-да бүтін сан түрі?'); pg.fill('input[aria-label="Айнымалылар, 300: жауап"]','int')
+    axe(pg,'jeopardy editor')
+    pg.click('button:text-is("Сақтау")'); pg.wait_for_selector('text=Python негіздері')
+    ok('J3 saved: back in the list with counts', pg.locator('text=1 тақырып · 2 сұрақ').count()==1)
+    pg.reload(); pg.wait_for_selector('h2:has-text("Jeopardy")'); pg.wait_for_selector('text=Python негіздері')
+    ok('J3 game is still there after reload', pg.locator('text=1 тақырып · 2 сұрақ').count()==1)
+    axe(pg,'jeopardy list')
+    # play
+    pg.click('button:has-text("▶ Ойнау")'); pg.wait_for_selector('section[aria-label="Айнымалылар"]')
+    tiles=pg.locator('section[aria-label="Айнымалылар"] button')
+    ok('J4 board: 5 tiles, only the 2 with questions are enabled', tiles.count()==5 and pg.locator('section[aria-label="Айнымалылар"] button:enabled').count()==2)
+    pg.click('button[aria-label="Айнымалылар, 100"]'); pg.wait_for_selector('text=Деректі сақтайтын')
+    ok('J4 question shown, answer hidden, focus moved to the heading', pg.locator('text=Жауап:').count()==0 and pg.evaluate('document.activeElement.tagName')=='H3')
+    pg.click('button:text-is("Жауапты көрсету")'); ok('J4 answer shown', pg.locator('p:has-text("Жауап:"):has-text("Айнымалы")').count()==1)
+    axe(pg,'jeopardy question')
+    pg.click('button[aria-label="Команда 1: дұрыс, +100"]'); pg.click('button[aria-label="Команда 2: қате, −100"]')
+    ok('J4 scores: +100 and -100', pg.locator('[aria-label="Команда 1: 100 ұпай"]').count()==1 and pg.locator('[aria-label="Команда 2: -100 ұпай"]').count()==1)
+    pg.click('button:text-is("Дайын")')
+    ok('J4 used tile is disabled', pg.locator('button[aria-label="Айнымалылар, 100, өтті"]').is_disabled())
+    pg.click('button[aria-label="Айнымалылар, 300"]'); pg.click('button:text-is("← Тақтаға қайту")')
+    ok('J4 going back without finishing keeps the tile open', pg.locator('button[aria-label="Айнымалылар, 300"]').is_enabled())
+    pg.click('button:text-is("+ Команда")'); ok('J4 third team can be added', pg.locator('input[aria-label="3-команда атауы"]').count()==1)
+    pg.click('button[aria-label="Айнымалылар, 300"]'); pg.click('button:text-is("Жауапты көрсету")'); pg.click('button[aria-label="Команда 3: дұрыс, +300"]'); pg.click('button:text-is("Дайын")')
+    ok('J4 game over: winner announced', pg.locator('[role=status]:has-text("Жеңімпаз: Команда 3 (300)")').count()==1)
+    axe(pg,'jeopardy board, finished')
+    pg.click('button:has-text("Ойыннан шығу")'); pg.wait_for_selector('text=Python негіздері')
+    # edit + delete
+    pg.click('button:text-is("Өңдеу")'); pg.wait_for_selector('h2:has-text("Jeopardy құрастыру")')
+    ok('J5 edit loads the saved questions', pg.input_value('input[aria-label="Айнымалылар, 300: сұрақ"]')=='Python-да бүтін сан түрі?')
+    pg.fill('label:text-is("Ойын атауы") >> xpath=..//input','Python 7-сынып'); pg.click('button:text-is("Сақтау")'); pg.wait_for_selector('text=Python 7-сынып')
+    ok('J5 renamed, still one game', pg.locator('text=Python 7-сынып').count()==1 and pg.locator('button:text-is("Өңдеу")').count()==1)
+    pg.click('button[aria-label$="ойынын жою"]'); ok('J5 delete asks to confirm', pg.locator('button:text-is("Иә, жою")').count()==1 and pg.locator('text=Python 7-сынып').count()==1)
+    pg.click('button:text-is("Жоқ")'); ok('J5 "no" keeps the game', pg.locator('text=Python 7-сынып').count()==1)
+    pg.click('button[aria-label$="ойынын жою"]'); pg.click('button:text-is("Иә, жою")'); ok('J5 deleted', pg.locator('text=Әзірге ойын жоқ').count()==1)
+    pg.reload(); pg.wait_for_selector('h2:has-text("Jeopardy")'); ok('J5 deletion survives reload', pg.locator('text=Әзірге ойын жоқ').count()==1)
+    # corrupt storage does not break the page
+    pg.evaluate("Object.keys(localStorage).filter(k=>k.startsWith('cf_jeopardy_')).forEach(k=>localStorage.setItem(k,'{not json'))"); pg.reload(); pg.wait_for_selector('h2:has-text("Jeopardy")')
+    ok('J6 corrupt saved data: page still opens, empty list', pg.locator('text=Әзірге ойын жоқ').count()==1)
+    # phone
+    pg=page((390,844)); pg.goto(URL); pg.wait_for_selector('h2:has-text("Jeopardy")'); pg.click('button:has-text("+ Жаңа ойын")'); pg.wait_for_selector('h2:has-text("Jeopardy құрастыру")')
+    ok('J7 390px editor: no sideways page scroll', pg.evaluate('document.documentElement.scrollWidth')<=390, str(pg.evaluate('document.documentElement.scrollWidth')))
+    pg.fill('label:text-is("Ойын атауы") >> xpath=..//input','Тест'); pg.fill('label:has-text("1-тақырып атауы") >> xpath=..//input','А'); pg.fill('label:has-text("2-тақырып атауы") >> xpath=..//input','Ә'); pg.fill('label:has-text("3-тақырып атауы") >> xpath=..//input','Б')
+    pg.fill('input[aria-label="А, 100: сұрақ"]','Q'); pg.fill('input[aria-label="А, 100: жауап"]','A'); pg.click('button:text-is("Сақтап ойнау")'); pg.wait_for_selector('section[aria-label="А"]')
+    ok('J7 390px board: no sideways page scroll (the board scrolls inside itself)', pg.evaluate('document.documentElement.scrollWidth')<=390, str(pg.evaluate('document.documentElement.scrollWidth')))
+    b.close()
+real=[e for e in errors if 'Failed to load resource' not in e and 'ERR_FAILED' not in e]
+ok('no console errors',not real,str(real[:3]))
+print(sum(1 for r in results if r[1]),'/',len(results),'passed'); sys.exit(0 if all(r[1] for r in results) else 1)

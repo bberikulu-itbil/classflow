@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { SoonChip, SoonCard } from '../ui';
 import { activeSection, activeSub, firstReady } from './config';
 import type { Role, Section } from './config';
+import { Jeopardy } from '../views/Jeopardy';
 import { ClassesView } from '../views/ClassesView';
 import { ReviewQueue } from '../views/ReviewQueue';
 import { LessonsMine, PastSessions } from '../views/lessons';
@@ -46,6 +47,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:lessons:mine': () => <LessonsMine />,
   'teacher:lessons:journal': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
+  'teacher:tasks:jeopardy': c => <Jeopardy meId={c.me.id} />,
   'teacher:classes:list': () => <ClassesView />,
   'teacher:settings:profile': c => <ProfileCard me={c.me} onLogout={c.onLogout} />,
   'student:grades:feedback': () => <StudentFeedback />,
