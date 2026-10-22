@@ -88,7 +88,7 @@ const problem = (g: Game) =>
   : g.cats.some(c => c.qs.some(x => x.q.trim() && !x.a.trim())) ? 'Жауабы жоқ сұрақ бар.'
   : filled(g) === 0 ? 'Кемінде бір сұрақ жазыңыз.' : '';
 
-function Editor({ initial, onSave, onCancel }: { initial: Game; onSave: (g: Game, play: boolean) => void; onCancel: () => void }) {
+function Editor({ initial, onSave, onCancel, saveLabel = 'Сақтау', playLabel = 'Сақтап ойнау' }: { initial: Game; onSave: (g: Game, play: boolean) => void; onCancel: () => void; saveLabel?: string; playLabel?: string }) {
   const [g, setG] = useState(initial);
   const [shown, setShown] = useState(false);
   const set = (fn: (g: Game) => void) => setG(p => { const n = structuredClone(p); fn(n); return n; });
@@ -116,8 +116,8 @@ function Editor({ initial, onSave, onCancel }: { initial: Game; onSave: (g: Game
       {g.cats.length < MAX_CATS && <Button variant="secondary" onClick={() => set(x => { x.cats.push(newCat()); })}>+ Тақырып қосу</Button>}
       {shown && msg && <p role="alert" className="text-sm text-danger">{msg}</p>}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => submit(false)}>Сақтау</Button>
-        <Button variant="success" onClick={() => submit(true)}>Сақтап ойнау</Button>
+        <Button onClick={() => submit(false)}>{saveLabel}</Button>
+        <Button variant="success" onClick={() => submit(true)}>{playLabel}</Button>
         <Button variant="ghost" onClick={onCancel}>Болдырмау</Button>
       </div>
     </div>
@@ -255,6 +255,37 @@ function Play({ game, onExit, ctx, state }: { game: Game; onExit: () => void; ct
   );
 }
 
+/** The two links of a game: play (opens the board) and edit (opens the editor on a copy). Anyone who gets the edit link can change their own copy, students too. */
+function ShareLinks({ game, note }: { game: Game; note?: string }) {
+  const [links, setLinks] = useState<{ play: string; edit: string } | null>(null);
+  const [copied, setCopied] = useState<'' | 'play' | 'edit' | 'fail'>('');
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    encodeGame(game).then(packed => {
+      const base = `${location.origin}${location.pathname}#`;
+      setLinks({ play: `${base}jeopardy/${packed}`, edit: `${base}jeopardy-edit/${packed}` });
+    }, () => setErr('Сілтеме жасау мүмкін болмады'));
+  }, [game]);
+  if (err) return <p role="alert" className="text-sm text-danger">{err}</p>;
+  if (!links) return null;
+  const copy = async (k: 'play' | 'edit') => setCopied(await navigator.clipboard.writeText(links[k]).then(() => k, () => 'fail' as const));
+  return (
+    <div className="rounded-md bg-accent-soft p-3 space-y-3">
+      {([['play', 'Орындауға арналған сілтеме', 'ашқан адам ойынды ойнайды'], ['edit', 'Өңдеуге арналған сілтеме', 'ашқан адам (оқушы да) ойынды өз көшірмесінде өзгерте алады']] as const).map(([k, title, hint]) => (
+        <div key={k} className="space-y-1">
+          <label htmlFor={`share-${k}`} className="block text-sm font-semibold text-on-accent-soft">{title} <span className="font-normal">— {hint}</span></label>
+          <div className="flex gap-2">
+            <input id={`share-${k}`} readOnly className={inputCls} value={links[k]} onFocus={e => e.currentTarget.select()} />
+            <Button variant="secondary" aria-label={`${title}: көшіру`} onClick={() => copy(k)}>Көшіру</Button>
+          </div>
+        </div>
+      ))}
+      <p role="status" className="text-sm font-semibold text-on-accent-soft">{copied === 'play' ? 'Орындауға арналған сілтеме көшірілді.' : copied === 'edit' ? 'Өңдеуге арналған сілтеме көшірілді.' : copied === 'fail' ? 'Көшіру мүмкін болмады, сілтемені өзіңіз көшіріңіз.' : ''}</p>
+      <p className="text-sm text-on-accent-soft">{note ?? 'Екі сілтемеде де сұрақтар мен жауаптар бар, оны тек білетін адамға жіберіңіз. Сілтеме ойынның сол кездегі көшірмесі: кейін өзгертсеңіз, жаңа сілтеме жасаңыз. Өңдеу сілтемесін алған адам өз көшірмесін өзгертеді, сіздің ойыныңыз өзгермейді.'}</p>
+    </div>
+  );
+}
+
 export function Jeopardy({ me }: { me: Me }) {
   const { data, error, loading, reload } = useLoad(() => listGames(me), [me.id]);
   const [mode, setMode] = useState<{ kind: 'list' } | { kind: 'edit' | 'play'; game: Game }>({ kind: 'list' });
@@ -263,7 +294,7 @@ export function Jeopardy({ me }: { me: Me }) {
   const [panel, setPanel] = useState(false);
   const [delId, setDelId] = useState('');
   const [err, setErr] = useState('');
-  const [link, setLink] = useState<{ id: string; play: string; edit: string; copied: '' | 'play' | 'edit' | 'fail' } | null>(null);
+  const [shared, setShared] = useState('');
   const games = data?.games || [];
   const stuck = data && !data.local ? read(localKey(me)).length : 0; // games made in this browser before the table existed
 
@@ -272,14 +303,6 @@ export function Jeopardy({ me }: { me: Me }) {
   };
   const save = async (g: Game, play: boolean) => { if (await run(() => saveGame(me, g))) setMode(play ? { kind: 'play', game: g } : { kind: 'list' }); };
   const moveUp = () => run(async () => { for (const g of read(localKey(me))) await saveGame(me, g); write(localKey(me), []); });
-  const copy = async (kind: 'play' | 'edit') => { if (link) setLink({ ...link, copied: await navigator.clipboard.writeText(link[kind]).then(() => kind, () => 'fail' as const) }); };
-  const share = async (g: Game) => {
-    try {
-      const base = `${location.origin}${location.pathname}#`, packed = await encodeGame(g);
-      setLink({ id: g.id, play: `${base}jeopardy/${packed}`, edit: `${base}jeopardy-edit/${packed}`, copied: '' });
-    } catch { setErr('Сілтеме жасау мүмкін болмады'); }
-  };
-
   if (mode.kind === 'edit') return <><Editor initial={mode.game} onSave={save} onCancel={() => setMode({ kind: 'list' })} />{err && <p role="alert" className="mt-2 text-sm text-danger">{err}</p>}</>;
   if (mode.kind === 'play') return <Play game={mode.game} ctx={ctx} state={state} onExit={() => setMode({ kind: 'list' })} />;
 
@@ -312,26 +335,12 @@ export function Jeopardy({ me }: { me: Me }) {
           </div>
           <Button variant="success" disabled={filled(g) === 0} onClick={() => setMode({ kind: 'play', game: g })}><PlayIcon size={16} aria-hidden="true" />Ойнау</Button>
           <Button variant="secondary" onClick={() => setMode({ kind: 'edit', game: g })}>Өңдеу</Button>
-          <Button variant="secondary" aria-label={`${g.title || 'Атаусыз'}: бөлісу сілтемесі`} onClick={() => share(g)}><Link2 size={16} aria-hidden="true" />Сілтеме</Button>
+          <Button variant="secondary" aria-label={`${g.title || 'Атаусыз'}: бөлісу сілтемесі`} onClick={() => setShared(g.id)}><Link2 size={16} aria-hidden="true" />Сілтеме</Button>
           {delId === g.id
             ? <><Button variant="danger" onClick={() => { run(() => removeGame(me, g.id)); setDelId(''); }}>Иә, жою</Button><Button variant="ghost" onClick={() => setDelId('')}>Жоқ</Button></>
             : <Button variant="ghost" aria-label={`${g.title || 'Атаусыз'} ойынын жою`} onClick={() => setDelId(g.id)}>Жою</Button>}
         </Card>
-        {link?.id === g.id && (
-          <div className="rounded-md bg-accent-soft p-3 space-y-3">
-            {([['play', 'Орындауға арналған сілтеме', 'ашқан адам ойынды ойнайды (оқушыларға)'], ['edit', 'Өңдеуге арналған сілтеме', 'ашқан мұғалім ойынды өңдеп, өз аккаунтына сақтайды']] as const).map(([k, title, hint]) => (
-              <div key={k} className="space-y-1">
-                <label htmlFor={`share-${k}`} className="block text-sm font-semibold text-on-accent-soft">{title} <span className="font-normal">— {hint}</span></label>
-                <div className="flex gap-2">
-                  <input id={`share-${k}`} readOnly className={inputCls} value={link[k]} onFocus={e => e.currentTarget.select()} />
-                  <Button variant="secondary" aria-label={`${title}: көшіру`} onClick={() => copy(k)}>Көшіру</Button>
-                </div>
-              </div>
-            ))}
-            <p role="status" className="text-sm font-semibold text-on-accent-soft">{link.copied === 'play' ? 'Орындауға арналған сілтеме көшірілді.' : link.copied === 'edit' ? 'Өңдеуге арналған сілтеме көшірілді.' : link.copied === 'fail' ? 'Көшіру мүмкін болмады, сілтемені өзіңіз көшіріңіз.' : ''}</p>
-            <p className="text-sm text-on-accent-soft">Екі сілтемеде де сұрақтар мен жауаптар бар, оны тек білетін адамға жіберіңіз. Сілтеме ойынның сол кездегі көшірмесі: кейін өзгертсеңіз, жаңа сілтеме жасаңыз. Өңдеу сілтемесі сіздің ойыныңызды өзгертпейді, әріптес өз көшірмесін сақтайды.</p>
-          </div>
-        )}
+        {shared === g.id && <ShareLinks game={g} />}
         </React.Fragment>
       ))}
       {panel && <JeopardyPanel ctx={ctx} setup={state[0]} update={state[1]} onClose={() => setPanel(false)} />}
@@ -363,23 +372,41 @@ export function SharedGame({ payload, me, canSave }: { payload: string; me: Me; 
   );
 }
 
-/** Opens a game from an edit link: the teacher edits a copy and keeps it in their own list (the sender's game never changes). */
+/**
+ * Opens a game from an edit link: whoever opens it (teacher or student) edits their own copy, the sender's game never changes.
+ * A teacher keeps the copy in their list; a student has no list, so the edited game comes back as new links to send on.
+ */
 export function SharedEdit({ payload, me, canSave }: { payload: string; me: Me; canSave: boolean }) {
   const [state, setState] = useState<{ game?: Game; bad?: boolean }>({});
+  const [sent, setSent] = useState<Game | null>(null);
   const [err, setErr] = useState('');
   useEffect(() => { decodeGame(payload).then(game => setState({ game }), () => setState({ bad: true })); }, [payload]);
   const save = async (g: Game, play: boolean) => {
-    try { await saveGame(me, g); window.location.hash = play ? 'jeopardy/' + await encodeGame(g) : 'tasks/jeopardy'; }
-    catch (e) { setErr((e as Error).message || 'Қате'); }
+    try {
+      if (canSave) await saveGame(me, g);
+      if (play) window.location.hash = 'jeopardy/' + await encodeGame(g);
+      else if (canSave) window.location.hash = 'tasks/jeopardy';
+      else setSent(g);
+    } catch (e) { setErr((e as Error).message || 'Қате'); }
   };
   return (
     <main className="max-w-5xl mx-auto p-4 space-y-4">
-      {!canSave && <EmptyState icon={<Unlink size={32} />} text="Өңдеу сілтемесі мұғалімдерге арналған. Ойнау үшін орындауға арналған сілтемені сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
-      {canSave && state.bad && <EmptyState icon={<Unlink size={32} />} text="Сілтеме бүлінген немесе толық емес. Жібергеннен жаңасын сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
-      {canSave && state.game && (
+      {state.bad && <EmptyState icon={<Unlink size={32} />} text="Сілтеме бүлінген немесе толық емес. Жібергеннен жаңасын сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
+      {state.game && sent && (
         <>
-          <p role="status" className="rounded-md bg-accent-soft text-on-accent-soft p-3 text-sm font-semibold">Бұл — алынған ойынның көшірмесі. «Сақтау» басқанда ол «Тапсырмалар › Jeopardy» тізіміне түседі, жіберушінің ойыны өзгермейді.</p>
-          <Editor initial={state.game} onSave={save} onCancel={() => { window.location.hash = 'tasks/jeopardy'; }} />
+          <p role="status" className="rounded-md bg-accent-soft text-on-accent-soft p-3 text-sm font-semibold">Өзгерген ойын дайын. Ол ешқайда сақталған жоқ: төмендегі жаңа сілтемені (өңдеуге немесе орындауға) жіберуші адамға жіберіңіз.</p>
+          <ShareLinks game={sent} note="Беттен шықсаңыз өзгерістер жоғалады, сондықтан алдымен сілтемені көшіріп алыңыз." />
+          <Button variant="secondary" onClick={() => { setState({ game: sent }); setSent(null); }}>Қайта өңдеу</Button>
+        </>
+      )}
+      {state.game && !sent && (
+        <>
+          <p role="status" className="rounded-md bg-accent-soft text-on-accent-soft p-3 text-sm font-semibold">
+            {canSave ? 'Бұл — алынған ойынның көшірмесі. «Сақтау» басқанда ол «Тапсырмалар › Jeopardy» тізіміне түседі, жіберушінің ойыны өзгермейді.'
+              : 'Бұл — алынған ойынның көшірмесі, жіберушінің ойыны өзгермейді. Аяқтаған соң «Сілтеме жасау» басып, жаңа сілтемені жіберушіге қайтарыңыз.'}
+          </p>
+          <Editor key={state.game.id} initial={state.game} onSave={save} onCancel={() => { window.location.hash = canSave ? 'tasks/jeopardy' : ''; }}
+            saveLabel={canSave ? 'Сақтау' : 'Сілтеме жасау'} playLabel={canSave ? 'Сақтап ойнау' : 'Ойнап көру'} />
           {err && <p role="alert" className="text-sm text-danger">{err}</p>}
         </>
       )}
