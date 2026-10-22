@@ -85,3 +85,17 @@ export function useLoad<T>(fn: () => Promise<T>, deps: React.DependencyList) {
   React.useEffect(run, [run]);
   return { ...state, reload: run };
 }
+
+export function SoonChip() {
+  return <span className="inline-block rounded-full bg-surface-2 text-text-secondary text-xs font-medium px-2 py-0.5 whitespace-nowrap">Жақында</span>;
+}
+
+/** A planned screen: says what it will hold, never shows invented numbers. */
+export function SoonCard({ title, items }: { title: string; items?: string[] }) {
+  return (
+    <Card className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{title}</h2><SoonChip /></div>
+      {items && items.length > 0 && <ul className="list-disc pl-5 space-y-1 text-sm text-text-secondary">{items.map(i => <li key={i}>{i}</li>)}</ul>}
+    </Card>
+  );
+}

@@ -11,3 +11,12 @@ Interactive classroom teaching, live presentation slides, student interaction, P
 Screens: `#assign` (teacher gives a code slide to classes), `#hw` and `#hw/ID` (student list and IDE), `#review/ID` (teacher grades).
 Try it without a login: open `/?demo=teacher` (the button in the corner switches role). Demo data lives in memory.
 With real logins the screens call the RPC from `replica/schema.sql`, which must be applied to the database first.
+
+## Menu (left navigation)
+
+The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section has sub-tabs; a sub-tab with `to` is a real screen, one without is shown as «Жақында» with the list in `items`.
+- Make a planned tab real: add `to: 'route'` in `config.ts`, then register its view under `role:section:sub` in `VIEWS` (`src/nav/SectionPage.tsx`).
+- Desktop: the button at the top collapses the menu to icons (remembered in `localStorage.cf_nav_collapsed`); a hover or keyboard focus on an icon shows the section name. Phone: top bar + drawer (Esc closes, focus stays inside).
+- Keyboard: the first Tab stop is «Негізгі мазмұнға өту» (skips the menu).
+- The lesson and plan editors, the remote, the board and the student live-session view open full screen, without the menu.
+- Tests: `python3 replica/e2e/nav.py` (needs a built `dist/`, see the header of each script), plus `happy.py` and `edge.py`.

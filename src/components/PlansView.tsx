@@ -1,50 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { sb } from '../config';
-import { TopBar } from './TopBar';
-import { BTN_P } from './Widgets';
+import { Card, EmptyState, ErrorBox, LinkButton, Skeleton, useLoad } from '../ui';
 
-export function PlansView({ me, onLogout }: { me: any; onLogout: () => void }) {
-  const [plans, setPlans] = useState<any[]>([]);
-
-  useEffect(() => {
-    sb.from('cf_plans')
-      .select('id,kind,title,quarter,updated_at')
-      .order('updated_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) setPlans(data);
-      });
+export function PlansView() {
+  const { data, error, loading, reload } = useLoad(async () => {
+    const r = await sb.from('cf_plans').select('id,kind,title,quarter,updated_at').order('updated_at', { ascending: false });
+    if (r.error) throw new Error(r.error.message);
+    return r.data || [];
   }, []);
-
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-white">
-      <TopBar
-        me={me}
-        onLogout={onLogout}
-        right={
-          <button className={BTN_P} onClick={() => (window.location.hash = 'plan/new')}>
-            + Жаңа жоспар
-          </button>
-        }
-      />
-      <div className="max-w-3xl mx-auto p-4 space-y-3">
-        <h2 className="font-bold text-xl text-black">🗓 Жоспарлар</h2>
-        {plans.length ? (
-          plans.map(r => (
-            <a
-              key={r.id}
-              href={'#plan/' + r.id}
-              className="block p-3 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 transition"
-            >
-              <b>{r.title}</b>
-              <span className="ml-2 text-xs text-slate-400">
-                {r.kind === 'quarter' ? `Тоқсандық · ${r.quarter || ''}-тоқсан` : 'Сабақ жоспары'}
-              </span>
-            </a>
-          ))
-        ) : (
-          <p className="text-slate-500">Жоспар жоқ.</p>
-        )}
+    <main className="max-w-5xl mx-auto p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Жоспарлар</h1>
+        <LinkButton href="#plan/new" variant="primary">+ Жаңа жоспар</LinkButton>
       </div>
-    </div>
+      {loading && <Skeleton />}
+      {error && <ErrorBox message={error} onRetry={reload} />}
+      {data && data.length === 0 && <EmptyState icon="🗓" text="Жоспар жоқ." />}
+      {data && data.map((r: any) => (
+        <a key={r.id} href={'#plan/' + r.id} className="block rounded-lg bg-surface border border-border shadow-card p-4 hover:border-accent">
+          <b className="break-words">{r.title}</b>
+          <span className="ml-2 text-xs text-text-muted">{r.kind === 'quarter' ? `Тоқсандық · ${r.quarter || ''}-тоқсан` : 'Сабақ жоспары'}</span>
+        </a>
+      ))}
+    </main>
   );
 }

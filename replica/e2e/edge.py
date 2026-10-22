@@ -81,9 +81,13 @@ with sync_playwright() as p:
     pg.goto(B+'?demo=student#assign'); pg.wait_for_timeout(800); ok('E8 student opening #assign does not get teacher screen', pg.locator('text=Үй тапсырмасын беру').count()==0)
     pg.goto(B+'?demo=student#review/x'); pg.wait_for_timeout(800); ok('E8 student opening #review does not get teacher screen', pg.locator('text=Жұмыстарды қарау').count()==0)
     pg.goto(B+'?demo=teacher#review/does-not-exist'); pg.wait_for_timeout(1500); ok('E8 unknown review id: readable error', len(pg.inner_text('body').strip())>20, pg.inner_text('body')[:60].replace('\n',' '))
-    # E9 keyboard only
+    # E9 keyboard only: the menu is skippable, and Check is reachable right after
     pg=page(); assign(pg); to_student_ide(pg); pg.fill('#hw-code',RIGHT)
-    pg.focus('#hw-code'); found=False
+    first=pg.evaluate("document.querySelector('button,a[href],input,textarea,select').textContent.trim()")
+    ok('E9 skip button is the first tab stop',first=='Негізгі мазмұнға өту',first)
+    pg.focus('button:text-is("Негізгі мазмұнға өту")'); pg.keyboard.press('Enter')
+    ok('E9 skip button moves focus into the page content',pg.evaluate("document.activeElement.tagName")=='MAIN')
+    found=False
     for _ in range(12):
         pg.keyboard.press('Tab')
         if pg.evaluate("document.activeElement.textContent.trim()")=='Тексеру': found=True; break

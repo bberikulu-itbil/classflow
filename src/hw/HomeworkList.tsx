@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { api } from './types';
 import type { MyAssignment } from './types';
 import { Card, EmptyState, ErrorBox, Skeleton, StatusChip, useLoad } from '../ui';
@@ -28,16 +28,32 @@ function Row({ a }: { a: MyAssignment }) {
   );
 }
 
+type Filter = 'all' | 'active' | 'submitted' | 'checked';
+const FILTERS: Array<[Filter, string]> = [['all', 'Барлығы'], ['active', 'Белсенді'], ['submitted', 'Тапсырылған'], ['checked', 'Тексерілген']];
+const ACTIVE = ['not_started', 'draft', 'needs_work'];
+const keep = (f: Filter, a: MyAssignment) => f === 'all' || (f === 'active' ? ACTIVE.includes(a.status) : f === 'submitted' ? a.status === 'submitted' : a.status === 'finalized');
+
 export function HomeworkList() {
   const { data, error, loading, reload } = useLoad(() => api().listMyAssignments(), []);
-  const todo = (data || []).filter(a => ['not_started', 'draft', 'needs_work'].includes(a.status));
-  const done = (data || []).filter(a => ['submitted', 'finalized'].includes(a.status));
+  const [f, setF] = useState<Filter>('all');
+  const shown = (data || []).filter(a => keep(f, a));
+  const todo = shown.filter(a => ACTIVE.includes(a.status));
+  const done = shown.filter(a => ['submitted', 'finalized'].includes(a.status));
   return (
     <main className="max-w-3xl mx-auto p-4 space-y-4">
       <h1 className="text-2xl font-bold">Үй тапсырмасы</h1>
+      {data && data.length > 0 && (
+        <div role="group" aria-label="Сүзгі" className="flex flex-wrap gap-2">
+          {FILTERS.map(([k, label]) => (
+            <button key={k} type="button" aria-pressed={f === k} onClick={() => setF(k)}
+              className={`min-h-[44px] px-4 rounded-full text-sm font-medium cursor-pointer border ${f === k ? 'bg-accent text-on-accent border-accent' : 'bg-surface text-text-secondary border-border hover:text-text'}`}>{label}</button>
+          ))}
+        </div>
+      )}
       {loading && <Skeleton />}
       {error && <ErrorBox message={error} onRetry={reload} />}
       {data && data.length === 0 && <EmptyState text="Әзірге үй тапсырмасы жоқ. Мұғалім бергенде осында шығады." />}
+      {data && data.length > 0 && shown.length === 0 && <EmptyState icon="🔍" text="Бұл сүзгі бойынша тапсырма жоқ." />}
       {todo.length > 0 && <section aria-label="Орындау керек" className="space-y-2"><h2 className="font-semibold text-text-secondary">Орындау керек · {todo.length}</h2>{todo.map(a => <Row key={a.assignment_id} a={a} />)}</section>}
       {done.length > 0 && <section aria-label="Тапсырылған" className="space-y-2"><h2 className="font-semibold text-text-secondary">Тапсырылған · {done.length}</h2>{done.map(a => <Row key={a.assignment_id} a={a} />)}</section>}
       {data && data.length > 0 && <Card className="text-sm text-text-muted">Бағасы «уақытша» болса, мұғалім әлі растаған жоқ.</Card>}

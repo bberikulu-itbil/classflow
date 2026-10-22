@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { sb, STAFF } from './config';
+import { sb, STAFF, DEMO } from './config';
 import { LoginView } from './components/LoginView';
-import { StudentHome } from './components/StudentHome';
-import { TeacherHome } from './components/TeacherHome';
 import { RemoteView } from './components/RemoteView';
 import { BoardView } from './components/BoardView';
 import { StudentSessionView } from './components/StudentSessionView';
 import { PlansView } from './components/PlansView';
 import { PlanEditorView } from './components/PlanEditorView';
-import { ProfileView } from './components/ProfileView';
+import { ProfileCard } from './components/ProfileView';
 import { LessonEditorView } from './components/LessonEditorView';
 import { HomeworkList } from './hw/HomeworkList';
 import { HomeworkSolve } from './hw/HomeworkSolve';
@@ -17,10 +15,12 @@ import { ReviewView } from './hw/ReviewView';
 import { hw } from './hw/types';
 import { makeSupaApi } from './hw/supaApi';
 import { makeFakeApi, DEMO_STUDENT, DEMO_TEACHER } from './hw/fakeApi';
-import { TopBar } from './components/TopBar';
-
-// ?demo=teacher|student runs the homework screens on in-memory data, without logging in
-const DEMO = new URLSearchParams(window.location.search).get('demo');
+import { AppShell } from './nav/AppShell';
+import { SectionFrame, SectionPage } from './nav/SectionPage';
+import { activeSection } from './nav/config';
+import type { Role } from './nav/config';
+import { TeacherHomeView } from './views/TeacherHomeView';
+import { StudentHomeView } from './views/StudentHomeView';
 
 let demoApi: ReturnType<typeof makeFakeApi> | undefined;
 
@@ -95,10 +95,11 @@ export default function App() {
   }
 
   const isStaff = STAFF.includes(me.role);
+  const role: Role = isStaff ? 'teacher' : 'student';
+  const logout = () => setMe(null);
   hw.api = DEMO ? (demoApi ||= makeFakeApi(() => meRef.current)) : makeSupaApi(me);
-  const page = (el: React.ReactNode) => (
-    <div className="min-h-screen bg-bg text-text">
-      <TopBar me={me} onLogout={() => setMe(null)} />
+  const shell = (el: React.ReactNode) => (
+    <AppShell me={me} role={role} routeKey={routeKey}>
       {el}
       {DEMO && (
         <button className="fixed bottom-3 right-3 z-50 min-h-[44px] px-4 rounded-full bg-text text-surface text-sm font-semibold cursor-pointer shadow-pop"
@@ -106,18 +107,25 @@ export default function App() {
           Демо: {isStaff ? 'мұғалім' : 'оқушы'} → {isStaff ? 'оқушы' : 'мұғалім'}
         </button>
       )}
-    </div>
+    </AppShell>
   );
-  if (routeKey === 'hw') return page(routeId ? <HomeworkSolve key={routeId} id={routeId} /> : <HomeworkList />);
-  if (routeKey === 'assign' && isStaff) return page(<AssignView />);
-  if (routeKey === 'review' && isStaff) return page(<ReviewView id={routeId} />);
+  const framed = (w: '3xl' | '5xl', el: React.ReactNode) => shell(<SectionFrame role={role} routeKey={routeKey} routeId={routeId} width={w}>{el}</SectionFrame>);
 
+  if (routeKey === 'hw' || (!isStaff && routeKey === 'tasks')) return shell(routeKey === 'hw' && routeId ? <HomeworkSolve key={routeId} id={routeId} /> : <HomeworkList />);
+  if (routeKey === 'assign' && isStaff) return framed('3xl', <AssignView />);
+  if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
+  if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
   if (routeKey === 'profile') {
-    return <ProfileView me={me} onLogout={() => setMe(null)} />;
+    return shell(
+      <main className="max-w-5xl mx-auto p-4 space-y-4">
+        <h1 className="text-2xl font-bold">Профиль</h1>
+        <ProfileCard me={me} onLogout={logout} />
+      </main>,
+    );
   }
 
   if (routeKey === 'remote' && isStaff) {
-    return <RemoteView sid={routeId} me={me} onLogout={() => setMe(null)} />;
+    return <RemoteView sid={routeId} me={me} onLogout={logout} />;
   }
   if (routeKey === 'board' && isStaff) {
     return <BoardView sid={routeId} />;
@@ -125,15 +133,16 @@ export default function App() {
   if (routeKey === 's') {
     return <StudentSessionView sid={routeId} me={me} />;
   }
-  if (routeKey === 'plans' && isStaff) {
-    return <PlansView me={me} onLogout={() => setMe(null)} />;
-  }
   if (routeKey === 'plan' && isStaff) {
-    return <PlanEditorView id={routeId} me={me} onLogout={() => setMe(null)} />;
+    return <PlanEditorView id={routeId} me={me} onLogout={logout} />;
   }
   if (routeKey === 'edit' && isStaff) {
-    return <LessonEditorView id={routeId} me={me} onLogout={() => setMe(null)} />;
+    return <LessonEditorView id={routeId} me={me} onLogout={logout} />;
   }
 
-  return isStaff ? <TeacherHome me={me} onLogout={() => setMe(null)} /> : <StudentHome me={me} onLogout={() => setMe(null)} />;
+  const section = activeSection(role, routeKey);
+  if (section && routeKey !== '' && section.key === routeKey) {
+    return shell(<SectionPage role={role} section={section} subKey={routeId} me={me} onLogout={logout} />);
+  }
+  return shell(isStaff ? <TeacherHomeView me={me} /> : <StudentHomeView me={me} />);
 }

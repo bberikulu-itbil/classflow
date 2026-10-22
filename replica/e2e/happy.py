@@ -89,7 +89,7 @@ with sync_playwright() as p:
     ok('S19 finalized chip', pg.locator('tbody >> text=Бағаланды').count()==1)
     # back to student: list shows finalized with feedback, IDE read-only
     pg.click('text=Демо: мұғалім'); pg.wait_for_selector('a[href^="#hw/"]')
-    ok('S04 shows finalized + feedback', pg.locator('text=Жарайсың').count()==1 and pg.locator('text=Тапсырылған').count()==1)
+    ok('S04 shows finalized + feedback', pg.locator('text=Жарайсың').count()==1 and pg.locator('h2:has-text("Тапсырылған")').count()==1)
     pg.click('a[href^="#hw/"]'); pg.wait_for_selector('#hw-code')
     ok('S06 read-only after grading', pg.locator('#hw-code').get_attribute('readonly') is not None and pg.locator('button:has-text("Тексеру және тапсыру")').count()==0)
     # phone: whole flow screens

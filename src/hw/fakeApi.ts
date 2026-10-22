@@ -116,5 +116,12 @@ export function makeFakeApi(getMe: () => Me): HwApi {
       if (points < 0 || points > mx) deny(`Ұпай 0 мен ${mx} аралығында болуы керек`);
       Object.assign(w, { status, points, feedback: feedback.slice(0, 4000) });
     },
+    async teacherSummary() {
+      const mine = asgs.filter(ownsAsg);
+      const pending = mine.map(a => ({ assignment_id: a.id, title: acts.find(x => x.id === a.actId)!.title, class_name: CLASSES.find(c => c.id === a.classId)!.name,
+        count: works.filter(w => w.asgId === a.id && w.status === 'submitted').length })).filter(p => p.count > 0);
+      const openFlags = works.filter(w => flags.has(w.id) && mine.some(a => a.id === w.asgId)).length;
+      return { pending, openFlags };
+    },
   };
 }

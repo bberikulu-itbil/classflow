@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { sb } from '../config';
-import { BTN, BTN_P, INP } from './Widgets';
-import { TopBar } from './TopBar';
+import { ROLE_NAMES } from '../nav/config';
+import { Button, Card, Field, inputCls } from '../ui';
 
-const ROLES: Record<string, string> = {
-  teacher: 'Мұғалім', class_teacher: 'Сынып жетекшісі', deputy: 'Директор орынбасары', admin: 'Әкімші', student: 'Оқушы',
-};
-
-export function ProfileView({ me, onLogout }: { me: any; onLogout: () => void }) {
+/** Profile, password change and sign out. Rendered inside the app shell (route #profile and Settings > Profile). */
+export function ProfileCard({ me, onLogout }: { me: any; onLogout: () => void }) {
   const [className, setClassName] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -26,33 +23,26 @@ export function ProfileView({ me, onLogout }: { me: any; onLogout: () => void })
   };
 
   const row = (k: string, v: string) => (
-    <div className="flex justify-between py-2 border-b border-slate-800 text-sm">
-      <span className="text-slate-400">{k}</span><b>{v || '—'}</b>
+    <div className="flex justify-between gap-3 py-2 border-b border-border last:border-0 text-sm">
+      <span className="text-text-muted">{k}</span><b className="text-right break-words">{v || '—'}</b>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <TopBar me={me} />
-      <div className="max-w-md mx-auto p-4 space-y-5">
-        <h1 className="text-2xl font-bold">Профиль</h1>
-        <section className="bg-slate-900 rounded-2xl p-4">
-          {row('Аты-жөні', me.full_name)}
-          {row('Рөл', ROLES[me.role] || me.role)}
-          {row('Сынып', className)}
-        </section>
-        <section className="bg-slate-900 rounded-2xl p-4 space-y-2">
-          <h2 className="font-bold">Құпиясөзді өзгерту</h2>
-          <input className={INP} type="password" placeholder="Жаңа құпиясөз" value={pw} onChange={e => setPw(e.target.value)} />
-          <input className={INP} type="password" placeholder="Қайталаңыз" value={pw2} onChange={e => setPw2(e.target.value)} />
-          {msg && <p className={'text-sm ' + (msg.bad ? 'text-red-400' : 'text-emerald-400')}>{msg.t}</p>}
-          <button className={BTN_P} onClick={changePw}>Сақтау</button>
-        </section>
-        <div className="flex gap-2">
-          <a href="#" className={BTN}>← Артқа</a>
-          <button className={BTN + ' !bg-red-700 !text-white'} onClick={async () => { await sb.auth.signOut(); onLogout(); window.location.hash = ''; }}>Шығу</button>
-        </div>
-      </div>
+    <div className="space-y-4 max-w-md">
+      <Card>
+        {row('Аты-жөні', me.full_name)}
+        {row('Рөл', ROLE_NAMES[me.role] || me.role)}
+        {me.role === 'student' && row('Сынып', className)}
+      </Card>
+      <Card className="space-y-3">
+        <h2 className="font-semibold">Құпиясөзді өзгерту</h2>
+        <Field label="Жаңа құпиясөз">{id => <input id={id} className={inputCls} type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} />}</Field>
+        <Field label="Қайталаңыз">{id => <input id={id} className={inputCls} type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} />}</Field>
+        {msg && <p role={msg.bad ? 'alert' : 'status'} className={'text-sm ' + (msg.bad ? 'text-danger' : 'text-success')}>{msg.t}</p>}
+        <Button onClick={changePw}>Сақтау</Button>
+      </Card>
+      <Button variant="danger" onClick={async () => { await sb.auth.signOut(); onLogout(); window.location.hash = ''; }}>Шығу</Button>
     </div>
   );
 }

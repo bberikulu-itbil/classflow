@@ -34,6 +34,9 @@ export interface ReviewRow {
   late: boolean; submitted_at: string | null; open_flags: number;
 }
 
+export interface PendingItem { assignment_id: string; title: string; class_name: string; count: number }
+export interface TeacherSummary { pending: PendingItem[]; openFlags: number }
+
 export interface WorkDetail { answer: string; status: Status; points: number | null; feedback: string | null; snapshots: number }
 
 export interface AssignInput {
@@ -57,6 +60,8 @@ export interface HwApi {
   review(assignmentId: string): Promise<ReviewRow[]>;
   getWork(workId: string): Promise<WorkDetail>;
   grade(workId: string, points: number, status: 'finalized' | 'needs_work', feedback: string): Promise<void>;
+  /** Works waiting for a grade (grouped by assignment) and unresolved paste flags, for the teacher's home and queue. */
+  teacherSummary(): Promise<TeacherSummary>;
 }
 
 export const hw: { api: HwApi | null } = { api: null };

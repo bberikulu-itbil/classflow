@@ -1,5 +1,5 @@
 import { sb } from '../config';
-import type { HwApi, Me } from './types';
+import type { HwApi, Me, PendingItem } from './types';
 
 const fail = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
 const COURSE = 'Үй тапсырмалары';
@@ -66,6 +66,17 @@ export function makeSupaApi(me: Me): HwApi {
     },
     async grade(workId, points, status, feedback) {
       const { error } = await sb.rpc('cf_hw_grade', { p_work: workId, p_points: points, p_status: status, p_feedback: feedback }); fail(error);
+    },
+    async teacherSummary() {
+      // RLS (work_read) already limits this to the teacher's own assignments
+      const w = await sb.from('cf_work').select('assignment_id,cf_assignments(classes(name),cf_activities(title))').eq('status', 'submitted'); fail(w.error);
+      const by = new Map<string, PendingItem>();
+      for (const r of (w.data || []) as any[]) {
+        const it = by.get(r.assignment_id) || { assignment_id: r.assignment_id, title: r.cf_assignments?.cf_activities?.title || '', class_name: r.cf_assignments?.classes?.name || '', count: 0 };
+        it.count++; by.set(r.assignment_id, it);
+      }
+      const f = await sb.from('cf_integrity_flags').select('id', { count: 'exact', head: true }).neq('state', 'cleared'); fail(f.error);
+      return { pending: [...by.values()].sort((a, b) => b.count - a.count), openFlags: f.count || 0 };
     },
   };
 }
