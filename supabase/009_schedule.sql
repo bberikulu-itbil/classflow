@@ -2,7 +2,7 @@
 -- Schedule (КТП). Two small tables, private to the teacher:
 --   cf_timetable : the current weekly timetable (class, weekday, lesson number); changing it does not touch slots already generated. A teacher cannot teach two classes in the same period.
 --   cf_slots     : one dated lesson slot of a class (generated from the timetable). A lecture (cf_lessons row) can be put into it; the lesson
---                  instance (cf_sessions) is created later, when the teacher starts the slot.
+--                  instance (cf_sessions) is created when the teacher starts the slot; session_id remembers which one.
 -- Content (courses/modules/lectures, 008) knows nothing about dates; this file knows nothing about content except the optional lesson_id.
 
 create table if not exists cf_timetable (
@@ -28,6 +28,8 @@ create table if not exists cf_slots (
   created_at timestamptz not null default now(),
   unique (owner_id, held_on, period)
 );
+-- (alter, not only in create: safe when an earlier version of this file was already run)
+alter table cf_slots add column if not exists session_id uuid references cf_sessions(id) on delete set null;
 create index if not exists cf_slots_class_idx on cf_slots (owner_id, class_id, school_year, quarter, held_on, period);
 
 alter table cf_timetable enable row level security;
@@ -42,7 +44,8 @@ create policy slot_all on cf_slots for all
   using (owner_id = (select auth.uid()) and is_staff())
   with check (owner_id = (select auth.uid()) and is_staff() and school_id = my_school()
     and exists (select 1 from classes c where c.id = class_id and c.school_id = my_school())
-    and (lesson_id is null or exists (select 1 from cf_lessons l where l.id = lesson_id and l.owner_id = (select auth.uid()))));
+    and (lesson_id is null or exists (select 1 from cf_lessons l where l.id = lesson_id and l.owner_id = (select auth.uid())))
+    and (session_id is null or exists (select 1 from cf_sessions x where x.id = session_id and x.teacher_id = (select auth.uid()))));
 
 revoke all on cf_timetable, cf_slots from public, anon;
 grant select, insert, update, delete on cf_timetable, cf_slots to authenticated;

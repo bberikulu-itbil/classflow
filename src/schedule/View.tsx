@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Trash2, X } from 'lucide-react';
+import { Play, Trash2, X } from 'lucide-react';
+import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad } from '../ui';
 import { ClassChips, QuarterChips, useFilters } from '../lessons/Filters';
 import { currentQuarter, schoolYear } from '../lessons/model';
@@ -13,7 +14,7 @@ import type { Me, Slot } from './store';
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 /** Lecture picker: grouped as course › module, lectures not in any module last. */
-function LessonSelect({ curr, value, label, onChange }: { curr: Curr; value: string; label: string; onChange: (id: string) => void }) {
+function LessonSelect({ curr, value, label, disabled, onChange }: { curr: Curr; value: string; label: string; disabled?: boolean; onChange: (id: string) => void }) {
   const placed = new Set(curr.places.map(p => p.lesson_id));
   const title = (id: string) => curr.lessons.find(l => l.id === id)?.title;
   const groups = curr.modules.map(m => ({
@@ -22,7 +23,7 @@ function LessonSelect({ curr, value, label, onChange }: { curr: Curr; value: str
   })).filter(g => g.items.length);
   const loose = curr.lessons.filter(l => !placed.has(l.id));
   return (
-    <select aria-label={label} className={inputCls + ' !min-h-[40px] min-w-[12rem]'} value={value} onChange={e => onChange(e.target.value)}>
+    <select aria-label={label} className={inputCls + ' !min-h-[40px] min-w-[12rem]'} value={value} disabled={disabled} title={disabled ? 'Сабақ басталды: дәріс енді өзгермейді' : undefined} onChange={e => onChange(e.target.value)}>
       <option value="">— дәріс қойылмаған —</option>
       {groups.map(g => <optgroup key={g.label} label={g.label}>{g.items.map(i => <option key={i.id} value={i.id}>{i.t}</option>)}</optgroup>)}
       {loose.length > 0 && <optgroup label="Модульсіз дәрістер">{loose.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}</optgroup>}
@@ -54,12 +55,15 @@ export function ScheduleView({ me }: { me: Me }) {
   const weeks = new Map<string, Slot[]>();
   for (const s of slots) weeks.set(mondayOf(s.held_on), [...(weeks.get(mondayOf(s.held_on)) || []), s]);
   const today = todayIso();
+  const [busyId, setBusyId] = useState('');
+  const start = async (s: Slot) => { setBusyId(s.id); setMsg(''); try { window.location.hash = 'remote/' + (await st.startSlot(me, s)); } catch (e) { setMsg(e instanceof Error ? e.message : 'Сабақты бастау мүмкін болмады'); setBusyId(''); } };
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 p-4">
       <h1 className="text-2xl font-bold">КТП: күнтізбелік-тақырыптық жоспар</h1>
       <p className="text-text-secondary">Кесте — «қашан және кімге». Дәрістер (мазмұн) «Модульдер мен дәрістер» бөлімінде тұрады; бұл жерде оларды сыныптың нақты күніне қоясыз.</p>
       {classes.error && <ErrorBox message={classes.error} onRetry={classes.reload} />}
+      {DEMO && <p className="text-sm text-text-muted">Демо режимде сабақ басталмайды.</p>}
       {sched.data?.local && <p role="note" className="rounded-lg bg-surface-2 p-3 text-sm text-text-secondary">Кесте тек осы браузерде сақталады: дерекқорда кестелер әлі жоқ (009_schedule.sql іске қосылмаған).</p>}
       <p role="status" aria-live="polite" className={msg || note ? `rounded-lg p-3 text-sm ${msg ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success'}` : 'sr-only'}>{msg || note}</p>
 
@@ -121,8 +125,11 @@ export function ScheduleView({ me }: { me: Me }) {
                         <span className="w-24 text-sm font-medium">{DAY[weekdayOf(s.held_on) - 1]} {dm(s.held_on)}</span>
                         <span className="w-20 text-sm">{s.period}-сабақ</span>
                         {curr.data
-                          ? <LessonSelect curr={curr.data} value={s.lesson_id || ''} label={`${DAY[weekdayOf(s.held_on) - 1]} ${dm(s.held_on)}, ${s.period}-сабақ: дәріс`} onChange={id => act(() => st.setSlotLesson(me, s.id, id || null))} />
+                          ? <LessonSelect curr={curr.data} value={s.lesson_id || ''} disabled={!!s.session_id} label={`${DAY[weekdayOf(s.held_on) - 1]} ${dm(s.held_on)}, ${s.period}-сабақ: дәріс`} onChange={id => act(() => st.setSlotLesson(me, s.id, id || null))} />
                           : <span className="text-sm text-text-muted">Дәрістер жүктелуде…</span>}
+                        {s.session_id
+                          ? <><span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success">Басталды</span><a href={'#remote/' + s.session_id} className="text-sm text-accent underline">Сабақты ашу</a></>
+                          : <Button variant="success" disabled={!s.lesson_id || !!DEMO} loading={busyId === s.id} onClick={() => start(s)} aria-label={`${dm(s.held_on)}, ${s.period}-сабақ: бастау`}><Play size={16} aria-hidden="true" />Бастау</Button>}
                         <button type="button" aria-label={`${dm(s.held_on)}, ${s.period}-сабақ: ұяшықты өшіру`} onClick={() => act(() => st.delSlot(me, s.id))} className="ml-auto inline-flex h-11 w-11 items-center justify-center rounded-md text-text-muted hover:bg-surface-2"><Trash2 size={16} aria-hidden="true" /></button>
                       </li>
                     ))}

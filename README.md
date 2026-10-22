@@ -42,4 +42,6 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 - Weekly timetable (class, weekday, lesson number) → dated slots of a class per quarter (`src/schedule/plan.ts`: `generate`) → a lecture from the content library is put into each slot. Existing slots are never overwritten; a holiday slot is deleted by hand.
 - Data: `supabase/009_schedule.sql` (`cf_timetable`, `cf_slots`; RLS check `replica/unit/schedule_rls.mjs`). Date logic check: `node replica/unit/plan.test.mjs`. Without the tables the schedule stays in the browser and says so.
 - Quarter date ranges in the form are approximate defaults (teacher edits); replace with the school calendar when it is stored.
-- Next: "start" on a slot creates the `cf_sessions` row and snapshots the lecture; then journal columns come from the slots.
+- "Бастау" on a slot calls the existing `cf_start_session` rpc (lecture + the slot's class, 3 groups), stores the live lesson in `cf_slots.session_id` and opens the teacher remote. A started slot shows "Басталды" + a link, and its lecture is locked. Whether the session keeps its own copy of the lecture depends on that rpc (not in this repo).
+- Test against a fake Supabase: `replica/e2e/schedule_cloud.py` (rows, start, old 009 without `session_id`, missing tables).
+- Next: journal columns come from the started slots.
