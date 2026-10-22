@@ -156,12 +156,12 @@ with sync_playwright() as p:
     ok('L1 home: pending works are counted and linked', pg.locator('text=Қосынды · 7B').count()==1 and pg.locator('a[href="#review/a1"]').count()==1 and pg.locator('text=Тексеруді күтетін жұмыстар >> xpath=..').inner_text().strip().endswith('4'))
     ok('L1 home: open paste flags counted', pg.locator('text=Көшіру белгісі бар жұмыс:').count()==1 and pg.locator('b:text-is("2")').count()>=1)
     axe(pg,'teacher home (live-like)')
-    pg.goto(B+'#lessons/mine'); pg.wait_for_selector('h3:has-text("7A")')
-    heads=[t.strip() for t in pg.locator('main h3').all_inner_texts()]
-    ok('L2 lessons grouped by class, classes in natural order, no-class last', heads==['7A · 2','7B · 1','Сыныпсыз · 1'], str(heads))
-    ok('L2 class preselected from the lesson', pg.eval_on_selector('main section[aria-label="7B"] select','e=>e.selectedOptions[0].text')=='7B')
+    pg.goto(B+'#lessons/mine'); pg.wait_for_selector('section[aria-label="Информатика"]')
+    heads=[t.strip() for t in pg.locator('main section > h3').all_inner_texts()]
+    ok('L2 lessons in one gallery per subject, no-subject last', heads==['Информатика · 2','Пәнсіз · 2'], str(heads))
+    ok('L2 filters: this quarter is the default, every class', pg.locator('input[name=quarter]:checked').get_attribute('value')=='1' and pg.locator('input[name=class]:checked').get_attribute('value')=='' and 'қазір' in pg.locator('label:has(input[name=quarter]:checked)').inner_text())
     axe(pg,'lessons/mine')
-    pg.goto(B+'#lessons/journal'); pg.wait_for_selector('text=Өткен сабақтар журналы')
+    pg.goto(B+'#lessons/journal'); pg.wait_for_selector('text=Өткен сабақтар журналы'); pg.wait_for_selector('main >> text=Айнымалылар')
     rows=[t.replace('\n',' ') for t in pg.locator('main div.rounded-lg').all_inner_texts()]
     ok('L3 past lessons: newest first', len(rows)==2 and 'Айнымалылар' in rows[0] and 'Циклдер' in rows[1], str(rows))
     pg.goto(B+'#classes/list'); pg.wait_for_selector('summary')

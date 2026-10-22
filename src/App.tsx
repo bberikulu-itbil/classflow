@@ -22,6 +22,7 @@ import type { Role } from './nav/config';
 import { TeacherHomeView } from './views/TeacherHomeView';
 import { StudentHomeView } from './views/StudentHomeView';
 import { SharedGame } from './views/Jeopardy';
+import { LessonDetail } from './lessons/LessonDetail';
 
 let demoApi: ReturnType<typeof makeFakeApi> | undefined;
 
@@ -115,6 +116,7 @@ export default function App() {
   if (routeKey === 'hw' || (!isStaff && routeKey === 'tasks')) return shell(routeKey === 'hw' && routeId ? <HomeworkSolve key={routeId} id={routeId} /> : <HomeworkList />);
   if (routeKey === 'assign' && isStaff) return framed('3xl', <AssignView />);
   if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
+  if (routeKey === 'lesson' && isStaff) return framed('5xl', <LessonDetail key={routeId} id={routeId} me={me} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
   if (routeKey === 'jeopardy') return shell(<SharedGame key={routeId} payload={routeId} me={me} canSave={isStaff} />);
   if (routeKey === 'profile') {

@@ -5,7 +5,8 @@ import type { Role, Section } from './config';
 import { Jeopardy } from '../views/Jeopardy';
 import { ClassesView } from '../views/ClassesView';
 import { ReviewQueue } from '../views/ReviewQueue';
-import { LessonsMine, PastSessions } from '../views/lessons';
+import { PastSessions } from '../views/lessons';
+import { LessonsGallery } from '../lessons/LessonsGallery';
 import { StudentFeedback, StudentTerms } from '../views/student';
 import { ProfileCard } from '../components/ProfileView';
 
@@ -44,7 +45,7 @@ export function SectionFrame({ role, routeKey, routeId, width = '5xl', children 
 
 interface Ctx { me: any; onLogout: () => void }
 const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
-  'teacher:lessons:mine': () => <LessonsMine />,
+  'teacher:lessons:mine': c => <LessonsGallery me={c.me} />,
   'teacher:lessons:journal': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
   'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,

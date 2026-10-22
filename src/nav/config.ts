@@ -4,7 +4,7 @@ import { Award, BookOpen, ClipboardCheck, Gamepad2, GraduationCap, House, Inbox,
 export type Role = 'teacher' | 'student';
 
 /** `to` = hash route of a screen that exists. No `to` = planned ("Жақында"), `items` says what it will hold. */
-export interface Sub { key: string; label: string; icon?: LucideIcon; to?: string; items?: string[] }
+export interface Sub { key: string; label: string; icon?: LucideIcon; to?: string; items?: string[]; also?: string[] /* other route keys that belong to this tab */ }
 export interface Section {
   key: string; label: string; icon: LucideIcon;
   routes: string[];          // hash route keys that light this section up in the menu
@@ -18,9 +18,9 @@ export const ROLE_NAMES: Record<string, string> = {
 
 export const TEACHER: Section[] = [
   { key: 'home', label: 'Басты бет', icon: House, routes: [''], subs: [] },
-  { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'edit', 'plans', 'plan'], subs: [
-    { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine' },
-    { key: 'gallery', label: 'Галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },
+  { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'edit', 'plans', 'plan'], subs: [
+    { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine', also: ['lesson'] },
+    { key: 'gallery', label: 'Ортақ галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },
     { key: 'editor', label: 'Сабақ редакторы', to: 'edit/new' },
     { key: 'plans', label: 'Жоспарлар', to: 'plans' },
     { key: 'journal', label: 'Өткен сабақтар', to: 'lessons/journal' },
@@ -109,6 +109,6 @@ export function activeSection(role: Role, routeKey: string) {
 /** The sub-tab a hash route belongs to ("assign" -> tasks/assigned, "lessons/journal" -> lessons/journal). */
 export function activeSub(s: Section, routeKey: string, routeId: string) {
   const full = routeId ? `${routeKey}/${routeId}` : routeKey;
-  return s.subs.find(x => x.to === full) ?? s.subs.find(x => x.to === routeKey)
+  return s.subs.find(x => x.to === full) ?? s.subs.find(x => x.to === routeKey) ?? s.subs.find(x => x.also?.includes(routeKey))
     ?? (routeKey === s.key ? s.subs.find(x => x.key === routeId) : undefined);
 }
