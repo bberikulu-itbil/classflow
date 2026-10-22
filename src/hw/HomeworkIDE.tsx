@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { norm, runPy, sha256 } from '../utils/pyodide';
+import { norm, runPy, sha256, warmPy } from '../utils/pyodide';
 import { Button } from '../ui';
 import type { ActivityView } from './types';
 
@@ -25,6 +25,7 @@ export function HomeworkIDE({ activity, initial, readOnly, canSubmit, onEdit, on
   const hs = activity.content.hints || [];
 
   useEffect(() => { setCode(initial); }, [initial]);
+  useEffect(() => { warmPy(); }, []);
 
   const edit = (next: string) => {
     const inserted = next.length - code.length, p = Math.min(pendingPaste.current, Math.max(0, inserted));
@@ -43,8 +44,10 @@ export function HomeworkIDE({ activity, initial, readOnly, canSubmit, onEdit, on
     if (!checks.length) { setRows(null); setSummary('Бұл тапсырмада автотест жоқ, мұғалім өзі бағалайды.'); return null; }
     setBusy(true); setTab('out'); setSummary('⏳ Тексерілуде...'); setRows(null);
     const out: Row[] = []; let passed = 0;
+    let stuck = false;
     for (const c of checks) {
-      const r = await runPy(code, c.input);
+      const r = stuck ? { ok: false, out: '⏱ Алдыңғы тест тоқтап қалды', timedOut: true } : await runPy(code, c.input);
+      if (r.timedOut) stuck = true;
       const ok = r.ok && (await sha256(c.s + norm(r.out))) === c.h;
       if (ok) passed++;
       out.push({ ok, label: c.label || (c.hidden ? 'Жасырын тест' : 'Тест'), hidden: c.hidden, input: c.input, want: c.out, got: norm(r.out).slice(0, 300) });

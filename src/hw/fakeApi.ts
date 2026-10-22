@@ -112,7 +112,9 @@ export function makeFakeApi(getMe: () => Me): HwApi {
     },
     async grade(workId, points, status, feedback) {
       const w = works.find(x => x.id === workId) || deny('Табылмады');
-      Object.assign(w, { status, points: Math.max(0, points), feedback: feedback.slice(0, 4000) });
+      const mx = acts.find(x => x.id === asgs.find(a => a.id === w.asgId)!.actId)!.points;
+      if (points < 0 || points > mx) deny(`Ұпай 0 мен ${mx} аралығында болуы керек`);
+      Object.assign(w, { status, points, feedback: feedback.slice(0, 4000) });
     },
   };
 }
