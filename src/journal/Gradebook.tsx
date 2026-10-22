@@ -4,9 +4,11 @@ import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad 
 import { Chips } from '../ui/Chips';
 import { ClassChips, QuarterChips, useFilters } from '../lessons/Filters';
 import { currentQuarter, schoolYear } from '../lessons/model';
-import { KINDS, gradeOfPoints, kindOf, maxOk, percents, quarter, thresholds } from './grades';
+import { KINDS, annual, gradeOfPoints, kindOf, maxOk, percents, quarter, thresholds } from './grades';
 import type { Kind } from './grades';
-import { addCol, delCol, loadBook, loadClasses, mkey, setMark } from './store';
+import { addCol, addCols, delCol, loadBook, loadClasses, mkey, setMark } from './store';
+import { loadSched } from '../schedule/store';
+import { loadCurr } from '../curriculum/store';
 import type { Book, Col, Me } from './store';
 
 const DEFAULT_MAX: Record<Kind, number> = { kb: 10, bzb: 15, tzb: 25 };
@@ -68,8 +70,12 @@ export function Gradebook({ me }: { me: Me }) {
   const [f, set] = useFilters();
   const q = f.q || currentQuarter(), year = schoolYear(new Date());
   const cls = f.cls || classes.data?.[0]?.id || '';
-  const book = useLoad<Book | null>(() => (cls ? loadBook(me, cls, year, q) : Promise.resolve(null)), [cls, q, me.id]);
-  const [cols, setCols] = useState<Col[]>([]);
+  const book = useLoad<Book | null>(() => (cls ? loadBook(me, cls, year) : Promise.resolve(null)), [cls, me.id]);
+  const sched = useLoad(() => loadSched(me, year, q), [q, me.id]);
+  const curr = useLoad(() => loadCurr(me), [me.id]);
+  const [allCols, setCols] = useState<Col[]>([]);
+  const cols = allCols.filter(c => c.quarter === q);
+  const [lmax, setLmax] = useState('10');
   const [marks, setMarks] = useState<Record<string, number>>({});
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -96,10 +102,25 @@ export function Gradebook({ me }: { me: Me }) {
     try { await delCol(me, col.id); setCols(x => x.filter(c => c.id !== col.id)); setMarks(m => Object.fromEntries(Object.entries(m).filter(([k]) => !k.startsWith(col.id + '|')))); } catch (e) { fail(e); }
   };
 
-  const result = (stu: string) => {
-    const p = percents(sorted.map(c => ({ kind: c.kind, max: c.max_points, points: marks[mkey(c.id, stu)] ?? null })));
+  const resultIn = (list: Col[], stu: string) => {
+    const p = percents(list.map(c => ({ kind: c.kind, max: c.max_points, points: marks[mkey(c.id, stu)] ?? null })));
     return { p, r: quarter(p) };
   };
+  const result = (stu: string) => resultIn(sorted, stu);
+  // Lessons already held (started, or dated today or earlier) that have a lecture and are not a column yet.
+  const today = new Date(), todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const linked = new Set(allCols.map(c => c.slot_id).filter(Boolean));
+  const lessonTitle = (id: string | null) => curr.data?.lessons.find(l => l.id === id)?.title;
+  const cand = (sched.data?.slots || []).filter(x => x.class_id === cls && x.lesson_id && lessonTitle(x.lesson_id) && (x.session_id || x.held_on <= todayIso) && !linked.has(x.id));
+  const lmaxErr = maxOk('kb', Number(lmax)) ? '' : `ҚБ үшін ең жоғары ұпай: ${MAX_HINT.kb}`;
+  const addLessons = async () => {
+    setBusy(true); setMsg('');
+    try {
+      const made = await addCols(me, cand.map(x => ({ class_id: cls, school_year: year, quarter: q, kind: 'kb' as Kind, title: lessonTitle(x.lesson_id)!.slice(0, 80), held_on: x.held_on, max_points: Number(lmax), slot_id: x.id })));
+      setCols(x => [...x, ...made]);
+    } catch (e) { fail(e); } finally { setBusy(false); }
+  };
+  const byQuarter = (stu: string) => [1, 2, 3, 4].map(n => resultIn(allCols.filter(c => c.quarter === n), stu).r);
   const groups = KINDS.map(k => ({ ...k, cols: sorted.filter(c => c.kind === k.k) })).filter(g => g.cols.length);
 
   return (
@@ -178,6 +199,44 @@ export function Gradebook({ me }: { me: Me }) {
             </div>
           )}
           <AddColumn busy={busy} count={count} onAdd={add} />
+          {cand.length > 0 && (
+            <Card className="space-y-3">
+              <h2 className="font-semibold">Өткен сабақтар</h2>
+              <p className="text-sm text-text-secondary">Дәрісі бар, өтіліп қойған, бірақ әлі бағанға айналмаған сабақтар: {cand.length}. Әрқайсысынан бір ҚБ бағаны жасалады (қажет емесін кейін өшіре аласыз).</p>
+              <ul className="text-sm">{cand.map(x => <li key={x.id}>{dm(x.held_on)} · {x.period}-сабақ · {lessonTitle(x.lesson_id)}</li>)}</ul>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="w-44"><Field label={`Ең жоғары ұпай (${MAX_HINT.kb})`} error={lmaxErr}>{id => <input id={id} inputMode="numeric" className={inputCls} value={lmax} aria-invalid={!!lmaxErr || undefined} onChange={e => setLmax(e.target.value)} />}</Field></div>
+                <Button loading={busy} disabled={!!lmaxErr} onClick={addLessons}>Сабақтардан ҚБ бағандарын қосу</Button>
+              </div>
+            </Card>
+          )}
+          {allCols.length > 0 && (
+            <section aria-label="Жылдық баға" className="space-y-2">
+              <h2 className="font-semibold">Жылдық баға</h2>
+              <div tabIndex={0} role="region" aria-label="Жылдық баға кестесі" className="overflow-x-auto rounded-lg border border-border focus-visible:ring-2 focus-visible:ring-accent">
+                <table className="w-full text-sm">
+                  <caption className="sr-only">Тоқсандық бағалар және жылдық баға</caption>
+                  <thead className="bg-surface-2 text-text-secondary"><tr>
+                    <th scope="col" className="px-3 py-2 text-left">Оқушы</th>
+                    {[1, 2, 3, 4].map(n => <th key={n} scope="col" className="border-l border-border px-2 py-2 text-center">{n}-тоқсан</th>)}
+                    <th scope="col" className="border-l border-border px-2 py-2 text-center">Жыл</th>
+                  </tr></thead>
+                  <tbody>{students.map(s => {
+                    const qs = byQuarter(s.id), got = qs.filter(Boolean) as NonNullable<typeof qs[number]>[];
+                    const y = annual(got.map(x => x.grade));
+                    return (
+                      <tr key={s.id} className="border-t border-border">
+                        <th scope="row" className="px-3 py-1 text-left font-medium">{s.full_name}</th>
+                        {qs.map((r, i) => <td key={i} className="border-l border-border px-2 py-1 text-center">{r ? <span className="inline-flex items-center gap-1"><Grade g={r.grade} />{r.provisional && <span className="text-xs text-text-muted">уақытша</span>}</span> : '—'}</td>)}
+                        <td className="border-l border-border px-2 py-1 text-center">{y ? <span className="inline-flex items-center gap-1"><Grade g={y} />{(got.length < 4 || got.some(x => x.provisional)) && <span className="text-xs text-text-muted">уақытша</span>}</span> : '—'}</td>
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+              </div>
+              <p className="text-sm text-text-secondary">Жылдық баға — тоқсандық бағалардың орташасы, жақын бүтінге дөңгелектеледі. Төрт тоқсан толмағанша немесе тоқсандық баға уақытша болса, жыл бағасы да «уақытша».</p>
+            </section>
+          )}
           <p className="text-sm text-text-secondary">Тоқсандық баға = ҚБ 25% + БЖБ 25% + ТЖБ 50%. Пайыз: 0–39% — «2», 40–64% — «3», 65–84% — «4», 85–100% — «5». Бос ұяшық — «бағаланбады», ал 0 — нақты нөл. Бір бөлік (мысалы ТЖБ) әлі жоқ болса, баға «уақытша» деп белгіленеді.</p>
         </>
       )}

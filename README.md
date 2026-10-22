@@ -30,7 +30,9 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 - `src/journal/grades.ts`: the Order No. 125 rules as pure functions (percent → 2–5 at 40/65/85 %, quarter = ҚБ 25 % + БЖБ 25 % + ТЖБ 50 %, БЖБ 7–20 points, ТЖБ 25 or 30). Checked against the printed table: `node replica/unit/grades.test.mjs`.
 - Data: `supabase/007_gradebook.sql` (`cf_assessments` columns per class and quarter, `cf_marks` points). Grades are computed, never stored. RLS check: `replica/unit/gradebook_rls.mjs` (PGlite). Without the tables the screen keeps data in the browser and says so.
 - An empty cell = not assessed; 0 = a real zero. A missing part (no ТЖБ yet) makes the quarter grade «уақытша».
-- Not yet: the year schedule (КТП slots), lesson columns from sessions, annual grade (`annual()` is ready), students seeing their own marks.
+- Held lessons (started, or dated today or earlier, with a lecture) are offered as ҚБ columns in one click, one column per lesson (`supabase/010_journal_slots.sql` links `cf_assessments.slot_id` to `cf_slots`; run after 007 and 009; check `replica/unit/journal_slots_rls.mjs`). The mark itself is still typed by the teacher: the live-lesson points of `cf_scores` are not converted (their scale is not 1–10).
+- «Жылдық баға» table: the four quarter grades and the year (mean of the quarter grades, rounded half up); «уақытша» until four quarters are done or while a quarter is provisional.
+- Not yet: students seeing their own marks, reports.
 
 ## Content library (Сабақтар › Курстар, Модульдер мен дәрістер)
 - Course → Module → Lecture, independent of class, date and year (the ОМЖ part of the three-part model: content / schedule (КТП) / lesson instance).

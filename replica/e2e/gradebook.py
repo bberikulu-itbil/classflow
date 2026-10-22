@@ -21,7 +21,7 @@ def axe(pg,name):
     ok('axe '+name, not res, str(res))
 URL=B+'?demo=teacher#journal/grid'
 def pick(pg,group,label): pg.locator(f'fieldset:has(input[name={group}]) label:has-text("{label}")').first.click()
-def row(pg,name): return [c.strip() for c in pg.locator(f'tr:has(th:text-is("{name}")) td').all_inner_texts()]
+def row(pg,name): return [c.strip() for c in pg.locator('table').first.locator(f'tr:has(th:text-is("{name}")) td').all_inner_texts()]
 def cell(pg,label): return pg.locator(f'input[aria-label="{label}"]')
 def setv(pg,label,v): c=cell(pg,label); c.fill(v); c.press('Enter')
 with sync_playwright() as p:
@@ -36,9 +36,9 @@ with sync_playwright() as p:
     # 7A has no students in the demo -> empty state; then 7B
     ok('B2 class without students says so', pg.locator('text=оқушы жоқ').count()==1 and pg.locator('table').count()==0)
     pick(pg,'class','7B'); pg.wait_for_selector('table')
-    ok('B3 three students in name order', [x.strip() for x in pg.locator('tbody th').all_inner_texts()]==['Айдар Нұрланов','Дана Сәрсенова','Ерлан Қасымов'])
+    ok('B3 three students in name order', [x.strip() for x in pg.locator('table').first.locator('tbody th').all_inner_texts()]==['Айдар Нұрланов','Дана Сәрсенова','Ерлан Қасымов'])
     ok('B3 columns grouped: ҚБ ×2, БЖБ ×1', pg.locator('thead th:text-is("ҚБ")').count()>=1 and pg.locator('thead th[scope=col] span.font-semibold:has-text("ҚБ")').count()==2 and pg.locator('thead th[scope=col] span.font-semibold:has-text("БЖБ 1")').count()==1)
-    ok('B3 БЖБ header shows the points-to-grade thresholds (15 -> 3≥6, 4≥10, 5≥13)', pg.locator('thead').inner_text().count('3≥6 · 4≥10 · 5≥13')==1)
+    ok('B3 БЖБ header shows the points-to-grade thresholds (15 -> 3≥6, 4≥10, 5≥13)', pg.locator('table').first.locator('thead').inner_text().count('3≥6 · 4≥10 · 5≥13')==1)
     # Aidar: kb 9+8=17/20=85%, bzb 13/15=86.7% -> provisional (no ТЖБ): (85*25+86.67*25)/50=85.83 -> 5
     r=row(pg,'Айдар Нұрланов'); ok('B4 Aidar: ҚБ 85%, БЖБ 87%, no ТЖБ, total 86%, grade 5 provisional', r[-5:-1]==['85%','87%','—','86%'] and r[-1].replace('\n',' ').startswith('5') and 'уақытша' in r[-1], str(r))
     # Erlan: kb only 3/10 (the empty ҚБ 2 is not a zero) =30%, bzb 5/15=33.3% -> 31.7% -> 2
@@ -69,7 +69,7 @@ with sync_playwright() as p:
     ok('B7 marks and the new column survive a reload', cell(pg,'Айдар Нұрланов: ТЖБ 1').input_value()=='22' and row(pg,'Айдар Нұрланов')[-1].replace('\n',' ')=='5')
     # B8 quarters are separate
     q_other='1-тоқсан' if pg.locator('input[name=quarter]:checked').get_attribute('value')!='1' else '2-тоқсан'
-    pick(pg,'quarter',q_other); pg.wait_for_selector('text=Бұл тоқсанда баған жоқ'); ok('B8 another quarter starts empty, own marks stay apart', pg.locator('text=Бұл тоқсанда баған жоқ').count()==1 and pg.locator('table').count()==0)
+    pick(pg,'quarter',q_other); pg.wait_for_selector('text=Бұл тоқсанда баған жоқ'); ok('B8 another quarter starts empty, own marks stay apart', pg.locator('text=Бұл тоқсанда баған жоқ').count()==1 and pg.locator('caption:has-text("Сынып журналы")').count()==0)
     pg.fill('label:has-text("Атауы") ~ input','БЖБ жаңа'); pick(pg,'kind','БЖБ'); pg.click('button:text-is("Қосу")')
     ok('B8 column added to the other quarter only', pg.locator('thead th[scope=col]').count()>=1 and pg.locator('text=БЖБ жаңа').count()>=1)
     # B9 delete a column with confirmation
@@ -79,7 +79,7 @@ with sync_playwright() as p:
     # B10 phone
     pg2=page((390,800)); pg2.goto(URL); pg2.wait_for_selector('h1:text-is("Сынып журналы")'); pick(pg2,'class','7B'); pg2.wait_for_selector('table')
     ok('B10 390px: page does not scroll sideways (table scrolls inside its box)', pg2.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1"))
-    ok('B10 student column stays sticky', pg2.locator('tbody th').first.evaluate("e=>getComputedStyle(e).position")=='sticky')
+    ok('B10 student column stays sticky', pg2.locator('table').first.locator('tbody th').first.evaluate("e=>getComputedStyle(e).position")=='sticky')
     axe(pg2,'gradebook phone')
     # B11 student cannot see it
     ps=page(); ps.goto(B+'?demo=student#journal/grid'); ps.wait_for_timeout(500)

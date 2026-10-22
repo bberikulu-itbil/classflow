@@ -5,7 +5,7 @@ import { currentQuarter, schoolYear } from '../lessons/model';
 import type { Cls } from '../lessons/model';
 import type { Kind } from './grades';
 
-export interface Col { id: string; class_id: string; school_year: number; quarter: number; kind: Kind; title: string; held_on: string; max_points: number }
+export interface Col { id: string; class_id: string; school_year: number; quarter: number; kind: Kind; title: string; held_on: string; max_points: number; slot_id?: string | null }
 export interface Stu { id: string; full_name: string }
 /** Marks by "columnId|studentId". A missing key = not assessed. */
 export type Marks = Record<string, number>;
@@ -57,14 +57,17 @@ async function loadStudents(classId: string): Promise<Stu[]> {
   return (data || []) as Stu[];
 }
 
-export async function loadBook(me: Me, classId: string, year: number, quarter: number): Promise<Book> {
+let noSlotCol = false; // 010_journal_slots.sql not run yet: columns cannot be linked to lessons
+/** The whole school year of one class (all four quarters): the screen shows one quarter and the annual table needs all of them. */
+export async function loadBook(me: Me, classId: string, year: number): Promise<Book> {
   const students = await loadStudents(classId);
-  const inScope = (c: Col) => c.class_id === classId && c.school_year === year && c.quarter === quarter;
+  const inScope = (c: Col) => c.class_id === classId && c.school_year === year;
   if (!noTable) {
-    const a = await sb.from('cf_assessments').select('id,class_id,school_year,quarter,kind,title,held_on,max_points')
-      .eq('class_id', classId).eq('school_year', year).eq('quarter', quarter);
+    const read = () => sb.from('cf_assessments').select('id,class_id,school_year,quarter,kind,title,held_on,max_points' + (noSlotCol ? '' : ',slot_id')).eq('class_id', classId).eq('school_year', year);
+    let a = await read();
+    if (a.error?.code === '42703' && !noSlotCol) { noSlotCol = true; a = await read(); }
     if (!a.error) {
-      const cols = (a.data || []) as Col[];
+      const cols = (a.data || []) as unknown as Col[];
       const marks: Marks = {};
       if (cols.length) {
         const m = await sb.from('cf_marks').select('assessment_id,student_id,points').in('assessment_id', cols.map(c => c.id));
@@ -90,6 +93,22 @@ export async function addCol(me: Me, c: Omit<Col, 'id'>): Promise<Col> {
   const col = { ...c, id: crypto.randomUUID() }, l = readLocal(me);
   writeLocal(me, { ...l, cols: [...l.cols, col] });
   return col;
+}
+
+/** Several columns at once (one per held lesson). Needs 010_journal_slots.sql for the lesson link. */
+export async function addCols(me: Me, cs: Omit<Col, 'id'>[]): Promise<Col[]> {
+  const made = cs.map(c => ({ ...c, id: crypto.randomUUID() }));
+  if (!noTable) {
+    const { error } = await sb.from('cf_assessments').insert(made.map(c => ({ ...c, school_id: me.school_id, owner_id: me.id })));
+    if (!error) return made;
+    if (error.code === '42703') { noSlotCol = true; throw new Error('Сабақпен байланыс үшін 010_journal_slots.sql іске қосылуы керек'); }
+    if (error.code === '23505') throw new Error('Кейбір сабақтар бұрын бағанға айналған. Бетті жаңартып көріңіз');
+    if (!missing(error)) throw new Error(error.message);
+    noTable = true;
+  }
+  const l = readLocal(me);
+  writeLocal(me, { ...l, cols: [...l.cols, ...made] });
+  return made;
 }
 
 export async function delCol(me: Me, id: string): Promise<void> {
