@@ -7,6 +7,7 @@ import { ClassesView } from '../views/ClassesView';
 import { ReviewQueue } from '../views/ReviewQueue';
 import { PastSessions } from '../views/lessons';
 import { LessonsGallery } from '../lessons/LessonsGallery';
+import { Gradebook } from '../journal/Gradebook';
 import { StudentFeedback, StudentTerms } from '../views/student';
 import { ProfileCard } from '../components/ProfileView';
 
@@ -49,6 +50,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:journal:lessons': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
   'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,
+  'teacher:journal:grid': c => <Gradebook me={c.me} />,
   'teacher:journal:classes': () => <ClassesView />,
   'teacher:settings:profile': c => <ProfileCard me={c.me} onLogout={c.onLogout} />,
   'student:grades:feedback': () => <StudentFeedback />,

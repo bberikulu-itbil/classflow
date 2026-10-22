@@ -134,7 +134,7 @@ with sync_playwright() as p:
     pg.goto(B+'?demo=teacher#edustudio'); pg.wait_for_selector('h1:has-text("EduStudio")')
     ok('T5 EduStudio: material and test generation cards', pg.locator('h2:has-text("Материал жасау")').count()==1 and pg.locator('h2:has-text("Тест генерациясы")').count()==1); axe(pg,'edustudio (soon)')
     pg.goto(B+'?demo=teacher#journal/lessons'); pg.wait_for_selector('nav[aria-label="Журнал бөлімдері"]')
-    ok('T5 Журнал: lesson log is real and current, class journal is planned', pg.locator('nav[aria-label="Журнал бөлімдері"] a[aria-current=page]').inner_text().strip()=='Сабақ журналы' and pg.locator('nav[aria-label="Журнал бөлімдері"] a:has-text("Сынып журналы")').inner_text().count('Жақында')==1)
+    ok('T5 Журнал: lesson log is real and current, class journal is real now', pg.locator('nav[aria-label="Журнал бөлімдері"] a[aria-current=page]').inner_text().strip()=='Сабақ журналы' and pg.locator('nav[aria-label="Журнал бөлімдері"] a:has-text("Сынып журналы")').get_attribute('href')=='#journal/grid')
     pg.goto(B+'?demo=teacher#assign'); pg.wait_for_selector('text=Үй тапсырмасын беру')
     ok('T5 Tasks tabs in the 0.1.0 order', [t.strip().replace('\n',' ').replace(' Жақында','') for t in pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a').all_inner_texts()]==['Күнделікті тапсырмалар','Жобалар','Jeopardy','Тапсырмалар банкі','Конструктор','Тексеру кезегі','Бағалау жүйесі'], str(pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a').all_inner_texts()))
     ok('T5 version is shown in the menu', pg.locator('aside >> text=ClassFlow v0.1.0').count()==1)

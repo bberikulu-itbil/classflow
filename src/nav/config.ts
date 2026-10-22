@@ -46,7 +46,7 @@ export const TEACHER: Section[] = [
   ] },
   { key: 'journal', label: 'Журнал', icon: NotebookText, routes: ['journal'], subs: [
     { key: 'lessons', label: 'Сабақ журналы', to: 'journal/lessons' },
-    { key: 'grid', label: 'Сынып журналы', items: ['Сынып, пән, тоқсан және бағалау кезеңі сүзгілері', 'Оқушылар тізімі мен жалпы үлгерім (пайызбен)', 'Сабақ күндері мен БЖБ/ТЖБ бағандары'] },
+    { key: 'grid', label: 'Сынып журналы', to: 'journal/grid' },
     { key: 'classes', label: 'Сыныптар', to: 'journal/classes' },
     { key: 'reports', label: 'Есептер және топтар', items: ['Сынып және оқушы есептері', 'Сақталған жұптар мен топтар', 'Сынып жетекшісіне арналған көрініс'] },
   ] },

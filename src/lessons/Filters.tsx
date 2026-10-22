@@ -13,11 +13,11 @@ export function useFilters() {
   return [f, (p: Partial<Filters>) => set(o => { const n = { ...o, ...p }; try { sessionStorage.setItem(KEY, JSON.stringify(n)); } catch { /* not remembered */ } return n; })] as const;
 }
 
-export function QuarterChips({ f, set }: { f: Filters; set: (p: Partial<Filters>) => void }) {
+export function QuarterChips({ f, set, all = true }: { f: Filters; set: (p: Partial<Filters>) => void; all?: boolean }) {
   const cur = currentQuarter();
   return <Chips legend="Тоқсан" name="quarter" value={String(f.q)} onChange={v => set({ q: +v })}
-    options={[1, 2, 3, 4].map(q => ({ v: String(q), label: q === cur ? `${q}-тоқсан · қазір` : `${q}-тоқсан` })).concat([{ v: '0', label: 'Барлығы' }])} />;
+    options={[1, 2, 3, 4].map(q => ({ v: String(q), label: q === cur ? `${q}-тоқсан · қазір` : `${q}-тоқсан` })).concat(all ? [{ v: '0', label: 'Барлығы' }] : [])} />;
 }
-export function ClassChips({ f, set, classes }: { f: Filters; set: (p: Partial<Filters>) => void; classes: Cls[] }) {
-  return <Chips legend="Сынып" name="class" value={f.cls} onChange={v => set({ cls: v })} options={[{ v: '', label: 'Барлық сынып' }, ...classes.map(c => ({ v: c.id, label: c.name }))]} />;
+export function ClassChips({ f, set, classes, all = true }: { f: Filters; set: (p: Partial<Filters>) => void; classes: Cls[]; all?: boolean }) {
+  return <Chips legend="Сынып" name="class" value={f.cls} onChange={v => set({ cls: v })} options={[...(all ? [{ v: '', label: 'Барлық сынып' }] : []), ...classes.map(c => ({ v: c.id, label: c.name }))]} />;
 }
