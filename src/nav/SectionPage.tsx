@@ -46,7 +46,7 @@ export function SectionFrame({ role, routeKey, routeId, width = '5xl', children 
 interface Ctx { me: any; onLogout: () => void }
 const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:lessons:mine': c => <LessonsGallery me={c.me} />,
-  'teacher:lessons:journal': c => <PastSessions meId={c.me.id} />,
+  'teacher:journal:lessons': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
   'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,
   'teacher:classes:list': () => <ClassesView />,

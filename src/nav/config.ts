@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, BookOpen, ClipboardCheck, Gamepad2, GraduationCap, House, Inbox, Layers, Library, PencilRuler, Presentation, Send, SlidersHorizontal, Trophy, Users } from 'lucide-react';
+import { Award, BookOpen, ClipboardCheck, FolderKanban, Gamepad2, GraduationCap, House, Inbox, Layers, Library, NotebookText, PencilRuler, Presentation, Scale, Send, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Users } from 'lucide-react';
 
 export type Role = 'teacher' | 'student';
 
@@ -20,34 +20,40 @@ export const TEACHER: Section[] = [
   { key: 'home', label: 'Басты бет', icon: House, routes: [''], subs: [] },
   { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'edit', 'plans', 'plan'], subs: [
     { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine', also: ['lesson'] },
-    { key: 'gallery', label: 'Ортақ галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },
+    { key: 'courses', label: 'Курстар', items: ['Пән немесе сынып бойынша толық бағдарламалар', 'Тағайындау және мерзімдер', 'Прогресс'] },
+    { key: 'modules', label: 'Модульдер мен дәрістер', items: ['Курс ішіндегі модульдерге бөлінген тақырыптар', 'Оқушыларға рет-ретімен ашылады'] },
     { key: 'editor', label: 'Сабақ редакторы', to: 'edit/new' },
     { key: 'plans', label: 'Жоспарлар', to: 'plans' },
-    { key: 'journal', label: 'Өткен сабақтар', to: 'lessons/journal' },
-  ] },
-  { key: 'courses', label: 'Курстар', icon: Layers, routes: ['courses'], subs: [
-    { key: 'structure', label: 'Курс құрылымы', items: ['Бөлім → тақырып → сабақ/тапсырма'] },
-    { key: 'assign', label: 'Тағайындау', items: ['Сыныпқа тағайындау', 'Мерзімдер'] },
-    { key: 'progress', label: 'Прогресс және журнал', items: ['Прогресс', 'Баға журналы', 'CSV жүктеу'] },
+    { key: 'gallery', label: 'Ортақ галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },
   ] },
   { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'assign', 'review'], to: 'assign', subs: [
+    { key: 'assigned', label: 'Күнделікті тапсырмалар', icon: Send, to: 'assign' },
+    { key: 'projects', label: 'Жобалар', icon: FolderKanban, items: ['Ұзақмерзімді жұмыстарды бақылау'] },
+    { key: 'jeopardy', label: 'Jeopardy', icon: Gamepad2, to: 'tasks/jeopardy' },
     { key: 'bank', label: 'Тапсырмалар банкі', icon: Library, items: ['Түрі, сыныбы, оқу мақсаты бойынша іздеу'] },
     { key: 'builder', label: 'Конструктор', icon: PencilRuler, items: ['Жеке, жұптық және топтық тапсырмалар'] },
-    { key: 'jeopardy', label: 'Jeopardy', icon: Gamepad2, to: 'tasks/jeopardy' },
-    { key: 'assigned', label: 'Берілген тапсырмалар', icon: Send, to: 'assign' },
     { key: 'queue', label: 'Тексеру кезегі', icon: Inbox, to: 'tasks/queue' },
-    { key: 'exams', label: 'БЖБ/ТЖБ', icon: GraduationCap, items: ['Емтихан нұсқалары', 'Прокторинг'] },
+    { key: 'grading', label: 'Бағалау жүйесі', icon: Scale, items: ['Баллдық, пайыздық және критериалды бағалау', 'Максималды балл және рубрикалар', 'Автоматты, AI және қолмен тексеру'] },
   ] },
-  { key: 'contests', label: 'Сайыстар', icon: Trophy, routes: ['contests'], subs: [
-    { key: 'quiz', label: 'Live викторина', items: ['Сабақ кезінде сыныппен ойнау'] },
-    { key: 'coding', label: 'Кодтау жарысы', items: ['Уақытқа жарыс', 'Автотест арқылы бағалау'] },
-    { key: 'tournament', label: 'Турнир', items: ['Сынып пен параллель арасында'] },
-    { key: 'season', label: 'Маусым рейтингі', items: ['Жалпы рейтинг'] },
+  { key: 'exams', label: 'Сынақтар мен сайыстар', icon: GraduationCap, routes: ['exams', 'contests'], subs: [
+    { key: 'summative', label: 'БЖБ / ТЖБ', items: ['Бөлім және тоқсан бойынша жиынтық бағалау'] },
+    { key: 'proctoring', label: 'Прокторинг', icon: ShieldCheck, items: ['Емтихан кезіндегі академиялық адалдық'] },
+    { key: 'settings', label: 'Емтихан баптаулары', items: ['Уақытты шектеу', 'Сұрақтар ретін араластыру', 'Нәтижені автоматты жариялау'] },
+    { key: 'variants', label: 'Нұсқалар', items: ['Бір сыныпқа 6-7 нұсқаға дейін'] },
+    { key: 'hackathon', label: 'Хакатон және код дуэлі', icon: Swords, items: ['Информатика мен бағдарламалау жарыстары'] },
+    { key: 'tournament', label: 'Турнирлер', icon: Trophy, items: ['Сыныптар аралық және мектеп ішілік зияткерлік сайыстар'] },
+  ] },
+  { key: 'journal', label: 'Журнал', icon: NotebookText, routes: ['journal'], subs: [
+    { key: 'lessons', label: 'Сабақ журналы', to: 'journal/lessons' },
+    { key: 'grid', label: 'Сынып журналы', items: ['Сынып, пән, тоқсан және бағалау кезеңі сүзгілері', 'Оқушылар тізімі мен жалпы үлгерім (пайызбен)', 'Сабақ күндері мен БЖБ/ТЖБ бағандары'] },
+  ] },
+  { key: 'edustudio', label: 'EduStudio', icon: Sparkles, routes: ['edustudio'], subs: [
+    { key: 'materials', label: 'Материал жасау', items: ['Модуль немесе тақырып бойынша конспект'] },
+    { key: 'tests', label: 'Тест генерациясы', items: ['Сұрақтар, интерактив және сабақтар', 'Бірнеше тест нұсқасын автоматты құрастыру'] },
   ] },
   { key: 'classes', label: 'Сыныптар', icon: Users, routes: ['classes'], subs: [
     { key: 'list', label: 'Сыныптар', to: 'classes/list' },
     { key: 'groups', label: 'Жұптар мен топтар', items: ['Сақталған жұптар мен топтар'] },
-    { key: 'journals', label: 'Журналдар', items: ['Қатысу журналы', 'Баға журналы', 'Focus журналы'] },
     { key: 'reports', label: 'Есептер', items: ['Сынып және оқушы есептері'] },
     { key: 'tutor', label: 'Сынып жетекшісі', items: ['7B сыныбының жетекшісіне арналған көрініс'] },
   ] },

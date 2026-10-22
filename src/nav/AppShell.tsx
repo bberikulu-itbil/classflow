@@ -69,6 +69,7 @@ function Body({ sections, active, collapsed, me, onToggle, onClose, closeRef }: 
           {sections.map(s => <li key={s.key}><NavItem s={s} active={s === active} collapsed={collapsed} /></li>)}
         </ul>
       </nav>
+      {!collapsed && <p className="px-4 pb-1 text-xs text-text-muted">ClassFlow v{__APP_VERSION__}</p>}
       <div className="shrink-0 border-t border-border p-2">
         <a href="#profile" aria-label={collapsed ? `Профиль: ${me.full_name}` : undefined} className={linkCls(collapsed, false)}>
           <span aria-hidden="true" className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-accent-soft text-on-accent-soft text-xs font-bold">{initials(me.full_name)}</span>

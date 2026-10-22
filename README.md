@@ -15,6 +15,7 @@ With real logins the screens call the RPC from `replica/schema.sql`, which must 
 ## Menu (left navigation)
 
 The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section has sub-tabs; a sub-tab with `to` is a real screen, one without is shown as «Жақында» with the list in `items`.
+- **v0.1.0 teacher menu** (9 sections): Сабақтар (Менің сабақтарым, Курстар, Модульдер мен дәрістер, редактор, жоспарлар, ортақ галерея), Тапсырмалар (күнделікті, жобалар, Jeopardy, банк, конструктор, тексеру кезегі, бағалау жүйесі), Сынақтар мен сайыстар (БЖБ/ТЖБ, прокторинг, баптаулар, нұсқалар, хакатон/код дуэлі, турнирлер), Журнал (Сабақ журналы is real; Сынып журналы is planned), EduStudio (материал және тест генерациясы, planned), then Сыныптар, Сөздігім, Баптаулар. The old top-level Курстар and Сайыстар moved inside Сабақтар and Сынақтар мен сайыстар; the old «Өткен сабақтар» is now Журнал › Сабақ журналы (`#journal/lessons`). The version comes from `package.json` (`__APP_VERSION__`, shown under the menu). Student menu is unchanged.
 - Make a planned tab real: add `to: 'route'` in `config.ts`, then register its view under `role:section:sub` in `VIEWS` (`src/nav/SectionPage.tsx`).
 - Desktop: the button at the top collapses the menu to icons (remembered in `localStorage.cf_nav_collapsed`); a hover or keyboard focus on an icon shows the section name. Phone: top bar + drawer (Esc closes, focus stays inside).
 - Keyboard: the first Tab stop is «Негізгі мазмұнға өту» (skips the menu).

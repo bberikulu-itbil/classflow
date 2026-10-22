@@ -68,7 +68,7 @@ def axe(pg,name):
     res=pg.evaluate("axe.run(document,{runOnly:['wcag2a','wcag2aa']}).then(r=>r.violations.map(v=>v.id+':'+v.nodes.length+':'+(v.nodes[0].html||'').slice(0,90)))")
     ok('axe '+name, not res, str(res))
 
-TEACHER_LINKS=['Басты бет','Сабақтар','Курстар','Тапсырмалар','Сайыстар','Сыныптар','Сөздігім','Баптаулар']
+TEACHER_LINKS=['Басты бет','Сабақтар','Тапсырмалар','Сынақтар мен сайыстар','Журнал','EduStudio','Сыныптар','Сөздігім','Баптаулар']
 STUDENT_LINKS=['Басты бет','Тапсырмалар','Курстарым','Сайыстар','Бағаларым','Сөздігім']
 nl=lambda pg,name,scope='aside nav': pg.locator(scope).get_by_role('link',name=name,exact=True)
 links=lambda pg: [t.strip() for t in pg.locator('aside nav a').all_inner_texts()]
@@ -85,7 +85,7 @@ with sync_playwright() as p:
 
     # ---------- teacher, demo ----------
     pg=page(demo='teacher'); pg.wait_for_selector('aside nav a')
-    ok('T1 teacher menu: 8 sections in the agreed order', links(pg)==TEACHER_LINKS, str(links(pg)))
+    ok('T1 teacher menu: 9 sections in the agreed order', links(pg)==TEACHER_LINKS, str(links(pg)))
     ok('T1 home is marked current', pg.locator('aside nav a[aria-current=page]').inner_text().strip()=='Басты бет')
     w=lambda: round(pg.locator('aside').bounding_box()['width'])
     ok('T2 expanded width 240', w()==240, str(w()))
@@ -116,7 +116,7 @@ with sync_playwright() as p:
     h0=pg.evaluate('location.hash'); pg.keyboard.press('Enter'); pg.wait_for_timeout(100)
     ok('K1 skip button moves focus to the content and leaves the route alone', pg.evaluate('document.activeElement.tagName')=='MAIN' and pg.evaluate('location.hash')==h0)
 
-    exp={'Сабақтар':('#lessons/mine','Сабақтар'),'Курстар':('#courses','Курстар'),'Тапсырмалар':('#assign','Үй тапсырмасын беру'),'Сайыстар':('#contests','Сайыстар'),
+    exp={'Сабақтар':('#lessons/mine','Сабақтар'),'Тапсырмалар':('#assign','Үй тапсырмасын беру'),'Сынақтар мен сайыстар':('#exams','Сынақтар мен сайыстар'),'Журнал':('#journal/lessons','Журнал'),'EduStudio':('#edustudio','EduStudio'),
          'Сыныптар':('#classes/list','Сыныптар'),'Сөздігім':('#vocab','Сөздігім'),'Баптаулар':('#settings/profile','Баптаулар')}
     for name,(h,title) in exp.items():
         nl(pg,name).click(); pg.wait_for_timeout(300)
@@ -124,15 +124,23 @@ with sync_playwright() as p:
         ok(f'T4 {name}: section is marked current', pg.locator('aside nav a[aria-current=page]').inner_text().strip()==name)
     pg.goto(B+'?demo=teacher#lessons/gallery'); pg.wait_for_selector('h1:has-text("Сабақтар")')
     ok('T5 planned tab shows what it will hold', pg.locator('text=Дайын сабақтар').count()==1 and pg.locator('text=Жақында').count()>=2)
-    ok('T5 tab strip has the 5 lesson tabs', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').count()==5)
+    ok('T5 tab strip has the 6 lesson tabs (Курстар and Модульдер are planned)', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').all_inner_texts()[0].strip()=='Менің сабақтарым' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').count()==6)
     axe(pg,'lessons/gallery (tabs, soon)')
     pg.goto(B+'?demo=teacher#lessons/plans'); pg.wait_for_timeout(600)
     ok('T5 tab for an older screen forwards to it (#plans)', pg.evaluate('location.hash')=='#plans' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a[aria-current=page]').inner_text().startswith('Жоспарлар'))
-    pg.goto(B+'?demo=teacher#courses'); pg.wait_for_selector('h1:has-text("Курстар")')
-    ok('T5 fully planned section: 3 cards, no tabs', pg.locator('h2:has-text("Курс құрылымы")').count()==1 and pg.locator('nav[aria-label="Курстар бөлімдері"]').count()==0)
-    axe(pg,'courses (all soon)')
+    pg.goto(B+'?demo=teacher#exams'); pg.wait_for_selector('h1:has-text("Сынақтар мен сайыстар")')
+    ok('T5 fully planned section: 6 cards (exams + contests), no tabs', pg.locator('h2:has-text("БЖБ / ТЖБ")').count()==1 and pg.locator('h2:has-text("Хакатон және код дуэлі")').count()==1 and pg.locator('main h2').count()==6 and pg.locator('nav[aria-label="Сынақтар мен сайыстар бөлімдері"]').count()==0, str(pg.locator('main h2').count()))
+    axe(pg,'exams (all soon)')
+    pg.goto(B+'?demo=teacher#edustudio'); pg.wait_for_selector('h1:has-text("EduStudio")')
+    ok('T5 EduStudio: material and test generation cards', pg.locator('h2:has-text("Материал жасау")').count()==1 and pg.locator('h2:has-text("Тест генерациясы")').count()==1); axe(pg,'edustudio (soon)')
+    pg.goto(B+'?demo=teacher#journal/lessons'); pg.wait_for_selector('nav[aria-label="Журнал бөлімдері"]')
+    ok('T5 Журнал: lesson log is real and current, class journal is planned', pg.locator('nav[aria-label="Журнал бөлімдері"] a[aria-current=page]').inner_text().strip()=='Сабақ журналы' and pg.locator('nav[aria-label="Журнал бөлімдері"] a:has-text("Сынып журналы")').inner_text().count('Жақында')==1)
     pg.goto(B+'?demo=teacher#assign'); pg.wait_for_selector('text=Үй тапсырмасын беру')
-    ok('T5 assign screen sits inside Tasks tabs', pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a[aria-current=page]').inner_text().startswith('Берілген'))
+    ok('T5 Tasks tabs in the 0.1.0 order', [t.strip().replace('\n',' ').replace(' Жақында','') for t in pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a').all_inner_texts()]==['Күнделікті тапсырмалар','Жобалар','Jeopardy','Тапсырмалар банкі','Конструктор','Тексеру кезегі','Бағалау жүйесі'], str(pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a').all_inner_texts()))
+    ok('T5 version is shown in the menu', pg.locator('aside >> text=ClassFlow v0.1.0').count()==1)
+    pg.goto(B+'?demo=teacher#courses'); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе")'); ok('T5 old #courses no longer a teacher section: falls back to home', True)
+    pg.goto(B+'?demo=teacher#assign'); pg.wait_for_selector('text=Үй тапсырмасын беру')
+    ok('T5 assign screen sits inside Tasks tabs', pg.locator('nav[aria-label="Тапсырмалар бөлімдері"] a[aria-current=page]').inner_text().startswith('Күнделікті'))
     axe(pg,'assign inside menu')
 
     # ---------- student, demo ----------
@@ -161,7 +169,7 @@ with sync_playwright() as p:
     ok('L2 lessons in one gallery per subject, no-subject last', heads==['Информатика · 2','Пәнсіз · 2'], str(heads))
     ok('L2 filters: this quarter is the default, every class', pg.locator('input[name=quarter]:checked').get_attribute('value')=='1' and pg.locator('input[name=class]:checked').get_attribute('value')=='' and 'қазір' in pg.locator('label:has(input[name=quarter]:checked)').inner_text())
     axe(pg,'lessons/mine')
-    pg.goto(B+'#lessons/journal'); pg.wait_for_selector('text=Өткен сабақтар журналы'); pg.wait_for_selector('main >> text=Айнымалылар')
+    pg.goto(B+'#journal/lessons'); pg.wait_for_selector('text=Өткен сабақтар журналы'); pg.wait_for_selector('main >> text=Айнымалылар')
     rows=[t.replace('\n',' ') for t in pg.locator('main div.rounded-lg').all_inner_texts()]
     ok('L3 past lessons: newest first', len(rows)==2 and 'Айнымалылар' in rows[0] and 'Циклдер' in rows[1], str(rows))
     pg.goto(B+'#classes/list'); pg.wait_for_selector('summary')
@@ -181,13 +189,13 @@ with sync_playwright() as p:
     pg=page(who='teacher',vp=(390,844)); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе")')
     ok('P1 phone: sidebar hidden, top bar with menu button', not pg.locator('aside').is_visible() and pg.locator('button[aria-label="Мәзірді ашу"]').is_visible())
     ok('P1 phone: skip button is still the first tab stop', pg.evaluate("document.querySelector('button,a[href]').textContent.trim()")=='Негізгі мазмұнға өту')
-    for h in ('#','#lessons/mine','#classes/list','#tasks/queue','#courses','#plans','#lessons/gallery'):
+    for h in ('#','#lessons/mine','#classes/list','#tasks/queue','#exams','#journal/lessons','#edustudio','#plans','#lessons/gallery'):
         pg.goto(B+h); pg.wait_for_timeout(700)
         sw=pg.evaluate('document.documentElement.scrollWidth'); ok(f'P1 390px no sideways scroll at {h}', sw<=390, str(sw))
     pg.goto(B+'#'); pg.wait_for_selector('h1:has-text("Сәлеметсіз бе")')
     pg.click('button[aria-label="Мәзірді ашу"]'); pg.wait_for_selector('[role=dialog]')
     ok('P2 drawer opens, focus moves to Close', pg.evaluate('document.activeElement.getAttribute("aria-label")')=='Мәзірді жабу')
-    ok('P2 drawer lists all 8 sections with labels', [t.strip() for t in pg.locator('[role=dialog] nav a').all_inner_texts()]==TEACHER_LINKS)
+    ok('P2 drawer lists all 9 sections with labels', [t.strip() for t in pg.locator('[role=dialog] nav a').all_inner_texts()]==TEACHER_LINKS)
     axe(pg,'phone drawer open')
     # keyboard trap: Tab from the last control wraps to the first
     pg.focus('[role=dialog] a[href="#profile"]'); pg.keyboard.press('Tab')
