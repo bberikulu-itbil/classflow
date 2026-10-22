@@ -21,8 +21,8 @@ export const TEACHER: Section[] = [
   { key: 'home', label: 'Басты бет', icon: House, routes: [''], subs: [] },
   { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'edit', 'plans', 'plan'], subs: [
     { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine', also: ['lesson'] },
-    { key: 'courses', label: 'Курстар', items: ['Пән немесе сынып бойынша толық бағдарламалар', 'Тағайындау және мерзімдер', 'Прогресс'] },
-    { key: 'modules', label: 'Модульдер мен дәрістер', items: ['Курс ішіндегі модульдерге бөлінген тақырыптар', 'Оқушыларға рет-ретімен ашылады'] },
+    { key: 'courses', label: 'Курстар', to: 'lessons/courses' },
+    { key: 'modules', label: 'Модульдер мен дәрістер', to: 'lessons/modules' },
     { key: 'editor', label: 'Сабақ редакторы', to: 'edit/new' },
     { key: 'plans', label: 'Жоспарлар', to: 'plans' },
     { key: 'gallery', label: 'Ортақ галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },

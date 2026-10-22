@@ -31,3 +31,9 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 - Data: `supabase/007_gradebook.sql` (`cf_assessments` columns per class and quarter, `cf_marks` points). Grades are computed, never stored. RLS check: `replica/unit/gradebook_rls.mjs` (PGlite). Without the tables the screen keeps data in the browser and says so.
 - An empty cell = not assessed; 0 = a real zero. A missing part (no ТЖБ yet) makes the quarter grade «уақытша».
 - Not yet: the year schedule (КТП slots), lesson columns from sessions, annual grade (`annual()` is ready), students seeing their own marks.
+
+## Content library (Сабақтар › Курстар, Модульдер мен дәрістер)
+- Course → Module → Lecture, independent of class, date and year (the ОМЖ part of the three-part model: content / schedule (КТП) / lesson instance).
+- A lecture is an existing `cf_lessons` row; `cf_curr_lessons` only records which module it sits in (one module per lesson). Deleting a module or course never deletes lessons.
+- Data: `supabase/008_curriculum.sql` (RLS check: `replica/unit/curriculum_rls.mjs`, PGlite). Without the tables the structure stays in the browser and the screen says so.
+- Next: КТП (year schedule slots per class), then "start" on a slot creates the `cf_sessions` row and snapshots the lecture.
