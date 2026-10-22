@@ -1,5 +1,6 @@
 import React from 'react';
 import { BTN } from './Widgets';
+import { STAFF } from '../config';
 
 export function TopBar({ right, me }: { right?: React.ReactNode; me: any; onLogout?: () => void }) {
   return (
@@ -9,6 +10,9 @@ export function TopBar({ right, me }: { right?: React.ReactNode; me: any; onLogo
       </a>
       <div className="flex items-center gap-2 text-sm">
         {right}
+        <a href={STAFF.includes(me?.role) ? '#assign' : '#hw'} className={BTN}>
+          📚 Үй тапсырмасы
+        </a>
         <a href="#profile" className={BTN}>
           ⚙ {me?.full_name}
         </a>

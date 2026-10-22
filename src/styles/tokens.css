@@ -1,0 +1,76 @@
+:root {
+  --color-bg: #F4F5F7;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #EEF0F3;
+  --color-border: #E2E5EA;
+  --color-border-input: #80878F;
+  --color-text: #14161A;
+  --color-text-secondary: #3F4652;
+  --color-text-muted: #5A606B;
+  --color-accent: #2457D6;
+  --color-accent-hover: #1E4FC2;
+  --color-accent-soft: #DCE6FB;
+  --color-on-accent: #FFFFFF;
+  --color-on-accent-soft: #1B3F9B;
+  --color-danger: #B42318;
+  --color-danger-soft: #FFE4E6;
+  --color-success: #1B6B34;
+  --color-success-soft: #E6F4EA;
+  --color-warning: #9A3412;
+  --color-warning-soft: #FFEDD5;
+  --color-info-soft: #EAF0FD;
+  --color-on-danger: #FFFFFF;
+  --color-on-success: #FFFFFF;
+  --color-code-bg: #0F172A;
+  --color-code-text: #E2E8F5;
+  --color-code-gutter-bg: #111C33;
+  --color-code-gutter-text: #8A9AB8;
+  --color-code-panel-bg: #10213F;
+  --color-code-panel-text: #FFFFFF;
+  --color-code-panel-muted: #B9C7E6;
+  --color-console-bg: #000000;
+  --color-console-text: #E2E8F5;
+  --color-console-pass: #6EE7A8;
+  --color-console-fail: #FCA5A5;
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-mono: JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-xs: 12px/16px; --weight-xs: 500;
+  --text-sm: 14px/20px; --weight-sm: 400;
+  --text-base: 16px/24px; --weight-base: 400;
+  --text-lg: 20px/28px; --weight-lg: 600;
+  --text-xl: 28px/34px; --weight-xl: 700;
+  --text-display: 40px/44px; --weight-display: 700;
+  --text-board: 56px/60px; --weight-board: 800;
+  --text-code: 14px/24px; --weight-code: 400;
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+  --shadow-pop: 0 12px 32px rgba(16,24,40,.16);
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(.2,.8,.2,1);
+  --layout-content-max: 1152px;
+  --layout-form-max: 448px;
+  --layout-remote-max: 576px;
+  --layout-header-h: 56px;
+  --layout-tap-min: 44px;
+}
+@media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion-base: 0ms; } }
+/* status chips: label text always shown, colour is the second signal */
+.status-not-started { color: var(--color-text-muted); background: var(--color-surface-2); }
+.status-draft { color: var(--color-text-secondary); background: var(--color-surface-2); }
+.status-submitted { color: var(--color-on-accent-soft); background: var(--color-accent-soft); }
+.status-late { color: var(--color-warning); background: var(--color-warning-soft); }
+.status-needs-work { color: var(--color-danger); background: var(--color-danger-soft); }
+.status-finalized { color: var(--color-success); background: var(--color-success-soft); }
