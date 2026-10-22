@@ -1,0 +1,57 @@
+feature,area,priority,original,clone,notes
+Join a class with a code or invite link,onboarding,must,yes,yes,ClassFlow: 6-char code and QR (#join/CODE)
+Login for students without email,onboarding,must,yes,yes,uses KeyToLife logins
+Section (class) with roster,classroom,must,yes,no,ClassFlow takes the roster from KeyToLife classes; no section management screen
+Browser code editor with Run and console,IDE,must,yes,yes,Pyodide in a worker; Python only
+Check button with autograder test cases,IDE,must,yes,yes,hashed expected output; client-run
+Submit is blocked until tests pass,IDE,should,yes,partial,per-assignment require_pass option; demo data layer
+Hidden tests,IDE,should,yes,yes,tests with hidden flag
+Stdin input for input() programs,IDE,must,yes,yes,
+Hints for a task,IDE,should,yes,yes,
+Docs/reference tab in the IDE,IDE,could,yes,no,
+Multiple languages (Java JavaScript C++ SQL HTML),IDE,could,yes,no,only Python; others need a server runner
+Block-based coding for beginners,IDE,could,yes,no,
+Sandbox for free coding,IDE,could,yes,no,
+Code history of snapshots per student,IDE,should,yes,partial,snapshots are saved and counted in S19; no history pane or diff yet
+Course tree: units lessons activities,curriculum,must,yes,no,ClassFlow has single lessons of slides
+Teacher creates own lesson and exercises,curriculum,must,yes,yes,JSON editor; needs a builder
+Lesson plans for teachers,curriculum,should,yes,yes,plans editor with AI and print
+Quarter plan,curriculum,could,no,yes,ClassFlow extra for Kazakhstan schools
+Slides with video and examples,curriculum,should,yes,yes,slide types incl. flashcards and matching
+Quizzes with auto score,assessment,must,yes,yes,quiz slide type with speed bonus
+Shuffled quiz questions,assessment,could,yes,no,
+Due dates and open/lock schedule,pacing,must,yes,partial,open and due times and late policy in S16; no lock button yet
+Assignment of work to a section,pacing,must,yes,partial,"S16 assigns a code slide to chosen classes; works on the demo data layer, schema.sql not yet applied to the database"
+Student sees grades and feedback,grading,must,yes,yes,points and feedback shown after grading
+Teacher reviews latest submission and comments,grading,must,yes,yes,"live subs tab plus homework review S19 with code, points and feedback"
+Finalized / Needs Work status,grading,could,yes,partial,S19 grade and send-back buttons; demo data layer
+Fast Grade queue with diff against solution,grading,should,yes,no,
+Gradebook with categories and weights,grading,should,yes,no,
+Export grades (CSV),grading,could,yes,no,
+Points override / partial credit,grading,should,yes,yes,teacher sets points; prefilled from autotest
+Progress by activity lesson module,analytics,should,yes,no,
+Live presence: who is online now,monitoring,must,yes,yes,online/away in participants
+Live feed of opened and submitted,monitoring,should,yes,no,partial: submitted count and warnings; no event feed
+Live view of student code,monitoring,should,yes,no,table cf_live_code exists; UI not built
+Focus Mode locking students to the activity,monitoring,should,yes,yes,remote lock and fullscreen/away tracking
+Pasted code flag,integrity,should,yes,yes,live lessons: yes; homework: paste share over 50% flags the work (demo data layer)
+Similarity report between students,integrity,could,yes,no,
+Code replay / timeline,integrity,could,yes,no,
+Time spent tracking,integrity,could,yes,no,
+Announcements and direct messages,communication,should,yes,no,partial: popup to all or one student; no inbox
+Private question on an assignment,communication,could,yes,no,partial: raise hand only
+Attendance with CSV export,classroom,should,yes,yes,attendance tab; no export
+Custom badges,motivation,could,yes,no,ClassFlow has points and leaderboard instead
+Gamified quiz (QuizBuzz),motivation,should,yes,yes,speed bonus and leaderboard
+Groups and group scores,classroom,should,yes,yes,
+AI hints for students,ai,could,yes,no,
+AI generation of activities,ai,should,yes,yes,cf-ai edge function
+AI grading with feedback,ai,could,yes,no,
+Teacher homepage with sections and quick actions,navigation,should,yes,yes,live sessions and lessons list
+Google Classroom / Clever sync,integrations,skip,yes,skip,not needed for one lyceum
+LTI Canvas Moodle Schoology,integrations,skip,yes,skip,district contracts
+Courses catalogue (100+ courses),content,skip,yes,skip,licensed content owned by CodeHS
+Certification exams,content,skip,yes,skip,industry credentials
+Cyber Range sandbox,content,skip,yes,skip,separate product
+PD catalogue and events,content,skip,yes,skip,services not software
+District admin dashboards,admin,skip,yes,skip,single school

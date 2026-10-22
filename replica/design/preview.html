@@ -1,0 +1,48 @@
+<!doctype html><html lang="kk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClassFlow design check</title><link rel="stylesheet" href="tokens.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-sans);font-size:16px;line-height:24px}
+h1{font-size:28px;line-height:34px;margin:0 0 4px}h2{font-size:20px;line-height:28px;margin:32px 0 12px}
+main{max-width:var(--layout-content-max);margin:0 auto;padding:24px 16px 64px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-card)}
+.btn{min-height:44px;padding:0 16px;border:0;border-radius:var(--radius-md);font:600 14px/20px var(--font-sans);cursor:pointer;transition:background var(--motion-fast)}
+.btn:focus-visible,input:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+.p{background:var(--color-accent);color:var(--color-on-accent)}.p:hover{background:var(--color-accent-hover)}.s{background:var(--color-surface-2);color:var(--color-text)}
+.d{background:var(--color-danger);color:var(--color-on-danger)}.g{background:var(--color-success);color:var(--color-on-success)}.gh{background:transparent;color:var(--color-accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input{min-height:44px;width:100%;padding:0 12px;border:1px solid var(--color-border-input);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text);font:400 16px var(--font-sans)}
+input::placeholder{color:var(--color-text-muted)}input.err{border-color:var(--color-danger)}.msg{color:var(--color-danger);font-size:14px;margin-top:4px}
+.chip{display:inline-block;padding:4px 10px;border-radius:var(--radius-pill);font:500 12px/16px var(--font-sans)}
+.ide{display:grid;grid-template-columns:2fr 3fr;border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;background:var(--color-surface)}
+.ide .l{padding:16px}.ide .r{display:flex;flex-direction:column;border-left:1px solid var(--color-border);min-width:0}
+.bar{display:flex;gap:8px;padding:8px;background:var(--color-code-gutter-bg)}.bar .btn{min-height:36px;color:var(--color-code-text);background:transparent;border:1px solid #33415F}.bar .btn.p{background:var(--color-accent);border-color:transparent;color:var(--color-on-accent)}
+.ed{display:flex;background:var(--color-code-bg);font:400 14px/24px var(--font-mono);min-height:140px}.gut{padding:12px;text-align:right;color:var(--color-code-gutter-text);background:var(--color-code-gutter-bg)}.src{padding:12px;color:var(--color-code-text);white-space:pre}
+.con{background:var(--color-console-bg);color:var(--color-console-text);font:400 13px/20px var(--font-mono);padding:12px;white-space:pre}
+.pass{background:var(--color-success-soft);color:var(--color-success);padding:8px;border-radius:var(--radius-sm);margin:8px 8px 0}.fail{background:var(--color-danger-soft);color:var(--color-danger);padding:8px;border-radius:var(--radius-sm);margin:8px}
+.hint{background:var(--color-info-soft);color:var(--color-accent);padding:8px 12px;border-radius:var(--radius-md);font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:var(--color-text-muted);font-weight:500;padding:8px;border-bottom:1px solid var(--color-border)}td{padding:8px;border-bottom:1px solid var(--color-border)}
+.prog{height:8px;background:var(--color-surface-2);border-radius:var(--radius-pill);overflow:hidden;width:160px}.prog i{display:block;height:100%;width:60%;background:var(--color-accent)}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.sw{border:1px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden;font-size:12px;line-height:16px;background:var(--color-surface)}.sw b{display:block;height:36px}.sw span{display:block;padding:6px 8px}
+@media(max-width:700px){.ide{grid-template-columns:1fr}.ide .r{border-left:0;border-top:1px solid var(--color-border)}}
+</style></head><body><main>
+<h1>ClassFlow design check</h1><p style="color:var(--color-text-muted);margin:0">Tokens from replica/design/tokens.json. Light theme, 33 text/UI pairs pass AA.</p>
+<h2>Colour roles</h2><div class="swatches" id="sw"></div>
+<h2>Buttons and inputs</h2><div class="card"><div class="row"><button class="btn p">Тапсыру</button><button class="btn s">Іске қосу</button><button class="btn g">Бағалау</button><button class="btn d">Өшіру</button><button class="btn gh">Артқа</button><button class="btn p" disabled>Жабық</button></div>
+<div class="row" style="margin-top:16px;align-items:flex-start"><div style="flex:1;min-width:220px"><input placeholder="Сынып коды"></div><div style="flex:1;min-width:220px"><input class="err" value="12"><div class="msg">Құпиясөз кемінде 8 таңба болуы керек</div></div></div></div>
+<h2>Status chips and progress</h2><div class="card row">
+<span class="chip status-not-started">Басталмаған</span><span class="chip status-draft">Жоба</span><span class="chip status-submitted">Тапсырылды</span><span class="chip status-late">Кешікті</span><span class="chip status-needs-work">Қайта жасау керек</span><span class="chip status-finalized">Бағаланды</span>
+<div class="prog" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"><i></i></div><span style="font-size:14px;color:var(--color-text-muted)">3 / 5 тест</span></div>
+<h2>Code IDE (homework mode)</h2><div class="ide"><div class="l"><h3 style="margin:0 0 8px;font-size:20px">Қосынды</h3><p>Екі санды оқып, қосындысын шығар.</p><div class="hint">💡 1. input() жол қайтарады, int() арқылы санға айналдыр</div></div>
+<div class="r"><div class="bar"><button class="btn">Іске қосу</button><button class="btn">Тексеру</button><button class="btn p">Тексеру және тапсыру</button></div>
+<div class="ed"><div class="gut">1<br>2<br>3</div><div class="src">a = int(input())
+b = int(input())
+print(a + b)</div></div><div class="con">7</div>
+<div class="pass">✓ Мысал 1: өтті</div><div class="pass" style="margin-top:4px">✓ Жасырын тест: өтті</div><div class="fail">✗ Тест 3: өтпеді. Күтілген: 10, сенікі: 9</div></div></div>
+<h2>Table</h2><div class="card"><table><tr><th>Оқушы</th><th>Күй</th><th>Тест</th><th>Ұпай</th></tr>
+<tr><td>Айдар Н.</td><td><span class="chip status-finalized">Бағаланды</span></td><td>3/3</td><td>6</td></tr>
+<tr><td>Дана С.</td><td><span class="chip status-late">Кешікті</span></td><td>2/3</td><td>4</td></tr>
+<tr><td>Ерлан К.</td><td><span class="chip status-not-started">Басталмаған</span></td><td>—</td><td>—</td></tr></table></div>
+</main><script>
+const names=getComputedStyle(document.documentElement);const sw=document.getElementById('sw');
+["--color-bg", "--color-surface", "--color-surface-2", "--color-border", "--color-border-input", "--color-text", "--color-text-secondary", "--color-text-muted", "--color-accent", "--color-accent-hover", "--color-accent-soft", "--color-on-accent", "--color-on-accent-soft", "--color-danger", "--color-danger-soft", "--color-success", "--color-success-soft", "--color-warning", "--color-warning-soft", "--color-info-soft", "--color-on-danger", "--color-on-success", "--color-code-bg", "--color-code-text", "--color-code-gutter-bg", "--color-code-gutter-text", "--color-code-panel-bg", "--color-code-panel-text", "--color-code-panel-muted", "--color-console-bg", "--color-console-text", "--color-console-pass", "--color-console-fail"].forEach(n=>{const v=names.getPropertyValue(n).trim();sw.insertAdjacentHTML('beforeend',`<div class="sw"><b style="background:${v}"></b><span>${n.slice(8)}<br>${v}</span></div>`)});
+</script></body></html>
