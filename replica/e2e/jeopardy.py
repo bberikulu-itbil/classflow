@@ -75,6 +75,9 @@ with sync_playwright() as p:
     pg.click('button[aria-label="Айнымалылар, 300"]'); pg.click('button:text-is("Жауапты көрсету")'); pg.click('button[aria-label="Команда 3: дұрыс, +300"]'); pg.click('button:text-is("Дайын")')
     ok('J4 game over: winner announced', pg.locator('[role=status]:has-text("Жеңімпаз: Команда 3 (300)")').count()==1)
     axe(pg,'jeopardy board, finished')
+    pg.click('button[aria-label="Команда 2: командасын өшіру"]')
+    ok('J4 any chosen team can be removed (not only the last); the others keep name and score', pg.locator('input[aria-label$="-команда атауы"]').count()==2 and pg.locator('[aria-label="Команда 1: 100 ұпай"]').count()==1 and pg.locator('[aria-label="Команда 3: 300 ұпай"]').count()==1 and pg.locator('button[aria-label="Команда 2: командасын өшіру"]').count()==0)
+    pg.click('button[aria-label="Команда 1: командасын өшіру"]'); ok('J4 one team left: no remove button, no old "− Команда" button', pg.locator('button[aria-label$="командасын өшіру"]').count()==0 and pg.locator('button:text-is("− Команда")').count()==0)
     pg.click('button:has-text("Ойыннан шығу")'); pg.wait_for_selector('text=Python негіздері')
     # edit + delete
     pg.click('button:text-is("Өңдеу")'); pg.wait_for_selector('h2:has-text("Jeopardy құрастыру")')

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Link2, Maximize, Minimize, Play as PlayIcon, Save, SlidersHorizontal, Target, Unlink } from 'lucide-react';
+import { ArrowLeft, Link2, X, Maximize, Minimize, Play as PlayIcon, Save, SlidersHorizontal, Target, Unlink } from 'lucide-react';
 import { sb, DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad } from '../ui';
 import { JeopardyPanel } from './JeopardyPanel';
@@ -190,12 +190,13 @@ function Play({ game, onExit, ctx, state }: { game: Game; onExit: () => void; ct
             <div className="flex items-center gap-2">
               <input className={inputCls + ' !w-36'} aria-label={`${i + 1}-команда атауы`} value={t.name} onChange={e => setTeams(ts => ts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
               <span className="text-xl font-bold min-w-[3.5rem] text-right" aria-label={`${t.name}: ${t.score} ұпай`}>{t.score}</span>
+              {teams.length > 1 && <button type="button" aria-label={`${t.name}: командасын өшіру`} onClick={() => setTeams(ts => ts.filter((_, j) => j !== i))}
+                className="grid place-items-center min-h-[44px] min-w-[44px] cursor-pointer rounded-md text-text-secondary hover:text-danger hover:bg-surface-2"><X size={16} aria-hidden="true" /></button>}
             </div>
             {t.members.length > 0 && <div className="mt-1 max-w-[16rem] text-sm text-text-secondary break-words">{t.members.join(', ')}</div>}
           </Card>
         ))}
         {teams.length < MAX_TEAMS && <Button variant="secondary" onClick={() => setTeams(t => [...t, newTeam(t.length + 1)])}>+ Команда</Button>}
-        {teams.length > 1 && <Button variant="secondary" onClick={() => setTeams(t => t.slice(0, -1))}>− Команда</Button>}
       </div>
 
       {open && q ? (
