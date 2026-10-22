@@ -128,8 +128,8 @@ with sync_playwright() as p:
     m.keyboard.press('Escape'); m.click('button:has-text("Жаңа ойын")')  # sanity: page still works with panel closed
     # P9 a student who opened a shared link: no class loader, results stay in the browser
     pg.keyboard.press('Escape'); pg.click('button:text-is("Ойыннан шығу")') if pg.locator('button:text-is("Ойыннан шығу")').count() else None
-    pg.click('button[aria-label$="бөлісу сілтемесі"]'); pg.wait_for_selector('input[aria-label="Бөлісу сілтемесі"]')
-    link=pg.input_value('input[aria-label="Бөлісу сілтемесі"]'); payload=link.split('#jeopardy/')[1]
+    pg.click('button[aria-label$="бөлісу сілтемесі"]'); pg.wait_for_selector('input#share-play')
+    link=pg.input_value('input#share-play'); payload=link.split('#jeopardy/')[1]
     st=page(); st.goto(B+'?demo=student#jeopardy/'+payload); st.wait_for_selector('section[aria-label="Т"]')
     st.click('button:has-text("Параметрлер")'); tab(st,'Қатысушылар')
     ok('P9 student: people tab works but has no "whole class" loader', st.locator(f'{PANEL} textarea').count()==1 and st.locator(f'{PANEL} select').count()==0)

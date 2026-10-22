@@ -94,9 +94,9 @@ with sync_playwright() as p:
     pg.fill('label:has-text("1-тақырып атауы") >> xpath=..//input','Әріптер')
     pg.fill('input[aria-label="Әріптер, 100: сұрақ"]','Қазақша «ә, ғ, ң» және емодзи 🎯 дұрыс шыға ма?'); pg.fill('input[aria-label="Әріптер, 100: жауап"]','Иә ✓')
     pg.click('button:text-is("Сақтау")'); pg.wait_for_selector('text=Бөлісу сынағы')
-    pg.click('button[aria-label$="бөлісу сілтемесі"]'); pg.wait_for_selector('input[aria-label="Бөлісу сілтемесі"]')
-    url=pg.input_value('input[aria-label="Бөлісу сілтемесі"]'); frag=url.split('#')[1]
-    ok('K1 share link is built and shown', '#jeopardy/' in url and url.startswith(B.rstrip('/')) and pg.locator('[role=status]:has-text("сұрақтар мен жауаптар бар")').count()==1, url[:80])
+    pg.click('button[aria-label$="бөлісу сілтемесі"]'); pg.wait_for_selector('input#share-play')
+    url=pg.input_value('input#share-play'); frag=url.split('#')[1]
+    ok('K1 share link is built and shown', '#jeopardy/' in url and url.startswith(B.rstrip('/')) and pg.locator("p:has-text(\"сұрақтар мен жауаптар бар\")").count()==1, url[:80])
     ok('K1 link stays short for a small game', len(url)<600, str(len(url)))
     axe(pg,'jeopardy list with share link')
     other=page(); other.goto(B+'?demo=teacher#'+frag); other.wait_for_selector('section[aria-label="Әріптер"]')
@@ -110,6 +110,23 @@ with sync_playwright() as p:
     kid=page(); kid.goto(B+'?demo=student#'+frag); kid.wait_for_selector('section[aria-label="Әріптер"]')
     ok('K3 student opens it, but gets no "save" button', kid.locator('button:text-is("Менің ойындарыма сақтау")').count()==0)
     kid.click('button:has-text("Ойыннан шығу")'); kid.wait_for_selector('h1:has-text("Сәлем")'); ok('K3 student leaves to the home page', True)
+    # K6 two kinds of link: play and edit
+    eurl=pg.input_value('input#share-edit'); packed=url.split('#jeopardy/')[1]
+    ok('K6 two links with different purpose: play and edit, same game inside', eurl.endswith('#jeopardy-edit/'+packed) and pg.locator('label[for=share-play]:has-text("Орындауға арналған")').count()==1 and pg.locator('label[for=share-edit]:has-text("Өңдеуге арналған")').count()==1)
+    pg.click('button[aria-label="Өңдеуге арналған сілтеме: көшіру"]'); pg.wait_for_function("document.querySelector('p[role=status]:not(.rounded-md)')&&document.querySelector('p[role=status]:not(.rounded-md)').textContent.length>0")
+    ok('K6 copy button answers (copied, or asks to copy by hand)', pg.locator('p[role=status]').last.inner_text().strip()!='')
+    ed=other  # the teacher who already kept a copy
+    ed.goto(B+'?demo=teacher#'+eurl.split('#')[1]); ed.wait_for_selector('h2:has-text("Jeopardy құрастыру")')
+    ok('K6 edit link opens the editor with the game and a "this is a copy" note', ed.input_value('label:text-is("Ойын атауы") >> xpath=..//input')=='Бөлісу сынағы' and ed.locator('[role=status]:has-text("көшірмесі")').count()==1)
+    axe(ed,'edit link (editor)')
+    ed.fill('label:text-is("Ойын атауы") >> xpath=..//input','Менің нұсқам'); ed.click('button:text-is("Сақтау")'); ed.wait_for_selector('text=Менің нұсқам')
+    ok('K6 saved as a second game; the first one is untouched', ed.locator('text=Бөлісу сынағы').count()==1 and ed.locator('text=Менің нұсқам').count()==1 and ed.url.endswith('#tasks/jeopardy'))
+    ed.goto(B+'?demo=teacher#'+eurl.split('#')[1]); ed.wait_for_selector('h2:has-text("Jeopardy құрастыру")'); ed.click('button:text-is("Сақтап ойнау")'); ed.wait_for_selector('section[aria-label="Әріптер"]')
+    ok('K6 "save and play" from an edit link goes to the board', '#jeopardy/' in ed.url)
+    ed.goto(B+'?demo=teacher#tasks/jeopardy'); ed.wait_for_selector('text=Менің нұсқам')  # back on the list for the fullscreen tests below
+    kid2=page(); kid2.goto(B+'?demo=student#'+eurl.split('#')[1]); kid2.wait_for_selector('text=Өңдеу сілтемесі мұғалімдерге арналған')
+    ok('K6 student with an edit link: explained, no editor', kid2.locator('h2:has-text("Jeopardy құрастыру")').count()==0); axe(kid2,'edit link (student)')
+    bad2=page(); bad2.goto(B+'?demo=teacher#jeopardy-edit/abc'); bad2.wait_for_selector('text=Сілтеме бүлінген'); ok('K6 broken edit link: clear message', True)
     bad=page(); bad.goto(B+'?demo=teacher#jeopardy/'+frag[:-6]); bad.wait_for_selector('text=Сілтеме бүлінген')
     ok('K4 cut-off link: readable message, no crash', bad.locator('text=Сілтеме бүлінген').count()==1)
     bad.goto(B+'?demo=teacher#jeopardy/abc'); bad.reload(); bad.wait_for_selector('text=Сілтеме бүлінген'); axe(bad,'broken link')

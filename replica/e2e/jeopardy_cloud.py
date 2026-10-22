@@ -90,7 +90,7 @@ with sync_playwright() as p:
     ROWS.clear(); S=page(); S.goto(B+'#tasks/jeopardy'); S.wait_for_selector('text=Әзірге ойын жоқ')
     S.click('button:has-text("Жаңа ойын")'); S.fill('label:text-is("Ойын атауы") >> xpath=..//input','Сілтеме үшін'); S.click('button[aria-label="3-тақырыпты өшіру"]'); S.click('button[aria-label="2-тақырыпты өшіру"]')
     S.fill('label:has-text("1-тақырып атауы") >> xpath=..//input','Т'); S.fill('input[aria-label="Т, 100: сұрақ"]','Q'); S.fill('input[aria-label="Т, 100: жауап"]','A'); S.click('button:text-is("Сақтау")'); S.wait_for_selector('text=Сілтеме үшін')
-    S.click('button[aria-label$="бөлісу сілтемесі"]'); frag=S.input_value('input[aria-label="Бөлісу сілтемесі"]').split('#')[1]; ROWS.clear()
+    S.click('button[aria-label$="бөлісу сілтемесі"]'); frag=S.input_value('input#share-play').split('#')[1]; ROWS.clear()
     K=page(); K.goto(B+'#'+frag); K.wait_for_selector('button:text-is("Менің ойындарыма сақтау")'); K.click('button:text-is("Менің ойындарыма сақтау")'); K.wait_for_selector('text=тізіміне сақталды')
     ok('C5 "keep a copy" of a shared game writes a row', len(ROWS)==1 and list(ROWS.values())[0]['title']=='Сілтеме үшін')
     # C5b results of played games go to cf_jeopardy_runs and show on another device

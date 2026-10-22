@@ -263,7 +263,7 @@ export function Jeopardy({ me }: { me: Me }) {
   const [panel, setPanel] = useState(false);
   const [delId, setDelId] = useState('');
   const [err, setErr] = useState('');
-  const [link, setLink] = useState<{ id: string; url: string; copied: boolean } | null>(null);
+  const [link, setLink] = useState<{ id: string; play: string; edit: string; copied: '' | 'play' | 'edit' | 'fail' } | null>(null);
   const games = data?.games || [];
   const stuck = data && !data.local ? read(localKey(me)).length : 0; // games made in this browser before the table existed
 
@@ -272,11 +272,11 @@ export function Jeopardy({ me }: { me: Me }) {
   };
   const save = async (g: Game, play: boolean) => { if (await run(() => saveGame(me, g))) setMode(play ? { kind: 'play', game: g } : { kind: 'list' }); };
   const moveUp = () => run(async () => { for (const g of read(localKey(me))) await saveGame(me, g); write(localKey(me), []); });
+  const copy = async (kind: 'play' | 'edit') => { if (link) setLink({ ...link, copied: await navigator.clipboard.writeText(link[kind]).then(() => kind, () => 'fail' as const) }); };
   const share = async (g: Game) => {
     try {
-      const url = `${location.origin}${location.pathname}#jeopardy/${await encodeGame(g)}`;
-      const copied = await navigator.clipboard.writeText(url).then(() => true, () => false);
-      setLink({ id: g.id, url, copied });
+      const base = `${location.origin}${location.pathname}#`, packed = await encodeGame(g);
+      setLink({ id: g.id, play: `${base}jeopardy/${packed}`, edit: `${base}jeopardy-edit/${packed}`, copied: '' });
     } catch { setErr('Сілтеме жасау мүмкін болмады'); }
   };
 
@@ -318,9 +318,18 @@ export function Jeopardy({ me }: { me: Me }) {
             : <Button variant="ghost" aria-label={`${g.title || 'Атаусыз'} ойынын жою`} onClick={() => setDelId(g.id)}>Жою</Button>}
         </Card>
         {link?.id === g.id && (
-          <div className="rounded-md bg-accent-soft p-3 space-y-2">
-            <p role="status" className="text-sm font-semibold text-on-accent-soft">{link.copied ? 'Сілтеме көшірілді.' : 'Сілтемені өзіңіз көшіріңіз:'} Сілтемеде сұрақтар мен жауаптар бар, оны тек білетін адамға жіберіңіз.</p>
-            <input readOnly aria-label="Бөлісу сілтемесі" className={inputCls} value={link.url} onFocus={e => e.currentTarget.select()} />
+          <div className="rounded-md bg-accent-soft p-3 space-y-3">
+            {([['play', 'Орындауға арналған сілтеме', 'ашқан адам ойынды ойнайды (оқушыларға)'], ['edit', 'Өңдеуге арналған сілтеме', 'ашқан мұғалім ойынды өңдеп, өз аккаунтына сақтайды']] as const).map(([k, title, hint]) => (
+              <div key={k} className="space-y-1">
+                <label htmlFor={`share-${k}`} className="block text-sm font-semibold text-on-accent-soft">{title} <span className="font-normal">— {hint}</span></label>
+                <div className="flex gap-2">
+                  <input id={`share-${k}`} readOnly className={inputCls} value={link[k]} onFocus={e => e.currentTarget.select()} />
+                  <Button variant="secondary" aria-label={`${title}: көшіру`} onClick={() => copy(k)}>Көшіру</Button>
+                </div>
+              </div>
+            ))}
+            <p role="status" className="text-sm font-semibold text-on-accent-soft">{link.copied === 'play' ? 'Орындауға арналған сілтеме көшірілді.' : link.copied === 'edit' ? 'Өңдеуге арналған сілтеме көшірілді.' : link.copied === 'fail' ? 'Көшіру мүмкін болмады, сілтемені өзіңіз көшіріңіз.' : ''}</p>
+            <p className="text-sm text-on-accent-soft">Екі сілтемеде де сұрақтар мен жауаптар бар, оны тек білетін адамға жіберіңіз. Сілтеме ойынның сол кездегі көшірмесі: кейін өзгертсеңіз, жаңа сілтеме жасаңыз. Өңдеу сілтемесі сіздің ойыныңызды өзгертпейді, әріптес өз көшірмесін сақтайды.</p>
           </div>
         )}
         </React.Fragment>
@@ -348,6 +357,30 @@ export function SharedGame({ payload, me, canSave }: { payload: string; me: Me; 
             : <Button variant="secondary" onClick={keep}>Менің ойындарыма сақтау</Button>)}
           {err && <p role="alert" className="text-sm text-danger">{err}</p>}
           <Play game={state.game} ctx={{ me, staff: canSave }} state={setup} onExit={() => { window.location.hash = canSave ? 'tasks/jeopardy' : ''; }} />
+        </>
+      )}
+    </main>
+  );
+}
+
+/** Opens a game from an edit link: the teacher edits a copy and keeps it in their own list (the sender's game never changes). */
+export function SharedEdit({ payload, me, canSave }: { payload: string; me: Me; canSave: boolean }) {
+  const [state, setState] = useState<{ game?: Game; bad?: boolean }>({});
+  const [err, setErr] = useState('');
+  useEffect(() => { decodeGame(payload).then(game => setState({ game }), () => setState({ bad: true })); }, [payload]);
+  const save = async (g: Game, play: boolean) => {
+    try { await saveGame(me, g); window.location.hash = play ? 'jeopardy/' + await encodeGame(g) : 'tasks/jeopardy'; }
+    catch (e) { setErr((e as Error).message || 'Қате'); }
+  };
+  return (
+    <main className="max-w-5xl mx-auto p-4 space-y-4">
+      {!canSave && <EmptyState icon={<Unlink size={32} />} text="Өңдеу сілтемесі мұғалімдерге арналған. Ойнау үшін орындауға арналған сілтемені сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
+      {canSave && state.bad && <EmptyState icon={<Unlink size={32} />} text="Сілтеме бүлінген немесе толық емес. Жібергеннен жаңасын сұраңыз." action={<a className="text-accent underline" href="#">Басты бетке</a>} />}
+      {canSave && state.game && (
+        <>
+          <p role="status" className="rounded-md bg-accent-soft text-on-accent-soft p-3 text-sm font-semibold">Бұл — алынған ойынның көшірмесі. «Сақтау» басқанда ол «Тапсырмалар › Jeopardy» тізіміне түседі, жіберушінің ойыны өзгермейді.</p>
+          <Editor initial={state.game} onSave={save} onCancel={() => { window.location.hash = 'tasks/jeopardy'; }} />
+          {err && <p role="alert" className="text-sm text-danger">{err}</p>}
         </>
       )}
     </main>

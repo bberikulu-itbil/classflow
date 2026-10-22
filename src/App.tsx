@@ -21,7 +21,7 @@ import { activeSection } from './nav/config';
 import type { Role } from './nav/config';
 import { TeacherHomeView } from './views/TeacherHomeView';
 import { StudentHomeView } from './views/StudentHomeView';
-import { SharedGame } from './views/Jeopardy';
+import { SharedEdit, SharedGame } from './views/Jeopardy';
 import { LessonDetail } from './lessons/LessonDetail';
 
 let demoApi: ReturnType<typeof makeFakeApi> | undefined;
@@ -118,6 +118,7 @@ export default function App() {
   if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
   if (routeKey === 'lesson' && isStaff) return framed('5xl', <LessonDetail key={routeId} id={routeId} me={me} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
+  if (routeKey === 'jeopardy-edit') return shell(<SharedEdit key={routeId} payload={routeId} me={me} canSave={isStaff} />);
   if (routeKey === 'jeopardy') return shell(<SharedGame key={routeId} payload={routeId} me={me} canSave={isStaff} />);
   if (routeKey === 'profile') {
     return shell(
