@@ -64,6 +64,17 @@ with sync_playwright() as p:
     ok('C9 module added and moved up', pg.locator('section > div > input').evaluate_all("els=>els.map(e=>e.value)")==['Алгоритмдер және блок-схемалар','Деректер','Бағдарламалау негіздері'])
     pg.reload(); pg.wait_for_selector('section[aria-label="Деректер"]')
     ok('C9 everything survives a reload (course remembered too)', pg.locator('input[name=course]:checked').evaluate("e=>e.parentElement.innerText.trim()")=='Информатика 7' and lessons_of(pg,'Алгоритмдер және блок-схемалар')==['Айнымалылар','Циклдер'])
+    # start from the modules screen: pick a class, every lecture gets a start button
+    pg.goto(B+'?demo=teacher#lessons/modules'); pg.wait_for_selector('section[aria-label^="Алгоритмдер"]')
+    ok('C14 Модульдер is the first tab of Сабақтар', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').first.inner_text().strip().startswith('Модульдер'))
+    ok('C14 no class chosen: no start buttons, hint explains', pg.locator('button:has-text("Бастау")').count()==0 and pg.locator('p:has-text("Сыныпты таңдасаңыз")').count()==1)
+    pg.locator('fieldset:has(input[name=start-class]) label:has-text("7B")').click()
+    nl=pg.locator('section ol li').count()
+    ok('C14 class chosen: one start button per lecture, named with lecture and class', pg.locator('button:has-text("Бастау · 7B")').count()==nl and nl>0 and pg.locator('button[aria-label$="сыныбымен бастау"]').first.get_attribute('aria-label').endswith('7B сыныбымен бастау'))
+    ok('C14 demo: start is off and says so', pg.locator('button:has-text("Бастау · 7B")').first.is_disabled() and pg.locator('p:has-text("Демо режимде")').count()==1)
+    pg.reload(); pg.wait_for_selector('section[aria-label^="Алгоритмдер"]'); ok('C14 chosen class is remembered', pg.locator('input[name=start-class]:checked').evaluate("e=>e.parentElement.innerText.trim()")=='7B')
+    axe(pg,'modules with a class chosen')
+    pg.locator('fieldset:has(input[name=start-class]) label:has-text("Таңдалмаған")').click()
     # delete module: cancel, then yes; lessons survive
     pg.click('button[aria-label="Алгоритмдер және блок-схемалар: өшіру"]'); ok('C10 asks before deleting', pg.locator('[role=alertdialog]').count()==1)
     pg.click('[role=alertdialog] button:text-is("Болдырмау")'); ok('C10 cancel keeps it', pg.locator('[role=alertdialog]').count()==0 and pg.locator('section[aria-label="Алгоритмдер және блок-схемалар"]').count()==1)

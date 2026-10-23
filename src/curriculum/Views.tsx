@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Play, Trash2, X } from 'lucide-react';
+import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { Chips } from '../ui/Chips';
 import { NO_SUBJECT } from '../lessons/model';
+import { loadClasses } from '../journal/store';
+import { getPrefs } from '../prefs';
+import { startSession } from '../views/session';
 import * as st from './store';
 import type { Course, Curr, Me, Mod, Place } from './store';
 
@@ -90,6 +94,15 @@ export function ModulesView({ me }: { me: Me }) {
   const [cid, setCid] = useState(st.selectedCourse());
   const [title, setTitle] = useState(''), [err, setErr] = useState('');
   const [ask, setAsk] = useState<Mod | null>(null);
+  const classes = useLoad(loadClasses, []);
+  const [cls, setCls] = useState(st.selectedClass()), [busy, setBusy] = useState(''), [startErr, setStartErr] = useState('');
+  const clsName = classes.data?.find(c => c.id === cls)?.name || '';
+  const pickClass = (id: string) => { setCls(id); st.selectClass(id); setStartErr(''); };
+  /** The lecture is a lesson already: with a class chosen it opens as a live lesson in one click. */
+  const start = async (lessonId: string) => {
+    setBusy(lessonId); setStartErr('');
+    try { await startSession(lessonId, cls, getPrefs().groups); } catch (e) { setStartErr((e as Error).message || 'Сабақты бастау мүмкін болмады'); setBusy(''); }
+  };
   const course = data?.courses.find(c => c.id === cid) || data?.courses[0];
   useEffect(() => { if (course && course.id !== cid) setCid(course.id); }, [course?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const mods = course ? data!.modules.filter(m => m.course_id === course.id) : [];
@@ -113,7 +126,16 @@ export function ModulesView({ me }: { me: Me }) {
       {data && data.courses.length === 0 && <EmptyState text="Алдымен курс қосыңыз." action={<LinkButton href="#lessons/courses" variant="primary">Курстарға өту</LinkButton>} />}
       {data && course && (
         <>
-          <Card><Chips legend="Курс" name="course" value={course.id} onChange={pick} options={data.courses.map(c => ({ v: c.id, label: c.title }))} /></Card>
+          <Card className="space-y-3">
+            <Chips legend="Курс" name="course" value={course.id} onChange={pick} options={data.courses.map(c => ({ v: c.id, label: c.title }))} />
+            {classes.data && classes.data.length > 0 && (
+              <>
+                <Chips legend="Сынып" name="start-class" value={clsName ? cls : ''} onChange={pickClass} options={[{ v: '', label: 'Таңдалмаған' }, ...classes.data.map(c => ({ v: c.id, label: c.name }))]} />
+                <p className="text-sm text-text-secondary">{clsName ? `Дәрістің жанындағы «Бастау» батырмасы оны ${clsName} сыныбымен бірден сабақ ретінде ашады.` : 'Сыныпты таңдасаңыз, әр дәрістің жанында «Бастау» батырмасы шығады: дәріс бірден сабақ ретінде ашылады.'}{clsName && DEMO ? ' Демо режимде сабақ басталмайды.' : ''}</p>
+              </>
+            )}
+            {startErr && <p role="alert" className="text-sm text-danger">{startErr}</p>}
+          </Card>
           {mods.length === 0 && <EmptyState text="Бұл курста модуль жоқ. Төмендегі форма арқылы алғашқы модульді қосыңыз." />}
           {mods.map((m, mi) => {
             const ps = inModule(m);
@@ -133,10 +155,11 @@ export function ModulesView({ me }: { me: Me }) {
                     {ps.map((p, i) => {
                       const l = lesson(p.lesson_id)!;
                       return (
-                        <li key={p.lesson_id} className="flex items-center gap-1 rounded-md px-2 hover:bg-surface-2">
+                        <li key={p.lesson_id} className="flex flex-wrap items-center gap-1 rounded-md px-2 hover:bg-surface-2">
                           <span className="w-6 text-sm text-text-muted">{i + 1}.</span>
                           <a href={'#edit/' + l.id} className="min-w-0 flex-1 py-2 break-words text-accent underline">{l.title}</a>
                           <span className="hidden text-sm text-text-muted sm:inline">{l.subject}</span>
+                          {clsName && <Button variant="success" className="!min-h-[44px]" disabled={!!DEMO} loading={busy === l.id} onClick={() => start(l.id)} aria-label={`${l.title}: ${clsName} сыныбымен бастау`}><Play size={14} aria-hidden="true" />Бастау · {clsName}</Button>}
                           <IconBtn label={`${l.title}: жоғары`} disabled={i === 0} onClick={() => act(() => st.swapLessons(me, p, ps[i - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
                           <IconBtn label={`${l.title}: төмен`} disabled={i === ps.length - 1} onClick={() => act(() => st.swapLessons(me, p, ps[i + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
                           <IconBtn label={`${l.title}: модульден алу`} onClick={() => act(() => st.unplaceLesson(me, l.id))}><X size={16} aria-hidden="true" /></IconBtn>

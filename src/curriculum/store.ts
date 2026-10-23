@@ -102,3 +102,8 @@ export { next as nextPosition };
 const SEL = 'cf_curriculum_course';
 export const selectedCourse = (): string => { try { return sessionStorage.getItem(SEL) || ''; } catch { return ''; } };
 export const selectCourse = (id: string) => { try { sessionStorage.setItem(SEL, id); } catch { /* not remembered */ } };
+
+const SELC = 'cf_curriculum_class';
+/** The class a lesson would be started for from the modules screen ('' = none chosen). */
+export const selectedClass = (): string => { try { return sessionStorage.getItem(SELC) || ''; } catch { return ''; } };
+export const selectClass = (id: string) => { try { sessionStorage.setItem(SELC, id); } catch { /* not remembered */ } };

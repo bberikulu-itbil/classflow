@@ -116,7 +116,7 @@ with sync_playwright() as p:
     h0=pg.evaluate('location.hash'); pg.keyboard.press('Enter'); pg.wait_for_timeout(100)
     ok('K1 skip button moves focus to the content and leaves the route alone', pg.evaluate('document.activeElement.tagName')=='MAIN' and pg.evaluate('location.hash')==h0)
 
-    exp={'Сабақтар':('#lessons/mine','Сабақтар'),'Тапсырмалар':('#assign','Үй тапсырмасын беру'),'Сынақтар мен сайыстар':('#exams','Сынақтар мен сайыстар'),'Журнал':('#journal/lessons','Журнал'),'EduStudio':('#edustudio','EduStudio'),
+    exp={'Сабақтар':('#lessons/modules','Модульдер мен дәрістер'),'Тапсырмалар':('#assign','Үй тапсырмасын беру'),'Сынақтар мен сайыстар':('#exams','Сынақтар мен сайыстар'),'Журнал':('#journal/lessons','Журнал'),'EduStudio':('#edustudio','EduStudio'),
          'Сөздігім':('#vocab/base','Терминдер базасы')}
     for name,(h,title) in exp.items():
         nl(pg,name).click(); pg.wait_for_timeout(300)
@@ -124,7 +124,7 @@ with sync_playwright() as p:
         ok(f'T4 {name}: section is marked current', pg.locator('aside nav a[aria-current=page]').inner_text().strip()==name)
     pg.goto(B+'?demo=teacher#lessons/gallery'); pg.wait_for_selector('h1:has-text("Сабақтар")')
     ok('T5 planned tab shows what it will hold', pg.locator('text=Дайын сабақтар').count()==1 and pg.locator('text=Жақында').count()>=2)
-    ok('T5 tab strip has the 7 lesson tabs (courses, modules and КТП are real)', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').all_inner_texts()[0].strip()=='Менің сабақтарым' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').count()==7)
+    ok('T5 tab strip has the 7 lesson tabs (courses, modules and КТП are real)', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').all_inner_texts()[0].strip()=='Модульдер мен дәрістер' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').count()==7)
     axe(pg,'lessons/gallery (tabs, soon)')
     pg.goto(B+'?demo=teacher#lessons/plans'); pg.wait_for_timeout(600)
     ok('T5 tab for an older screen forwards to it (#plans)', pg.evaluate('location.hash')=='#plans' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a[aria-current=page]').inner_text().startswith('Жоспарлар'))

@@ -59,3 +59,5 @@ Needs `supabase/011_vocab.sql` (run after 006–010). Without it the base and se
 
 ## Teacher remote (#remote/<lesson id>)
 Uses the theme colours (it was white-on-white in the light themes). Wide screens: slide, next-slide hint, notes and task on the left, class tabs (Сынып, Жауаптар, Ұпай, Қатысу, Слайдтар) on the right; phones: one column with Артқа/Келесі fixed at the bottom. ← and → change slides (not while typing). Every action goes through one `run()` that shows the server's refusal in a status line; ending the lesson asks inline. Test: `replica/e2e/remote.py` (fake Supabase; `SHOTS=dir` saves screenshots).
+
+Modules screen: **Сабақтар** opens on «Модульдер мен дәрістер» (course → module → lecture). Choose a class there and every lecture gets «Бастау · <class>», which starts it as a live lesson at once (`cf_start_session`, groups from the saved default). Tests: `curriculum.py` (C14), `curriculum_cloud.py`.
