@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Play, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Layers, Play, Trash2, X } from 'lucide-react';
+import { coverOf } from '../ui/cover';
 import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { Chips } from '../ui/Chips';
@@ -119,7 +120,7 @@ export function ModulesView({ me }: { me: Me }) {
   };
   return (
     <Shell title="Модульдер мен дәрістер">
-      <p className="text-text-secondary">Курс модульдерге бөлінеді, модуль дәрістерден тұрады. Дәріс — «Менің сабақтарым» ішіндегі сабақ; бір дәріс бір модульде тұрады.</p>
+      <p className="text-text-secondary">Курс модульдерге бөлінеді, модуль дәрістерден тұрады (мұқаба модульде, дәрісте жоқ). Дәріс — мазмұн, сыныпқа байланбайды; ол сыныппен өткенде сабақ болады. Бір дәріс бір модульде тұрады.</p>
       <Local d={data} /><Status msg={msg} />
       {error && <ErrorBox message={error} onRetry={reload} />}
       {loading && !data && <Skeleton />}
@@ -140,7 +141,12 @@ export function ModulesView({ me }: { me: Me }) {
           {mods.map((m, mi) => {
             const ps = inModule(m);
             return (
-              <section key={m.id} aria-label={m.title} className="space-y-2 rounded-lg border border-border bg-surface p-3">
+              <section key={m.id} aria-label={m.title} className="space-y-2 overflow-hidden rounded-lg border border-border bg-surface p-3">
+                {/* the cover belongs to the module; a lecture inside it has none */}
+                <div aria-hidden="true" className="-mx-3 -mt-3 mb-1 flex h-20 items-end justify-between p-3 text-white" style={{ background: coverOf(mi) }}>
+                  <Layers size={36} className="opacity-90" />
+                  <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-semibold">Модуль {mi + 1} · {ps.length} дәріс</span>
+                </div>
                 <div className="flex items-center gap-1">
                   <input aria-label={`Модуль ${mi + 1}: атауы`} defaultValue={m.title} key={m.title} maxLength={80}
                     onBlur={e => { const v = e.target.value.trim(); if (!v) e.target.value = m.title; else if (v !== m.title) act(() => st.renameModule(me, m.id, v)); }}
