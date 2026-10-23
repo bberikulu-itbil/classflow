@@ -1,3 +1,4 @@
+import { getPrefs } from '../prefs';
 // Pure date logic of the schedule (КТП). Dates are plain "YYYY-MM-DD" strings in the school's local calendar: no time zones involved.
 export const DAY = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб', 'Жс'];
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -8,10 +9,11 @@ export const weekdayOf = (iso: string) => ((fromIso(iso).getDay() + 6) % 7) + 1;
 export const mondayOf = (iso: string) => { const d = fromIso(iso); d.setDate(d.getDate() - (weekdayOf(iso) - 1)); return toIso(d); };
 export const dm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
-// shortcut: approximate quarter dates of the Kazakhstan school year (breaks between quarters); the teacher edits the range in the form.
-// Replace with the school's real calendar when it is stored in the database.
+/** Default range of the "create slots" form: the quarter dates from the settings, in the right calendar year. */
 export function defaultRange(year: number, q: number): [string, string] {
-  return [[`${year}-09-01`, `${year}-10-25`], [`${year}-11-03`, `${year}-12-27`], [`${year + 1}-01-12`, `${year + 1}-03-20`], [`${year + 1}-03-30`, `${year + 1}-05-31`]][q - 1] as [string, string];
+  const { from, to } = getPrefs().quarters[q - 1];
+  const y = (md: string) => (+md.slice(0, 2) >= 9 ? year : year + 1);
+  return [`${y(from)}-${from}`, `${y(to)}-${to}`];
 }
 export const MAX_DAYS = 140;
 export interface Cell { weekday: number; period: number }

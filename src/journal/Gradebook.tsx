@@ -7,11 +7,12 @@ import { currentQuarter, schoolYear } from '../lessons/model';
 import { KINDS, annual, gradeOfPoints, kindOf, maxOk, percents, quarter, thresholds } from './grades';
 import type { Kind } from './grades';
 import { addCol, addCols, delCol, loadBook, loadClasses, mkey, setMark } from './store';
+import { getPrefs } from '../prefs';
 import { loadSched } from '../schedule/store';
 import { loadCurr } from '../curriculum/store';
 import type { Book, Col, Me } from './store';
 
-const DEFAULT_MAX: Record<Kind, number> = { kb: 10, bzb: 15, tzb: 25 };
+const defaultMax = (k: Kind): number => (k === 'kb' ? getPrefs().kbMax : k === 'bzb' ? 15 : 25);
 const MAX_HINT: Record<Kind, string> = { kb: '1–100', bzb: '7–20', tzb: '25 немесе 30' };
 const dm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 const pct = (x: number | null) => (x === null ? '—' : Math.round(x) + '%');
@@ -39,9 +40,9 @@ function AddColumn({ busy, count, onAdd }: { busy: boolean; count: Record<Kind, 
   const [kind, setKind] = useState<Kind>('kb');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [max, setMax] = useState(String(DEFAULT_MAX.kb));
+  const [max, setMax] = useState(String(defaultMax('kb')));
   const [err, setErr] = useState('');
-  const pick = (k: Kind) => { setKind(k); setMax(String(DEFAULT_MAX[k])); setErr(''); };
+  const pick = (k: Kind) => { setKind(k); setMax(String(defaultMax(k))); setErr(''); };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const m = Number(max);
@@ -75,7 +76,7 @@ export function Gradebook({ me }: { me: Me }) {
   const curr = useLoad(() => loadCurr(me), [me.id]);
   const [allCols, setCols] = useState<Col[]>([]);
   const cols = allCols.filter(c => c.quarter === q);
-  const [lmax, setLmax] = useState('10');
+  const [lmax, setLmax] = useState(String(getPrefs().kbMax));
   const [marks, setMarks] = useState<Record<string, number>>({});
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);

@@ -1,5 +1,6 @@
 import { sb, DEMO } from '../config';
 import { generate } from './plan';
+import { getPrefs } from '../prefs';
 import { createSession } from '../views/session';
 
 export interface Entry { id: string; class_id: string; weekday: number; period: number }
@@ -91,7 +92,7 @@ export async function delSlot(me: Me, id: string): Promise<void> {
 }
 
 /** Starts the lecture of a slot for its class and remembers the live lesson on the slot. Returns the session id; the caller opens the remote. */
-export async function startSlot(me: Me, slot: Slot, groups = 3): Promise<string> {
+export async function startSlot(me: Me, slot: Slot, groups = getPrefs().groups): Promise<string> {
   if (!slot.lesson_id) throw new Error('Алдымен ұяшыққа дәріс қойыңыз');
   if (slot.session_id) return slot.session_id;
   const id = await createSession(slot.lesson_id, slot.class_id, groups);

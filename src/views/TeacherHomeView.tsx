@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { sb, DEMO } from '../config';
 import { api } from '../hw/types';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, SoonCard, inputCls, useLoad } from '../ui';
+import { getPrefs } from '../prefs';
 import { startSession } from './session';
 
 interface Lesson { id: string; title: string; class_id: string | null }
@@ -9,7 +10,7 @@ interface Lesson { id: string; title: string; class_id: string | null }
 function StartLesson({ lessons, classes }: { lessons: Lesson[]; classes: Array<{ id: string; name: string }> }) {
   const [id, setId] = useState(lessons[0]?.id || '');
   const [cls, setCls] = useState(lessons[0]?.class_id || '');
-  const [groups, setGroups] = useState(3);
+  const [groups, setGroups] = useState(getPrefs().groups);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   if (lessons.length === 0) return <EmptyState icon="📝" text="Әзірге сабақ жоқ." action={<LinkButton href="#edit/new" variant="primary">+ Жаңа сабақ</LinkButton>} />;

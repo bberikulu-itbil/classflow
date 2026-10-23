@@ -47,3 +47,7 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 - "Бастау" on a slot calls the existing `cf_start_session` rpc (lecture + the slot's class, 3 groups), stores the live lesson in `cf_slots.session_id` and opens the teacher remote. A started slot shows "Басталды" + a link, and its lecture is locked. Whether the session keeps its own copy of the lecture depends on that rpc (not in this repo).
 - Test against a fake Supabase: `replica/e2e/schedule_cloud.py` (rows, start, old 009 without `session_id`, missing tables).
 - Next: journal columns come from the started slots.
+
+## Profile and settings (#settings/profile)
+- Profile card (initial, name, role, login, school when readable, class for students), appearance, password, sign out.
+- «Оқыту баптаулары» (staff only): the four quarter date ranges, the default group count when starting a lesson, the default ҚБ maximum. `src/prefs.ts` holds them (this device only, `cf_prefs`); `quarterOf` (Lessons/Journal filters), the КТП form range, «Бастау» and the journal read them. August cannot be part of a quarter. Check: `node replica/unit/prefs.test.mjs`.

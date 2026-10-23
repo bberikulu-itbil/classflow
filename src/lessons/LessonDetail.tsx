@@ -7,6 +7,7 @@ import { fmtDate } from '../hw/format';
 import { startSession } from '../views/session';
 import { byName } from '../views/session';
 import { loadLessonData, loadResults } from './data';
+import { getPrefs } from '../prefs';
 import { QuarterChips, useFilters } from './Filters';
 import { classTable, matches, sessDate, sessionsByLesson, subjectOf } from './model';
 import type { Cls, Sess } from './model';
@@ -14,7 +15,7 @@ import type { Cls, Sess } from './model';
 const STATUS: Record<string, string> = { live: 'Жалғасуда', ended: 'Аяқталды' };
 
 function StartRow({ lessonId, classId }: { lessonId: string; classId: string }) {
-  const [groups, setGroups] = useState(3);
+  const [groups, setGroups] = useState(getPrefs().groups);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const go = async () => { setBusy(true); setErr(''); try { await startSession(lessonId, classId, groups); } catch (e) { setErr((e as Error).message || 'Сабақты бастау мүмкін болмады'); setBusy(false); } };

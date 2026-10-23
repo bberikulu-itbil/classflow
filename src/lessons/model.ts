@@ -1,3 +1,4 @@
+import { quarterAt } from '../prefs';
 // Pure logic of the Lessons gallery: school-year quarters, filters, grouping. Nothing here touches the network.
 export interface Lesson { id: string; title: string; subject: string | null; class_id: string | null }
 export interface Cls { id: string; name: string }
@@ -7,12 +8,8 @@ export interface Sess {
 }
 export interface Filters { cls: string; q: number } // cls '' = every class; q 0 = the whole time, 1-4 = quarter of the current school year
 
-// shortcut: fixed month/day boundaries (Kazakhstan school year, autumn/winter/spring breaks fall into the quarter that just ended);
-// replace with the school's real calendar in the database when the dates start to matter to the day.
-export const quarterOf = (d: Date): number => {
-  const md = (d.getMonth() + 1) * 100 + d.getDate();
-  return md >= 901 && md < 1101 ? 1 : md >= 1101 ? 2 : md < 329 ? 3 : md < 901 ? 4 : 1;
-};
+// Quarter dates come from the teacher's settings (src/prefs.ts); the defaults are the usual Kazakhstan school-year dates.
+export const quarterOf = (d: Date): number => quarterAt(String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
 /** Year in which the school year started (September). Summer holidays count to the year that just ended. */
 export const schoolYear = (d: Date) => (d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1);
 export const currentQuarter = (now = new Date()) => quarterOf(now);
