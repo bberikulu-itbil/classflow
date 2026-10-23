@@ -56,10 +56,10 @@ export const TEACHER: Section[] = [
     { key: 'tests', label: 'Тест генерациясы', items: ['Сұрақтар, интерактив және сабақтар', 'Бірнеше тест нұсқасын автоматты құрастыру'] },
   ] },
   { key: 'vocab', label: 'Сөздігім', icon: BookOpen, routes: ['vocab'], subs: [
-    { key: 'base', label: 'Терминдер базасы', items: ['Үш тілдегі терминдер'] },
-    { key: 'link', label: 'Тақырыпқа байлау', items: ['Терминді сабақ тақырыбына байлау'] },
-    { key: 'test', label: 'Сөздік тесті', items: ['Сөздік бойынша тест жасау'] },
-    { key: 'share', label: 'Тарату', items: ['Терминдерді оқушыларға тарату'] },
+    { key: 'base', label: 'Терминдер базасы', to: 'vocab/base' },
+    { key: 'link', label: 'Тақырыпқа байлау', to: 'vocab/link' },
+    { key: 'test', label: 'Сөздік тесті', to: 'vocab/test' },
+    { key: 'share', label: 'Тарату', to: 'vocab/share' },
   ] },
   { key: 'settings', label: 'Профиль және баптаулар', icon: SlidersHorizontal, routes: ['settings', 'profile'], hidden: true, subs: [
     { key: 'profile', label: 'Профиль және аккаунт', to: 'settings/profile' },
@@ -93,8 +93,8 @@ export const STUDENT: Section[] = [
   { key: 'vocab', label: 'Сөздігім', icon: BookOpen, routes: ['vocab'], subs: [
     { key: 'mine', label: 'Терминдерім', to: 'vocab/mine' },
     { key: 'own', label: 'Өз сөздерім', items: ['Өзім қосқан сөздер'] },
-    { key: 'cards', label: 'Карточкалар', items: ['Терминдерді карточкамен үйрену'] },
-    { key: 'test', label: 'Өзін-өзі тексеру', items: ['Сөздік бойынша тест'] },
+    { key: 'cards', label: 'Карточкалар', to: 'vocab/cards' },
+    { key: 'test', label: 'Өзін-өзі тексеру', to: 'vocab/test' },
   ] },
 ];
 

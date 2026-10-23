@@ -30,7 +30,7 @@ const save = (me: Me, v: Store) => { try { localStorage.setItem(key(me), JSON.st
 const fail = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
 const order = <T extends { position: number }>(a: T[]) => [...a].sort((x, y) => x.position - y.position);
 
-async function loadLessons(meId: string): Promise<Les[]> {
+export async function loadLessons(meId: string): Promise<Les[]> {
   if (DEMO) return (await loadLessonData(meId)).lessons.map(l => ({ id: l.id, title: l.title, subject: l.subject }));
   const { data, error } = await sb.from('cf_lessons').select('id,title,subject').order('updated_at', { ascending: false });
   fail(error); return (data || []) as Les[];

@@ -117,7 +117,7 @@ with sync_playwright() as p:
     ok('K1 skip button moves focus to the content and leaves the route alone', pg.evaluate('document.activeElement.tagName')=='MAIN' and pg.evaluate('location.hash')==h0)
 
     exp={'Сабақтар':('#lessons/mine','Сабақтар'),'Тапсырмалар':('#assign','Үй тапсырмасын беру'),'Сынақтар мен сайыстар':('#exams','Сынақтар мен сайыстар'),'Журнал':('#journal/lessons','Журнал'),'EduStudio':('#edustudio','EduStudio'),
-         'Сөздігім':('#vocab','Сөздігім')}
+         'Сөздігім':('#vocab/base','Терминдер базасы')}
     for name,(h,title) in exp.items():
         nl(pg,name).click(); pg.wait_for_timeout(300)
         ok(f'T4 {name}: opens {h}', pg.evaluate('location.hash')==h and pg.locator(f'h1:has-text("{title}")').count()>=1, pg.evaluate('location.hash'))

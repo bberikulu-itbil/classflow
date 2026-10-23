@@ -51,3 +51,8 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 ## Profile and settings (#settings/profile)
 - Profile card (initial, name, role, login, school when readable, class for students), appearance, password, sign out.
 - «Оқыту баптаулары» (staff only): the four quarter date ranges, the default group count when starting a lesson, the default ҚБ maximum. `src/prefs.ts` holds them (this device only, `cf_prefs`); `quarterOf` (Lessons/Journal filters), the КТП form range, «Бастау» and the journal read them. August cannot be part of a quarter. Check: `node replica/unit/prefs.test.mjs`.
+
+## Vocabulary (Сөздігім)
+Teacher: **Терминдер базасы** (kk / ru / en + definition, bulk paste `kk | ru | en | definition`), **Тақырыпқа байлау** (terms of a lesson; saving rewrites the base-made entries of `cf_lessons.terms`, entries typed by hand stay), **Сөздік тесті** (generated multiple choice, answer key, print), **Тарату** (a copy of the terms goes to each chosen class as a set).
+Student: **Терминдерім** (sets of the own class, "add to my dictionary" into `cf_my_terms`), **Карточкалар**, **Өзін-өзі тексеру** (10 questions, score).
+Needs `supabase/011_vocab.sql` (run after 006–010). Without it the base and sets stay in the browser and the screens say so. Tests: `replica/e2e/vocab.py`, `vocab_cloud.py`, `replica/unit/quiz.test.mjs`, `vocab_rls.mjs`.

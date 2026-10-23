@@ -10,7 +10,9 @@ import { LessonsGallery } from '../lessons/LessonsGallery';
 import { Gradebook } from '../journal/Gradebook';
 import { CoursesView, ModulesView } from '../curriculum/Views';
 import { ScheduleView } from '../schedule/View';
-import { StudentFeedback, StudentTerms } from '../views/student';
+import { StudentFeedback } from '../views/student';
+import { VocabBase, VocabLink, VocabTest, VocabShare } from '../vocab/Teacher';
+import { StudentVocab, StudentCards, StudentQuiz } from '../vocab/Student';
 import { ProfileCard } from '../components/ProfileView';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
@@ -58,8 +60,14 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:journal:grid': c => <Gradebook me={c.me} />,
   'teacher:journal:classes': () => <ClassesView />,
   'teacher:settings:profile': c => <ProfileCard me={c.me} onLogout={c.onLogout} />,
+  'teacher:vocab:base': c => <VocabBase me={c.me} />,
+  'teacher:vocab:link': c => <VocabLink me={c.me} />,
+  'teacher:vocab:test': c => <VocabTest me={c.me} />,
+  'teacher:vocab:share': c => <VocabShare me={c.me} />,
   'student:grades:feedback': () => <StudentFeedback />,
-  'student:vocab:mine': () => <StudentTerms />,
+  'student:vocab:mine': c => <StudentVocab me={c.me} />,
+  'student:vocab:cards': c => <StudentCards me={c.me} />,
+  'student:vocab:test': c => <StudentQuiz me={c.me} />,
 };
 
 export function SectionPage({ role, section, subKey, me, onLogout }: { role: Role; section: Section; subKey: string; me: any; onLogout: () => void }) {
