@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Layers, Play, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Info, Layers, Pencil, Play, Trash2, X } from 'lucide-react';
 import { coverOf } from '../ui/cover';
 import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
@@ -24,8 +24,9 @@ function useCurr(me: Me) {
 const Shell = ({ title, children }: { title: string; children: React.ReactNode }) => <main className="mx-auto max-w-4xl space-y-4 p-4"><h1 className="text-2xl font-bold">{title}</h1>{children}</main>;
 const Status = ({ msg }: { msg: string }) => <p role="status" aria-live="polite" className={msg ? 'rounded-lg bg-danger-soft p-3 text-sm text-danger' : 'sr-only'}>{msg}</p>;
 const Local = ({ d }: { d?: Curr }) => d?.local ? <p role="note" className="rounded-lg bg-surface-2 p-3 text-sm text-text-secondary">Құрылым тек осы браузерде сақталады: дерекқорда кестелер әлі жоқ (008_curriculum.sql іске қосылмаған).</p> : null;
-const IconBtn = ({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) =>
-  <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-2 disabled:opacity-30 disabled:hover:bg-transparent">{children}</button>;
+const IconBtn = ({ label, onClick, disabled, pressed, expanded, controls, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; expanded?: boolean; controls?: string; children: React.ReactNode }) =>
+  <button type="button" aria-label={label} title={label} aria-pressed={pressed} aria-expanded={expanded} aria-controls={expanded ? controls : undefined} onClick={onClick} disabled={disabled}
+    className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:hover:bg-transparent ${pressed || expanded ? 'bg-surface-2 text-accent' : 'text-text-secondary'}`}>{children}</button>;
 function Confirm({ text, onYes, onNo }: { text: string; onYes: () => void; onNo: () => void }) {
   return (
     <div role="alertdialog" aria-label="Растау" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-soft p-3 text-sm text-danger">
@@ -103,6 +104,7 @@ export function ModulesView({ me }: { me: Me }) {
   const [form, setForm] = useState(false), [fe, setFe] = useState('');
   const [nf, setNf] = useState<{ title: string; kind: Kind; quarter: string; grade: string; course: string }>({ title: '', kind: 'lesson', quarter: String(currentQuarter()), grade: '', course: '' });
   const [ask, setAsk] = useState<Mod | null>(null);
+  const [info, setInfo] = useState(false), [openId, setOpenId] = useState(''), [editId, setEditId] = useState('');
   const classes = useLoad(loadClasses, []);
   const [cls, setCls] = useState(st.selectedClass()), [busy, setBusy] = useState(''), [startErr, setStartErr] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
@@ -140,32 +142,38 @@ export function ModulesView({ me }: { me: Me }) {
   const meta = (m: Mod, p: Partial<st.ModMeta>) => act(() => st.setModuleMeta(me, m.id, { kind: m.kind, quarter: m.quarter, grade: m.grade, ...p }));
   const sel = 'min-h-[44px] rounded-md border border-border-input bg-surface px-2 text-sm text-text disabled:opacity-50';
   const noKind = !!data && data.kindCol === false;
+  const note = 'rounded-lg bg-surface-2 px-3 py-2 text-xs text-text-secondary';
   return (
-    <main className="mx-auto max-w-4xl space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <main className="mx-auto max-w-4xl space-y-3 p-4">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Модульдер мен дәрістер</h1>
-        <CreateMenu onModule={openForm} />
+        <div className="flex items-center gap-1">
+          <IconBtn label="Түсініктеме" expanded={info} controls="mod-info" onClick={() => setInfo(v => !v)}><Info size={18} aria-hidden="true" /></IconBtn>
+          <CreateMenu onModule={openForm} />
+        </div>
       </div>
-      <p className="text-text-secondary">Модуль — дәрістер тобы. Түрі: <b>Сабақ</b> (оқу жылының тоқсанына байланады) немесе <b>Курс</b>. Дәріс — мазмұн, сыныпқа байланбайды; ол сыныппен өткенде сабақ болады. Мұқаба модульде, дәрісте жоқ.</p>
-      <Local d={data} /><Status msg={msg} />
-      {noKind && <p role="note" className="rounded-lg bg-surface-2 p-3 text-sm text-text-secondary">Модульдің түрі, тоқсаны және параллелі үшін дерекқорда 012_module_kind.sql іске қосылуы керек. Қазір барлық модуль «Сабақ» ретінде көрсетіледі.</p>}
+      {info && (
+        <div id="mod-info" className="space-y-1 rounded-lg bg-surface-2 p-3 text-sm text-text-secondary">
+          <p>Модуль — дәрістер тобы. Түрі: <b>Сабақ</b> (оқу жылының тоқсанына байланады) немесе <b>Курс</b>.</p>
+          <p>Дәріс — мазмұн, сыныпқа байланбайды; ол сыныппен өткенде сабақ болады. Мұқаба модульде, дәрісте жоқ.</p>
+          <p>{clsName ? `Модульді ашқанда дәрістің жанындағы «Бастау» батырмасы оны ${clsName} сыныбымен бірден сабақ ретінде ашады.` : 'Сыныпты таңдасаңыз, модуль ішіндегі әр дәрістің жанында «Бастау» батырмасы шығады: дәріс бірден сабақ ретінде ашылады.'}{clsName && DEMO ? ' Демо режимде сабақ басталмайды.' : ''}</p>
+        </div>
+      )}
+      {data?.local && <p role="note" className={note}>Құрылым тек осы браузерде сақталады: дерекқорда кестелер әлі жоқ (008_curriculum.sql іске қосылмаған).</p>}
+      <Status msg={msg} />
+      {noKind && <p role="note" className={note}>Түрі, тоқсаны, параллелі үшін 012_module_kind.sql іске қосылуы керек. Әзірге барлық модуль «Сабақ».</p>}
       {error && <ErrorBox message={error} onRetry={reload} />}
       {loading && !data && <Skeleton />}
       {data && courses.length === 0 && <EmptyState text="Алдымен курс қосыңыз." action={<LinkButton href="#lessons/courses" variant="primary">Курстарға өту</LinkButton>} />}
       {data && courses.length > 0 && (
         <>
-          <Card className="space-y-3">
-            <Chips legend="Көрсету" name="show" value={show} onChange={v => setShow(v as Show)} options={SHOWS.map(x => ({ v: x.v, label: `${x.label} · ${count(x.v)}` }))} />
-            {grades.length > 0 && <Chips legend="Параллель" name="grade" value={grade} onChange={setGrade} options={[{ v: '', label: 'Барлығы' }, ...grades.map(g => ({ v: String(g), label: `${g}-сынып` }))]} />}
-            {courses.length > 1 && <Chips legend="Курс" name="course" value={base.course} onChange={pickCourse} options={[{ v: '', label: 'Барлық курс' }, ...courses.map(c => ({ v: c.id, label: c.title }))]} />}
-            {classes.data && classes.data.length > 0 && (
-              <>
-                <Chips legend="Сынып" name="start-class" value={clsName ? cls : ''} onChange={pickClass} options={[{ v: '', label: 'Таңдалмаған' }, ...classes.data.map(c => ({ v: c.id, label: c.name }))]} />
-                <p className="text-sm text-text-secondary">{clsName ? `Дәрістің жанындағы «Бастау» батырмасы оны ${clsName} сыныбымен бірден сабақ ретінде ашады.` : 'Сыныпты таңдасаңыз, әр дәрістің жанында «Бастау» батырмасы шығады: дәріс бірден сабақ ретінде ашылады.'}{clsName && DEMO ? ' Демо режимде сабақ басталмайды.' : ''}</p>
-              </>
-            )}
-            {startErr && <p role="alert" className="text-sm text-danger">{startErr}</p>}
-          </Card>
+          <div className="flex flex-wrap items-center gap-2">
+            <Chips compact legend="Көрсету" name="show" value={show} onChange={v => setShow(v as Show)} options={SHOWS.map(x => ({ v: x.v, label: `${x.label} · ${count(x.v)}` }))} />
+            {grades.length > 0 && <select aria-label="Параллель" className={sel} value={grade} onChange={e => setGrade(e.target.value)}><option value="">Барлық параллель</option>{grades.map(g => <option key={g} value={g}>{g}-сынып</option>)}</select>}
+            {courses.length > 1 && <select aria-label="Курс" className={sel} value={base.course} onChange={e => pickCourse(e.target.value)}><option value="">Барлық курс</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select>}
+            {classes.data && classes.data.length > 0 && <select aria-label="Сынып (бастау үшін)" className={sel} value={clsName ? cls : ''} onChange={e => pickClass(e.target.value)}><option value="">Сынып таңдалмаған</option>{classes.data.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
+          </div>
+          {startErr && <p role="alert" className="text-sm text-danger">{startErr}</p>}
 
           {form && (
             <Card className="space-y-3" aria-label="Модуль жасау">
@@ -191,52 +199,75 @@ export function ModulesView({ me }: { me: Me }) {
           )}
           {mods.map((m, mi) => {
             const ps = inModule(m), cr = courseOf(m), g = gradeOf(m, courses);
+            const editing = editId === m.id, open = editing || openId === m.id;
+            const info1 = [KIND_LABEL[m.kind], m.kind === 'lesson' ? qLabel(m.quarter) : null, g && `${g}-сынып`, `${ps.length} дәріс`].filter(Boolean).join(' · ');
             return (
-              <section key={m.id} aria-label={m.title} className="space-y-2 overflow-hidden rounded-lg border border-border bg-surface p-3">
-                {/* the cover belongs to the module; a lecture inside it has none */}
-                <div aria-hidden="true" className="-mx-3 -mt-3 mb-1 flex h-20 items-end justify-between gap-2 p-3 text-white" style={{ background: coverOf(m.kind === 'course' ? 3 : mi) }}>
-                  <Layers size={36} className="shrink-0 opacity-90" />
-                  <span className="rounded-full bg-black/30 px-2 py-0.5 text-right text-xs font-semibold">{[KIND_LABEL[m.kind], m.kind === 'lesson' ? qLabel(m.quarter) : null, g && `${g}-сынып`, `${ps.length} дәріс`].filter(Boolean).join(' · ')}</span>
+              <section key={m.id} aria-label={m.title} className="rounded-lg border border-border bg-surface">
+                <div className="flex items-center gap-1 pr-1">
+                  {/* the cover belongs to the module (a lecture has none); it is the toggle, editing icons stay outside it */}
+                  <h2 className="min-w-0 flex-1">
+                    <button type="button" aria-expanded={open} aria-controls={`mod-${m.id}`} aria-describedby={`mod-${m.id}-meta`} onClick={() => setOpenId(openId === m.id ? '' : m.id)}
+                      className="flex min-h-[56px] w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-surface-2">
+                      <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-white" style={{ background: coverOf(m.kind === 'course' ? 3 : mi) }}><Layers size={20} /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words font-semibold">{m.title}</span>
+                        <span id={`mod-${m.id}-meta`} className="block text-xs font-normal text-text-secondary">{info1}</span>
+                      </span>
+                      <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+                    </button>
+                  </h2>
+                  <IconBtn label={`${m.title}: өңдеу`} pressed={editing} onClick={() => setEditId(editing ? '' : m.id)}><Pencil size={16} aria-hidden="true" /></IconBtn>
                 </div>
-                <div className="flex items-center gap-1">
-                  <input aria-label={`Модуль ${mi + 1}: атауы`} defaultValue={m.title} key={m.title} maxLength={80}
-                    onBlur={e => { const v = e.target.value.trim(); if (!v) e.target.value = m.title; else if (v !== m.title) act(() => st.renameModule(me, m.id, v)); }}
-                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    className="min-h-[44px] min-w-0 flex-1 rounded-md bg-transparent px-2 text-lg font-semibold hover:bg-surface-2" />
-                  <IconBtn label={`${m.title}: жоғары`} disabled={mi === 0} onClick={() => act(() => st.swapModules(me, m, mods[mi - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
-                  <IconBtn label={`${m.title}: төмен`} disabled={mi === mods.length - 1} onClick={() => act(() => st.swapModules(me, m, mods[mi + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
-                  <IconBtn label={`${m.title}: өшіру`} onClick={() => setAsk(m)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 px-2">
-                  <select aria-label={`${m.title}: түрі`} className={sel} disabled={noKind} value={m.kind} onChange={e => meta(m, { kind: e.target.value as Kind })}><option value="lesson">Сабақ</option><option value="course">Курс</option></select>
-                  <select aria-label={`${m.title}: тоқсаны`} className={sel} disabled={noKind || m.kind === 'course'} value={m.kind === 'course' ? '' : m.quarter ?? ''} onChange={e => meta(m, { quarter: e.target.value ? +e.target.value : null })}><option value="">Барлық тоқсан</option>{[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}-тоқсан</option>)}</select>
-                  <select aria-label={`${m.title}: параллелі`} className={sel} disabled={noKind} value={m.grade ?? ''} onChange={e => meta(m, { grade: e.target.value ? +e.target.value : null })}><option value="">{cr?.grade ? `Курстан · ${cr.grade}-сынып` : 'Көрсетілмейді'}</option>{Array.from({ length: 11 }, (_, i) => <option key={i} value={i + 1}>{i + 1}-сынып</option>)}</select>
-                  {courses.length > 1 && cr && <span className="text-sm text-text-muted">Курс: {cr.title}</span>}
-                </div>
-                {ps.length === 0 ? <p className="px-2 text-sm text-text-muted">Модульде дәріс жоқ.</p> : (
-                  <ol className="space-y-1">
-                    {ps.map((p, i) => {
-                      const l = lesson(p.lesson_id)!;
-                      return (
-                        <li key={p.lesson_id} className="flex flex-wrap items-center gap-1 rounded-md px-2 hover:bg-surface-2">
-                          <span className="w-6 text-sm text-text-muted">{i + 1}.</span>
-                          <a href={'#edit/' + l.id} className="min-w-0 flex-1 py-2 break-words text-accent underline">{l.title}</a>
-                          <span className="hidden text-sm text-text-muted sm:inline">{l.subject}</span>
-                          {clsName && <Button variant="success" className="!min-h-[44px]" disabled={!!DEMO} loading={busy === l.id} onClick={() => start(l.id)} aria-label={`${l.title}: ${clsName} сыныбымен бастау`}><Play size={14} aria-hidden="true" />Бастау · {clsName}</Button>}
-                          <IconBtn label={`${l.title}: жоғары`} disabled={i === 0} onClick={() => act(() => st.swapLessons(me, p, ps[i - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
-                          <IconBtn label={`${l.title}: төмен`} disabled={i === ps.length - 1} onClick={() => act(() => st.swapLessons(me, p, ps[i + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
-                          <IconBtn label={`${l.title}: модульден алу`} onClick={() => act(() => st.unplaceLesson(me, l.id))}><X size={16} aria-hidden="true" /></IconBtn>
-                        </li>
-                      );
-                    })}
-                  </ol>
+                {open && (
+                  <div id={`mod-${m.id}`} className="space-y-2 border-t border-border p-2">
+                    {editing && (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <input aria-label={`Модуль ${mi + 1}: атауы`} defaultValue={m.title} key={m.title} maxLength={80}
+                            onBlur={e => { const v = e.target.value.trim(); if (!v) e.target.value = m.title; else if (v !== m.title) act(() => st.renameModule(me, m.id, v)); }}
+                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            className="min-h-[44px] min-w-0 flex-1 rounded-md border border-border-input bg-surface px-2 font-semibold" />
+                          <IconBtn label={`${m.title}: жоғары`} disabled={mi === 0} onClick={() => act(() => st.swapModules(me, m, mods[mi - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
+                          <IconBtn label={`${m.title}: төмен`} disabled={mi === mods.length - 1} onClick={() => act(() => st.swapModules(me, m, mods[mi + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
+                          <IconBtn label={`${m.title}: өшіру`} onClick={() => setAsk(m)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <select aria-label={`${m.title}: түрі`} className={sel} disabled={noKind} value={m.kind} onChange={e => meta(m, { kind: e.target.value as Kind })}><option value="lesson">Сабақ</option><option value="course">Курс</option></select>
+                          <select aria-label={`${m.title}: тоқсаны`} className={sel} disabled={noKind || m.kind === 'course'} value={m.kind === 'course' ? '' : m.quarter ?? ''} onChange={e => meta(m, { quarter: e.target.value ? +e.target.value : null })}><option value="">Барлық тоқсан</option>{[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}-тоқсан</option>)}</select>
+                          <select aria-label={`${m.title}: параллелі`} className={sel} disabled={noKind} value={m.grade ?? ''} onChange={e => meta(m, { grade: e.target.value ? +e.target.value : null })}><option value="">{cr?.grade ? `Курстан · ${cr.grade}-сынып` : 'Көрсетілмейді'}</option>{Array.from({ length: 11 }, (_, i) => <option key={i} value={i + 1}>{i + 1}-сынып</option>)}</select>
+                          {courses.length > 1 && cr && <span className="text-sm text-text-muted">Курс: {cr.title}</span>}
+                        </div>
+                      </>
+                    )}
+                    {ps.length === 0 ? <p className="px-2 text-sm text-text-muted">Модульде дәріс жоқ.</p> : (
+                      <ol className="space-y-1">
+                        {ps.map((p, i) => {
+                          const l = lesson(p.lesson_id)!;
+                          return (
+                            <li key={p.lesson_id} className="flex flex-wrap items-center gap-1 rounded-md px-2 hover:bg-surface-2">
+                              <span className="w-6 text-sm text-text-muted">{i + 1}.</span>
+                              <a href={'#edit/' + l.id} className="min-w-0 flex-1 py-2 break-words text-accent underline">{l.title}</a>
+                              {!editing && clsName && <Button variant="success" className="!min-h-[44px]" disabled={!!DEMO} loading={busy === l.id} onClick={() => start(l.id)} aria-label={`${l.title}: ${clsName} сыныбымен бастау`}><Play size={14} aria-hidden="true" />Бастау · {clsName}</Button>}
+                              {editing && <>
+                                <IconBtn label={`${l.title}: жоғары`} disabled={i === 0} onClick={() => act(() => st.swapLessons(me, p, ps[i - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
+                                <IconBtn label={`${l.title}: төмен`} disabled={i === ps.length - 1} onClick={() => act(() => st.swapLessons(me, p, ps[i + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
+                                <IconBtn label={`${l.title}: модульден алу`} onClick={() => act(() => st.unplaceLesson(me, l.id))}><X size={16} aria-hidden="true" /></IconBtn>
+                              </>}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+                    {editing && <>
+                      <AddLesson key={m.id} free={free} label={m.title} onAdd={id => act(() => st.placeLesson(me, id, m.id, st.nextPosition(data.places.filter(p => p.module_id === m.id))))} />
+                      <div className="px-2"><Button variant="secondary" onClick={() => setEditId('')}>Дайын</Button></div>
+                    </>}
+                  </div>
                 )}
-                <AddLesson key={m.id} free={free} label={m.title} onAdd={id => act(() => st.placeLesson(me, id, m.id, st.nextPosition(data.places.filter(p => p.module_id === m.id))))} />
               </section>
             );
           })}
-          {ask && <Confirm text={`«${ask.title}» модулі өшіріледі. Дәрістер сақталады, тек модульден шығады. Жалғастырасыз ба?`} onNo={() => setAsk(null)} onYes={() => { const m = ask; setAsk(null); act(() => st.delModule(me, m.id)); }} />}
-          <p className="text-sm text-text-secondary">Модульге қосылмаған дәрістер: {free.length}.</p>
+          {ask && <Confirm text={`«${ask.title}» модулі өшіріледі. Дәрістер сақталады, тек модульден шығады. Жалғастырасыз ба?`} onNo={() => setAsk(null)} onYes={() => { const m = ask; setAsk(null); setEditId(''); act(() => st.delModule(me, m.id)); }} />}
         </>
       )}
     </main>
