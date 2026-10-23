@@ -56,3 +56,6 @@ The whole menu is data: `src/nav/config.ts` (`TEACHER`, `STUDENT`). Each section
 Teacher: **Терминдер базасы** (kk / ru / en + definition, bulk paste `kk | ru | en | definition`), **Тақырыпқа байлау** (terms of a lesson; saving rewrites the base-made entries of `cf_lessons.terms`, entries typed by hand stay), **Сөздік тесті** (generated multiple choice, answer key, print), **Тарату** (a copy of the terms goes to each chosen class as a set).
 Student: **Терминдерім** (sets of the own class, "add to my dictionary" into `cf_my_terms`), **Карточкалар**, **Өзін-өзі тексеру** (10 questions, score).
 Needs `supabase/011_vocab.sql` (run after 006–010). Without it the base and sets stay in the browser and the screens say so. Tests: `replica/e2e/vocab.py`, `vocab_cloud.py`, `replica/unit/quiz.test.mjs`, `vocab_rls.mjs`.
+
+## Teacher remote (#remote/<lesson id>)
+Uses the theme colours (it was white-on-white in the light themes). Wide screens: slide, next-slide hint, notes and task on the left, class tabs (Сынып, Жауаптар, Ұпай, Қатысу, Слайдтар) on the right; phones: one column with Артқа/Келесі fixed at the bottom. ← and → change slides (not while typing). Every action goes through one `run()` that shows the server's refusal in a status line; ending the lesson asks inline. Test: `replica/e2e/remote.py` (fake Supabase; `SHOTS=dir` saves screenshots).

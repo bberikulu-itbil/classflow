@@ -31,8 +31,8 @@ function TeachingSettings() {
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-text-secondary">Тоқсан күндері (демалыстар аралықта қалады)</legend>
         {p.quarters.map((x, i) => (
-          <div key={i} className="grid grid-cols-[5.5rem_1fr_1fr] items-end gap-2">
-            <span className="pb-3 text-sm font-medium">{i + 1}-тоқсан</span>
+          <div key={i} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1fr)]">
+            <span className="col-span-2 text-sm font-medium sm:col-span-1 sm:pb-3">{i + 1}-тоқсан</span>
             <Field label="Басталуы">{id => <input id={id} type="date" className={inputCls} value={toDate(x.from)} onChange={e => span(i, 'from', e.target.value.slice(5))} />}</Field>
             <Field label="Аяқталуы">{id => <input id={id} type="date" className={inputCls} value={toDate(x.to)} onChange={e => span(i, 'to', e.target.value.slice(5))} />}</Field>
           </div>
