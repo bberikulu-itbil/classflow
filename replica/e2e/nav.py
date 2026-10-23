@@ -124,7 +124,7 @@ with sync_playwright() as p:
         ok(f'T4 {name}: section is marked current', pg.locator('aside nav a[aria-current=page]').inner_text().strip()==name)
     pg.goto(B+'?demo=teacher#lessons/gallery'); pg.wait_for_selector('h1:has-text("Сабақтар")')
     ok('T5 planned tab shows what it will hold', pg.locator('text=Дайын сабақтар').count()==1 and pg.locator('text=Жақында').count()>=2)
-    ok('T5 tab strip has the 7 lesson tabs (courses, modules and КТП are real)', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').all_inner_texts()[0].strip()=='Модульдер мен дәрістер' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').count()==7)
+    ok('T5 tab strip has the 7 lesson tabs (courses, modules and КТП are real)', pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').all_inner_texts()[0].strip()=='Сабақтар' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a').count()==7)
     axe(pg,'lessons/gallery (tabs, soon)')
     pg.goto(B+'?demo=teacher#lessons/plans'); pg.wait_for_timeout(600)
     ok('T5 tab for an older screen forwards to it (#plans)', pg.evaluate('location.hash')=='#plans' and pg.locator('nav[aria-label="Сабақтар бөлімдері"] a[aria-current=page]').inner_text().startswith('Жоспарлар'))

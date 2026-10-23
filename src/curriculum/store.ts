@@ -1,28 +1,36 @@
 import { sb, DEMO } from '../config';
 import { loadLessonData } from '../lessons/data';
+import { currentQuarter } from '../lessons/model';
 
 export interface Course { id: string; title: string; subject: string | null; grade: number | null }
-export interface Mod { id: string; course_id: string; title: string; position: number }
+export type Kind = 'lesson' | 'course';
+/** kind 'lesson' = school-lesson module (may belong to one quarter); 'course' = course module (no quarter). grade empty = the course's grade. */
+export interface Mod { id: string; course_id: string; title: string; position: number; kind: Kind; quarter: number | null; grade: number | null }
 export interface Place { lesson_id: string; module_id: string; position: number }
 export interface Les { id: string; title: string; subject: string | null }
-export interface Curr { courses: Course[]; modules: Mod[]; places: Place[]; lessons: Les[]; local: boolean }
+export interface Curr { courses: Course[]; modules: Mod[]; places: Place[]; lessons: Les[]; local: boolean; kindCol?: boolean }
 export interface Me { id: string; school_id: string }
 
 // Rows live in cf_curr_* (supabase/008_curriculum.sql). Without the tables (and in the demo) the structure stays in this browser.
 // shortcut: structure made in the browser before the tables existed is not moved up; add a "move" card if a teacher has real data there.
 let noTable = !!DEMO;
+let noKindCol = false; // 012_module_kind.sql not run yet
 const missing = (e: { code?: string }) => e.code === 'PGRST205' || e.code === '42P01';
 const key = (me: Me) => 'cf_curriculum_' + me.id;
 type Store = Pick<Curr, 'courses' | 'modules' | 'places'>;
 const demoSeed = (): Store => ({
   courses: [{ id: 'k1', title: 'Информатика 7', subject: 'Информатика', grade: 7 }],
-  modules: [{ id: 'm1', course_id: 'k1', title: 'Алгоритмдер', position: 0 }, { id: 'm2', course_id: 'k1', title: 'Бағдарламалау негіздері', position: 1 }],
+  modules: [
+    { id: 'm1', course_id: 'k1', title: 'Алгоритмдер', position: 0, kind: 'lesson', quarter: currentQuarter(), grade: 7 },
+    { id: 'm2', course_id: 'k1', title: 'Бағдарламалау негіздері', position: 1, kind: 'lesson', quarter: null, grade: 7 },
+    { id: 'm3', course_id: 'k1', title: 'Робототехника үйірмесі', position: 2, kind: 'course', quarter: null, grade: 8 },
+  ],
   places: [{ lesson_id: 'l1', module_id: 'm1', position: 0 }, { lesson_id: 'l2', module_id: 'm1', position: 1 }],
 });
 function readLocal(me: Me): Store {
   try {
     const v = JSON.parse(localStorage.getItem(key(me)) || 'null');
-    if (v && Array.isArray(v.courses) && Array.isArray(v.modules) && Array.isArray(v.places)) return v;
+    if (v && Array.isArray(v.courses) && Array.isArray(v.modules) && Array.isArray(v.places)) return { ...v, modules: v.modules.map((m: Partial<Mod> & { id: string }) => ({ kind: 'lesson', quarter: null, grade: null, ...m })) };
   } catch { /* unreadable: start empty */ }
   return DEMO ? demoSeed() : { courses: [], modules: [], places: [] };
 }
@@ -39,17 +47,24 @@ export async function loadLessons(meId: string): Promise<Les[]> {
 export async function loadCurr(me: Me): Promise<Curr> {
   const lessons = await loadLessons(me.id);
   if (!noTable) {
-    const [c, m, p] = await Promise.all([
+    const readMods = () => sb.from('cf_curr_modules').select('id,course_id,title,position' + (noKindCol ? '' : ',kind,quarter,grade'));
+    const [c, m0, p] = await Promise.all([
       sb.from('cf_curr_courses').select('id,title,subject,grade').order('created_at'),
-      sb.from('cf_curr_modules').select('id,course_id,title,position'),
+      readMods(),
       sb.from('cf_curr_lessons').select('lesson_id,module_id,position'),
     ]);
-    if (!c.error) { fail(m.error); fail(p.error); return { courses: c.data as Course[], modules: order(m.data as Mod[]), places: order(p.data as Place[]), lessons, local: false }; }
+    let m = m0;
+    if (m.error?.code === '42703' && !noKindCol) { noKindCol = true; m = await readMods(); } // 012 not run yet: every module is a quarter-less lesson module
+    if (!c.error) {
+      fail(m.error); fail(p.error);
+      const mods = (m.data as unknown as Partial<Mod>[]).map(x => ({ kind: 'lesson', quarter: null, grade: null, ...x })) as Mod[];
+      return { courses: c.data as Course[], modules: order(mods), places: order(p.data as Place[]), lessons, local: false, kindCol: !noKindCol };
+    }
     if (!missing(c.error)) fail(c.error);
     noTable = true;
   }
   const l = readLocal(me);
-  return { ...l, modules: order(l.modules), places: order(l.places), lessons, local: true };
+  return { ...l, modules: order(l.modules), places: order(l.places), lessons, local: true, kindCol: true };
 }
 
 /** Runs `cloud` against the database, or `local` on the browser copy when there are no tables yet. */
@@ -73,9 +88,26 @@ export const delCourse = (me: Me, id: string) =>
     const mods = new Set(s.modules.filter(m => m.course_id === id).map(m => m.id));
     return { courses: s.courses.filter(c => c.id !== id), modules: s.modules.filter(m => m.course_id !== id), places: s.places.filter(p => !mods.has(p.module_id)) };
   });
-export const addModule = (me: Me, courseId: string, title: string, position: number) => {
+export interface ModMeta { kind: Kind; quarter: number | null; grade: number | null }
+const metaOk = (x: ModMeta) => {
+  if (x.kind === 'course' && x.quarter != null) throw new Error('Курс модулінің тоқсаны болмайды');
+  if (x.quarter != null && !(x.quarter >= 1 && x.quarter <= 4)) throw new Error('Тоқсан 1–4 аралығында болуы керек');
+  if (x.grade != null && !(Number.isInteger(x.grade) && x.grade >= 1 && x.grade <= 11)) throw new Error('Параллель 1–11 аралығында болуы керек');
+};
+const NEED012 = 'Түрі, тоқсан және параллель үшін 012_module_kind.sql іске қосылуы керек';
+const plain = (x: ModMeta) => x.kind === 'lesson' && x.quarter == null && x.grade == null;
+export const addModule = (me: Me, courseId: string, title: string, position: number, meta: ModMeta = { kind: 'lesson', quarter: null, grade: null }) => {
+  metaOk(meta);
+  if (noKindCol && !plain(meta)) throw new Error(NEED012);
   const id = crypto.randomUUID();
-  return run(me, () => sb.from('cf_curr_modules').insert({ id, course_id: courseId, title, position }), s => ({ ...s, modules: [...s.modules, { id, course_id: courseId, title, position }] }));
+  return run(me, () => sb.from('cf_curr_modules').insert({ id, course_id: courseId, title, position, ...(noKindCol ? {} : meta) }), s => ({ ...s, modules: [...s.modules, { id, course_id: courseId, title, position, ...meta }] }));
+};
+/** Changes the type, quarter and parallel of a module. A course module has no quarter. */
+export const setModuleMeta = (me: Me, id: string, meta: ModMeta) => {
+  const x = { ...meta, quarter: meta.kind === 'course' ? null : meta.quarter };
+  metaOk(x);
+  if (noKindCol) throw new Error(NEED012);
+  return run(me, () => sb.from('cf_curr_modules').update(x).eq('id', id), s => ({ ...s, modules: s.modules.map(y => (y.id === id ? { ...y, ...x } : y)) }));
 };
 export const renameModule = (me: Me, id: string, title: string) =>
   run(me, () => sb.from('cf_curr_modules').update({ title }).eq('id', id), s => ({ ...s, modules: s.modules.map(m => (m.id === id ? { ...m, title } : m)) }));
@@ -107,3 +139,8 @@ const SELC = 'cf_curriculum_class';
 /** The class a lesson would be started for from the modules screen ('' = none chosen). */
 export const selectedClass = (): string => { try { return sessionStorage.getItem(SELC) || ''; } catch { return ''; } };
 export const selectClass = (id: string) => { try { sessionStorage.setItem(SELC, id); } catch { /* not remembered */ } };
+
+const NEWMOD = 'cf_new_module';
+/** Set by the "+ Модуль жасау" item of another screen: the modules screen opens its form once. */
+export const wantNewModule = () => { try { sessionStorage.setItem(NEWMOD, '1'); } catch { /* the form just stays closed */ } };
+export const takeNewModule = (): boolean => { try { const v = sessionStorage.getItem(NEWMOD) === '1'; sessionStorage.removeItem(NEWMOD); return v; } catch { return false; } };

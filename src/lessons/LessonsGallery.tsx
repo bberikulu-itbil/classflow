@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pencil } from 'lucide-react';
-import { Card as Box, EmptyState, ErrorBox, LinkButton, Skeleton, useLoad } from '../ui';
+import { Card as Box, EmptyState, ErrorBox, Skeleton, useLoad } from '../ui';
+import { CreateMenu } from '../ui/CreateMenu';
+import { wantNewModule } from '../curriculum/store';
 import { fmtDate } from '../hw/format';
 import { loadLessonData } from './data';
 import { ClassChips, QuarterChips, useFilters } from './Filters';
@@ -34,7 +36,7 @@ export function LessonsGallery({ me }: { me: { id: string } }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Менің сабақтарым</h2>
-        <LinkButton href="#edit/new" variant="primary">+ Жаңа сабақ</LinkButton>
+        <CreateMenu onModule={() => { wantNewModule(); window.location.hash = 'lessons/modules'; }} />
       </div>
       <Box className="space-y-3">
         <QuarterChips f={f} set={set} />
@@ -42,7 +44,7 @@ export function LessonsGallery({ me }: { me: { id: string } }) {
       </Box>
       {loading && !data && <Skeleton />}
       {error && <ErrorBox message={error} onRetry={reload} />}
-      {data && data.lessons.length === 0 && <EmptyState text="Әзірге сабақ жоқ. «+ Жаңа сабақ» басып бастаңыз." />}
+      {data && data.lessons.length === 0 && <EmptyState text="Әзірге сабақ жоқ. «Жасау» батырмасынан дәріс жасаңыз." />}
       {data && data.lessons.length > 0 && shown.length === 0 && <EmptyState text="Таңдалған сынып пен тоқсанда сабақ жоқ. «Барлығы» таңдап көріңіз." />}
       {groups.map(g => (
         <section key={g.subject} aria-label={g.subject} className="space-y-2">

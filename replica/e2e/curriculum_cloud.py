@@ -18,7 +18,7 @@ def jwt(sub):
 SESSION=json.dumps({'access_token':jwt('t-1'),'token_type':'bearer','expires_in':3600,'expires_at':4102444800,'refresh_token':'r','user':{'id':'t-1','aud':'authenticated','email':'u@x.kz','app_metadata':{},'user_metadata':{},'created_at':'2020-01-01T00:00:00Z'}})
 CLASSES=[{'id':'c-7b','name':'7B'}]; LESSONS=[{'id':'l-1','title':'Циклдер','subject':'Информатика'},{'id':'l-2','title':'Массивтер','subject':'Информатика'}]
 LES=[{'id':'l-1','title':'Циклдер','subject':'Информатика'},{'id':'l-2','title':'Массивтер','subject':'Информатика'}]
-RPC=[]; MODE={'rpc':'ok'}
+RPC=[]; MODE={'rpc':'ok','v':'012'}; MODS=[{'id':'m1','course_id':'cr1','title':'Алгоритмдер','position':0,'kind':'lesson','quarter':None,'grade':7},{'id':'m2','course_id':'cr1','title':'Үйірме','position':1,'kind':'course','quarter':None,'grade':8}]; LOGM={'post':[],'patch':[]}
 def stub(r):
     q=r.request; u=urlparse(q.url); name=u.path.split('/')[-1]
     h={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*','access-control-expose-headers':'content-range'}
@@ -28,7 +28,14 @@ def stub(r):
     if name=='classes': return out([{'id':'c-7a','name':'7A'},{'id':'c-7b','name':'7B'}])
     if name=='cf_lessons': return out(LES)
     if name=='cf_curr_courses': return out([{'id':'cr1','title':'Информатика 7','subject':'Информатика','grade':7}])
-    if name=='cf_curr_modules': return out([{'id':'m1','course_id':'cr1','title':'Алгоритмдер','position':0}])
+    if name=='cf_curr_modules':
+        if q.method=='POST': d=json.loads(q.post_data); LOGM['post'].append(d); MODS.append({**{'kind':'lesson','quarter':None,'grade':None},**d}); return r.fulfill(status=201,headers=h,body='')
+        if q.method=='PATCH': d=json.loads(q.post_data); LOGM['patch'].append(d); [m.update(d) for m in MODS if m['id']==parse_qs(u.query)['id'][0].replace('eq.','')]; return r.fulfill(status=204,headers=h)
+        sel=(parse_qs(u.query).get('select') or [''])[0]
+        if MODE['v']=='old':
+            if 'kind' in sel: return out({'code':'42703','message':'column cf_curr_modules.kind does not exist'},400)
+            return out([{k:v for k,v in m.items() if k in ('id','course_id','title','position')} for m in MODS if m['kind']=='lesson'])
+        return out(MODS)
     if name=='cf_curr_lessons': return out([{'lesson_id':'l-1','module_id':'m1','position':0},{'lesson_id':'l-2','module_id':'m1','position':1}])
     if name=='cf_start_session':
         RPC.append(json.loads(q.post_data))
@@ -46,7 +53,7 @@ with sync_playwright() as p:
     c.add_init_script("try{localStorage.setItem('sb-tsaqxuutacgbeaaqzivv-auth-token',%s)}catch(e){}"%json.dumps(SESSION))
     A=c.new_page(); A.on('console',lambda m: errors.append(m.text) if m.type=='error' and 'ERR_FAILED' not in m.text and 'status of 4' not in m.text and 'WebSocket' not in m.text else None); A.on('pageerror',lambda e: errors.append(str(e)))
     A.goto(B+'#lessons'); A.wait_for_selector('section[aria-label="Алгоритмдер"]')
-    ok('M1 the section opens on Модульдер мен дәрістер', A.locator('h1:text-is("Модульдер мен дәрістер")').count()==1 and A.locator('nav[aria-label="Сабақтар бөлімдері"] a[aria-current=page]').inner_text().strip()=='Модульдер мен дәрістер')
+    ok('M1 the section opens on its first tab, Сабақтар (modules and lectures)', A.locator('h1:text-is("Модульдер мен дәрістер")').count()==1 and A.locator('nav[aria-label="Сабақтар бөлімдері"] a[aria-current=page]').inner_text().strip()=='Сабақтар')
     ok('M1 tables exist: no browser-only note', A.locator('[role=note]').count()==0)
     ok('M2 no class: nothing to start', A.locator('button:has-text("Бастау")').count()==0)
     A.locator('fieldset:has(input[name=start-class]) label:has-text("7B")').click()
@@ -55,6 +62,28 @@ with sync_playwright() as p:
     ok('M4 button is clickable again after the failure', btn.is_enabled())
     MODE['rpc']='ok'; btn.click(); A.wait_for_function("location.hash==='#remote/sess-9'")
     ok('M5 starts that lecture for that class with the default groups', RPC[-1]=={'p_lesson':'l-1','p_class':'c-7b','p_groups':3}, str(RPC))
+    # ---- module type / quarter / parallel in the cloud (012 applied) ----
+    A.goto(B+'#lessons/modules'); A.wait_for_selector('section[aria-label="Алгоритмдер"]')
+    nm=lambda pg: pg.locator('section > div > input').evaluate_all("els=>els.map(e=>e.value)")
+    ok('M6 course-type module is hidden in the default view, lesson module shown', nm(A)==['Алгоритмдер'], str(nm(A)))
+    A.locator('fieldset:has(input[name=show]) label:has-text("Курстар")').click(); A.wait_for_selector('section[aria-label="Үйірме"]'); ok('M6 course filter shows the course module', nm(A)==['Үйірме'])
+    A.locator('fieldset:has(input[name=show]) label:has-text("Осы тоқсан")').click(); A.wait_for_selector('section[aria-label="Алгоритмдер"]')
+    A.select_option('select[aria-label="Алгоритмдер: тоқсаны"]', value='2'); A.wait_for_timeout(300)
+    ok('M7 quarter change is one update of that module, kind kept', LOGM['patch'][-1]=={'kind':'lesson','quarter':2,'grade':7}, str(LOGM['patch']))
+    A.locator('fieldset:has(input[name=show]) label:has-text("Барлық сабақтар")').click(); A.wait_for_selector('section[aria-label="Алгоритмдер"]')
+    A.select_option('select[aria-label="Алгоритмдер: түрі"]', value='course'); A.wait_for_timeout(300)
+    ok('M7 turning a module into a course sends quarter null', LOGM['patch'][-1]=={'kind':'course','quarter':None,'grade':7}, str(LOGM['patch'][-1]))
+    A.click('button:has-text("Жасау")'); A.click('#create-menu button:text-is("Модуль жасау")'); A.fill('label:text-is("Атауы") ~ input','Деректер'); A.select_option('label:text-is("Параллель") ~ select', value='7')
+    A.click('form button:text-is("Модуль жасау")'); A.wait_for_selector('form:has(label:text-is("Атауы"))', state='detached')
+    post=LOGM['post'][-1]
+    ok('M8 new module row: course, title, position after the last, kind, quarter, grade', post['course_id']=='cr1' and post['title']=='Деректер' and post['position']==2 and post['kind']=='lesson' and isinstance(post['quarter'],int) and post['grade']==7, str(post))
+    # ---- 012 not applied yet ----
+    MODE['v']='old'; O=c.new_page(); O.goto(B+'#lessons/modules'); O.wait_for_selector('section[aria-label="Деректер"]')
+    ok('M9 old database: note names 012_module_kind.sql, type/quarter/parallel are locked', O.locator('[role=note]:has-text("012_module_kind.sql")').count()==1 and O.locator('select[aria-label="Деректер: түрі"]').is_disabled() and O.locator('select[aria-label="Деректер: параллелі"]').is_disabled())
+    n=len(LOGM['post']); O.click('button:has-text("Жасау")'); O.click('#create-menu button:text-is("Модуль жасау")'); O.fill('label:text-is("Атауы") ~ input','Ескі режим'); O.locator('label:text-is("Тоқсан") ~ select').select_option(value=''); O.click('form button:text-is("Модуль жасау")'); O.wait_for_timeout(400)
+    ok('M9 a plain lesson module can still be made, the row has no new columns', len(LOGM['post'])==n+1 and set(LOGM['post'][-1])=={'id','course_id','title','position'}, str(LOGM['post'][-1]))
+    n=len(LOGM['post']); O.click('button:has-text("Жасау")'); O.click('#create-menu button:text-is("Модуль жасау")'); O.fill('label:text-is("Атауы") ~ input','Курс?'); O.locator('fieldset:has(input[name=new-kind]) label:has-text("Курс")').click(); O.click('form button:text-is("Модуль жасау")'); O.wait_for_selector('[role=status]:has-text("012_module_kind.sql")')
+    ok('M9 a course module is refused with the reason, nothing sent', len(LOGM['post'])==n)
     b.close()
 bad=[r for r in results if not r[1]]
 ok('no console errors', not errors, str(errors[:3]))
