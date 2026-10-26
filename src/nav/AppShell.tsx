@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Logo } from '../ui/Logo';
 import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { ROLE_NAMES, activeSection, sectionTo, sectionsFor } from './config';
 import type { Role, Section } from './config';
@@ -10,8 +11,8 @@ const writePref = (v: boolean) => { try { localStorage.setItem(KEY, v ? '1' : '0
 interface Who { full_name: string; role: string }
 const initials = (n: string) => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
-function Logo() {
-  return <a href="#" className="font-black text-xl">Class<span className="text-accent">Flow</span></a>;
+function Brand() {
+  return <a href="#" className="font-black text-xl"><Logo /></a>;
 }
 
 function IconBtn({ label, onClick, children, expanded, controls, ref }: {
@@ -55,7 +56,7 @@ function Body({ sections, active, collapsed, me, profile, onToggle, onClose, clo
   return (
     <>
       <div className={`flex items-center h-14 shrink-0 ${collapsed ? 'justify-center px-2' : 'justify-between px-3'}`}>
-        {!collapsed && <Logo />}
+        {!collapsed && <Brand />}
         {onToggle && (
           <IconBtn label={collapsed ? 'Мәзірді жаю' : 'Мәзірді жию'} expanded={!collapsed} onClick={onToggle}>
             {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
@@ -132,7 +133,7 @@ export function AppShell({ me, role, routeKey, children }: { me: Who; role: Role
       <div className="flex-1 min-w-0">
         <header className="md:hidden sticky top-0 z-20 flex items-center gap-2 h-14 px-3 bg-surface border-b border-border">
           <IconBtn label="Мәзірді ашу" expanded={open} controls="mobile-menu" onClick={() => setOpen(true)} ref={menuBtn}><Menu size={20} aria-hidden="true" /></IconBtn>
-          <Logo />
+          <Brand />
           <a href={profile.href} aria-label="Профиль және баптаулар" className="ml-auto grid place-items-center h-11 w-11">
             <span aria-hidden="true" className="grid place-items-center h-8 w-8 rounded-full bg-accent-soft text-on-accent-soft text-xs font-bold">{initials(me.full_name)}</span>
           </a>

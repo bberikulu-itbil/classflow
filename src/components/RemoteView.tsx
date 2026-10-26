@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Logo } from '../ui/Logo';
 import { ArrowLeft, ArrowRight, Bell, Hand, Lock, LockOpen, Monitor, Plus, Square, Play, Check, X } from 'lucide-react';
 import { sb } from '../config';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
@@ -149,7 +150,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     <div className="min-h-screen bg-bg text-text pb-28 lg:pb-6">
       <header className="border-b lg:sticky lg:top-0 lg:z-10 border-border bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 lg:px-4">
-          <a href="#" className="min-h-[44px] inline-flex items-center text-xl font-black" aria-label="ClassFlow: басты бет">Class<span className="text-accent">Flow</span></a>
+          <a href="#" className="min-h-[44px] inline-flex items-center text-xl font-black" aria-label="ClassFlow: басты бет"><Logo /></a>
           <div className="min-w-0 flex-1 basis-40">
             <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-secondary">{[className, session.title].filter(Boolean).join(' · ')}</p>
             <p className="truncate font-bold">{slide.title || TYPE[slide.type] || 'Слайд'}</p>

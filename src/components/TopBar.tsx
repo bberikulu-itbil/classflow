@@ -1,13 +1,12 @@
 import React from 'react';
+import { Logo } from '../ui/Logo';
 import { BTN } from './Widgets';
 import { STAFF } from '../config';
 
 export function TopBar({ right, me }: { right?: React.ReactNode; me: any; onLogout?: () => void }) {
   return (
     <div className="flex items-center justify-between p-3 border-b border-slate-800 bg-slate-900 text-slate-100">
-      <a href="#" className="font-black text-xl">
-        Class<span className="text-blue-400">Flow</span>
-      </a>
+      <a href="#" className="font-black text-xl"><Logo /></a>
       <div className="flex items-center gap-2 text-sm">
         {right}
         <a href={STAFF.includes(me?.role) ? '#assign' : '#hw'} className={BTN}>
