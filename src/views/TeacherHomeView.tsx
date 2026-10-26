@@ -4,6 +4,7 @@ import { api } from '../hw/types';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, SoonCard, inputCls, useLoad } from '../ui';
 import { getPrefs } from '../prefs';
 import { startSession } from './session';
+import { ArrowUpRight, BookOpen, CalendarDays, ClipboardCheck, NotebookText } from 'lucide-react';
 
 interface Lesson { id: string; title: string; class_id: string | null }
 
@@ -54,11 +55,29 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
   const pendingTotal = (sum.data?.pending || []).reduce((n, p) => n + p.count, 0);
 
   return (
-    <main className="max-w-5xl mx-auto p-4 space-y-4">
-      <header>
-        <p className="text-sm text-text-muted">{new Date().toLocaleDateString('kk-KZ', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <h1 className="text-2xl font-bold">Сәлеметсіз бе, {(me.full_name || '').split(' ')[0]}</h1>
+    <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <header className="space-y-1">
+        <p className="text-sm font-medium text-text-muted capitalize">{new Date().toLocaleDateString('kk-KZ', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Сәлеметсіз бе{me.full_name ? `, ${me.full_name.split(' ')[0]}` : ''}!</h1>
+        <p className="text-sm text-text-secondary">Сабағыңызды жоспарлап, сынып жұмысын бір жерден басқарыңыз.</p>
       </header>
+
+      <section aria-labelledby="quick-links-title" className="space-y-3">
+        <h2 id="quick-links-title" className="text-sm font-semibold text-text-secondary">Жылдам өту</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { href: '#lessons/modules', label: 'Сабақтар', detail: 'Модульдер мен дәрістер', Icon: BookOpen },
+            { href: '#lessons/schedule', label: 'КТП', detail: 'Сабақ кестесі', Icon: CalendarDays },
+            { href: '#journal/grid', label: 'Журнал', detail: 'Сынып бағалары', Icon: NotebookText },
+            { href: '#tasks/queue', label: 'Тексеру кезегі', detail: 'Оқушы жұмыстары', Icon: ClipboardCheck },
+          ].map(({ href, label, detail, Icon }) => (
+            <a key={href} href={href} className="group min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              <div className="flex items-start justify-between gap-2"><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-soft text-on-accent-soft"><Icon size={20} aria-hidden="true" /></span><ArrowUpRight size={17} aria-hidden="true" className="text-text-muted group-hover:text-accent" /></div>
+              <span className="block mt-3 font-semibold text-sm">{label}</span><span className="block mt-1 text-xs text-text-muted">{detail}</span>
+            </a>
+          ))}
+        </div>
+      </section>
 
       {base.data && base.data.live.length > 0 && (
         <section aria-label="Жүріп жатқан сабақтар" className="space-y-2">
@@ -106,9 +125,15 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
           <p className="text-sm text-text-muted">Focus және қатысу ескертулері жақында осында шығады.</p>
         </Card>
 
-        <SoonCard title="Бүгінгі кесте" items={['Бүгінгі сабақтар', 'Келесі сабақты бір басумен бастау']} />
-        <SoonCard title="Жылдық жоспар бойынша прогресс" items={['Өтілген және қалған тақырыптар']} />
       </div>
+
+      <details className="rounded-xl border border-border bg-surface p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-text-secondary">Жоспарланған мүмкіндіктер</summary>
+        <div className="grid gap-4 md:grid-cols-2 mt-4">
+          <SoonCard title="Бүгінгі кесте" items={['Бүгінгі сабақтар', 'Келесі сабақты бір басумен бастау']} />
+          <SoonCard title="Жылдық жоспар бойынша прогресс" items={['Өтілген және қалған тақырыптар']} />
+        </div>
+      </details>
     </main>
   );
 }
