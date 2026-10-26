@@ -5,6 +5,7 @@ import type { Role, Section } from './config';
 import { Jeopardy } from '../views/Jeopardy';
 import { ClassesView } from '../views/ClassesView';
 import { ReviewQueue } from '../views/ReviewQueue';
+import { Projects } from '../views/Projects';
 import { PastSessions } from '../views/lessons';
 import { LessonsGallery } from '../lessons/LessonsGallery';
 import { Gradebook } from '../journal/Gradebook';
@@ -53,6 +54,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:lessons:mine': c => <LessonsGallery me={c.me} />,
   'teacher:journal:lessons': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
+  'teacher:tasks:projects': c => <Projects me={c.me} />,
   'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,
   'teacher:lessons:courses': c => <CoursesView me={c.me} />,
   'teacher:lessons:modules': c => <ModulesView me={c.me} />,
