@@ -17,12 +17,12 @@ import { ProfileCard } from '../components/ProfileView';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
   return (
-    <nav aria-label={`${section.label} бөлімдері`} className="border-b border-border overflow-x-auto">
-      <ul className="flex gap-1 min-w-max">
+    <nav aria-label={`${section.label} бөлімдері`} className="border-b border-border overflow-x-auto overscroll-x-contain">
+      <ul className="flex gap-1 min-w-max pb-1">
         {section.subs.map(s => (
           <li key={s.key}>
             <a href={'#' + (s.to ?? `${section.key}/${s.key}`)} aria-current={s.key === active ? 'page' : undefined}
-              className={`flex items-center gap-2 min-h-[44px] px-3 text-sm whitespace-nowrap border-b-2 ${s.key === active ? 'border-accent text-text font-semibold' : 'border-transparent text-text-secondary hover:text-text'}`}>
+              className={`flex items-center gap-2 min-h-[44px] px-3 text-sm whitespace-nowrap border-b-2 ${s.key === active ? 'border-accent text-on-accent-soft bg-accent-soft font-semibold rounded-t-lg' : 'border-transparent text-text-secondary hover:text-text hover:bg-surface-2 rounded-t-lg'}`}>
               {s.icon && <s.icon size={18} aria-hidden="true" className="shrink-0" />}{s.label}{!s.to && <SoonChip />}
             </a>
           </li>
