@@ -30,7 +30,7 @@ export const TEACHER: Section[] = [
   ] },
   { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'assign', 'review'], to: 'assign', subs: [
     { key: 'assigned', label: 'Күнделікті тапсырмалар', icon: Send, to: 'assign' },
-    { key: 'projects', label: 'Жобалар', icon: FolderKanban, items: ['Ұзақмерзімді жұмыстарды бақылау'] },
+    { key: 'projects', label: 'Жобалар', icon: FolderKanban, to: 'tasks/projects' },
     { key: 'jeopardy', label: 'Jeopardy', icon: Gamepad2, to: 'tasks/jeopardy' },
     { key: 'bank', label: 'Тапсырмалар банкі', icon: Library, items: ['Түрі, сыныбы, оқу мақсаты бойынша іздеу'] },
     { key: 'builder', label: 'Конструктор', icon: PencilRuler, items: ['Жеке, жұптық және топтық тапсырмалар'] },
