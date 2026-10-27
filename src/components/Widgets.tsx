@@ -390,6 +390,14 @@ export function CodeIDE({ s, o = {} }: { s: any; o?: any }) {
   );
 }
 
+/** Optional `code` (+ `lang`) on content, quiz and task slides: a monospace block for source code shown, not run. */
+const codeBlock = (s: any, big: boolean) => s.code
+  ? <figure key="code" className="my-4">
+      {s.lang && <figcaption className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{s.lang}</figcaption>}
+      <pre className={`p-3 bg-[#0F172A] rounded-xl text-[#E2E8F5] font-mono overflow-x-auto whitespace-pre ${big ? 'text-2xl' : 'text-base'}`}>{s.code}</pre>
+    </figure>
+  : null;
+
 export function renderSlide(s: any, ctx: any = {}) {
   const big = ctx.mode === 'board';
   const wrap = (...k: any[]) => <div className="w-full max-w-5xl mx-auto p-4">{k}</div>;
@@ -409,12 +417,14 @@ export function renderSlide(s: any, ctx: any = {}) {
           {(s.bullets || []).map((b: string, i: number) => (
             <li key={i}>{b}</li>
           ))}
-        </ul>
+        </ul>,
+        codeBlock(s, big)
       );
     case 'quiz':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        codeBlock(s, big),
         <div className="grid gap-2">
           {(s.options || []).map((o: string, i: number) => (
             <div key={i} className={`p-3 rounded-xl bg-slate-800 border border-slate-600 ${big ? 'text-2xl' : 'text-lg'} text-white`}>
@@ -426,7 +436,8 @@ export function renderSlide(s: any, ctx: any = {}) {
     case 'task':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        codeBlock(s, big)
       );
     case 'code':
       return wrap(
