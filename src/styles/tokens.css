@@ -141,6 +141,44 @@
   --p-indigo-500: #62AEBB;
   --p-indigo-700: #A9D3DA;
 }
+/* teal: lecture editor only (set as data-theme on its root, never on the app shell) */
+[data-theme="teal"] {
+  --color-bg: #EEF2F4;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #E8EEF0;
+  --color-border: #D5DEE2;
+  --color-border-input: #6B7B83;
+  --color-text: #1F2A30;
+  --color-text-secondary: #4F5E66;
+  --color-text-muted: #566369;
+  --color-accent: #2F6F65;
+  --color-accent-hover: #256156;
+  --color-accent-soft: #E2EFEC;
+  --color-on-accent-soft: #1F4D45;
+  --color-info-soft: #E2EFEC;
+  --p-slate-600: #D5D8DE;
+  --p-slate-500: #8A909B;
+  --p-blue-solid: #2F6F65;
+  --p-blue-hover: #256156;
+  --p-indigo-200: #256156;
+  --p-indigo-500: #6FB0A5;
+  --p-indigo-700: #B5D8D1;
+  --color-on-accent: #FFFFFF;
+  --color-danger: #B42318;
+  --color-danger-soft: #FFE4E6;
+  --color-success: #1B6B34;
+  --color-success-soft: #E6F4EA;
+  --color-warning: #9A3412;
+  --color-warning-soft: #FFEDD5;
+  --color-on-danger: #FFFFFF;
+  --color-on-success: #FFFFFF;
+  --p-emerald-700: #B7E1C3;
+  --p-emerald-800: #9ED3B0;
+  --p-emerald-900: #CDEBD6;
+  --p-red-900: #FFD0D5;
+  --p-amber-900: #FFE0BD;
+  color-scheme: light;
+}
 [data-theme="sand"] {
   --color-bg: #F7F2EA;
   --color-surface: #FFFDF9;

@@ -58,7 +58,7 @@ with sync_playwright() as p:
     def js():
         if not E.locator('details[open]').count(): E.click('details > summary')
         return json.loads(E.locator('textarea[aria-label="Слайдтар JSON"]').input_value())
-    ok('P1 constructor: two tabs, main info, page cards, help panel; the raw JSON is folded away', E.locator('[role=tab]').count()==2 and E.locator('[role=tab][aria-selected=true]').inner_text()=='Қолмен жасау' and E.locator('h2:text-is("Дәріс конструкторы")').count()==1 and E.locator('section[aria-label="Негізгі ақпарат"] input').count()==2 and E.locator(PL+' li').count()==n and E.locator('aside[aria-label="Құрастыру көмегі"] section').count()==3 and E.locator('details[open]').count()==0)
+    ok('P1 constructor: two tabs, main info, page cards, help panel; the raw JSON is folded away', E.locator('[role=tab]').count()==2 and E.locator('[role=tab][aria-selected=true]').inner_text()=='Қолмен жасау' and E.locator('h2:text-is("Дәріс конструкторы")').count()==1 and E.locator('section[aria-label="Негізгі ақпарат"] input').count()==3 and E.locator(PL+' li').count()==n and E.locator('aside[aria-label="Құрастыру көмегі"] section').count()==3 and E.locator('details[open]').count()==0)
     ok('P2 old slides read as a type: cards show chip + template + block count', 'Слайд' in li(1).inner_text() and 'Титул' in li(1).inner_text() and 'Түсіндіру' in li(2).inner_text() and 'Интерактив' in li(4).inner_text() and 'блок' in li(2).inner_text(), li(2).inner_text())
     ok('P2 the first page is the active one: blocks card shows its fields', E.locator('section[aria-label="Таңдалған бет ішіндегі блоктар"] input').count()==2 and E.locator('section[aria-label="Белсенді бет"]').count()==1)
     E.click('button:has-text("Жаңа бет")'); G='[role=dialog][aria-label],[role=dialog]'
@@ -93,7 +93,8 @@ with sync_playwright() as p:
     sv=SAVED[-1]['slides'] if SAVED else []
     ok('P10 save sends pageType and templateId; untouched old slides stay as they were', len(sv)==cnt and sv[-1]['pageType']=='interactive' and sv[-2]['templateId']=='worked-example' and 'pageType' not in sv[0], str([x.get('pageType') for x in sv]))
     E.goto(B+'#edit/l-9'); E.wait_for_selector(PL+' li'); E.click('button:has-text("Жаңа бет")'); E.wait_for_selector('[role=dialog]'); axe(E,'page picker','document.querySelector("[role=dialog]")')
-    if os.environ.get('SHOTS'): E.screenshot(path=os.environ['SHOTS']+'/picker.png'); E.keyboard.press('Escape')
+    if os.environ.get('SHOTS'): E.screenshot(path=os.environ['SHOTS']+'/picker.png')
+    E.keyboard.press('Escape')
     E.click('details > summary'); E.fill('textarea[aria-label="Слайдтар JSON"]','{ oops'); ok('P11 broken JSON: the page list says so and cannot add', E.locator('section[aria-label="Беттер"] [role=alert]').count()==1 and E.locator('button:has-text("Жаңа бет")').is_disabled())
     T=E.locator('[role=tab]:has-text("ЖИ арқылы жасау")'); T.click(); ok('P12 the ЖИ tab shows the assistant instead of the page cards', E.locator('text=ЖИ көмекші').count()>=1 and E.locator('section[aria-label="Беттер"]').count()==0)
     M=page((390,800)); M.goto(B+'#edit/l-9'); M.wait_for_selector(PL+' li'); ok('P13 390px: no sideways scroll', M.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1"), str(M.evaluate("document.documentElement.scrollWidth")))

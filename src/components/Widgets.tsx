@@ -1,6 +1,7 @@
 import { rich } from '../lessons/spoil';
 import React, { useState, useEffect } from 'react';
 import { runPy, norm, sha256 } from '../utils/pyodide';
+import { CanvasSlide } from '../lessons/canvas';
 
 export const BTN = 'px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition cursor-pointer';
 export const BTN_P = 'px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition cursor-pointer';
@@ -479,6 +480,8 @@ export function renderSlide(s: any, ctx: any = {}) {
           );
         })
       );
+    case 'canvas':
+      return <div className="cf-slide w-full max-w-5xl mx-auto p-4"><CanvasSlide s={s} R={R} sp={sp} /></div>;
     case 'flashcards':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,

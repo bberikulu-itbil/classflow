@@ -56,14 +56,14 @@ with sync_playwright() as p:
     E.select_option(P+' select',index=1); E.fill(P+' input[type=text], '+P+' label:has-text("сипаттамасы") input','Пернетақтаның үш қатары')
     E.set_input_files(P+' input[type=file]',files=[{'name':'k.png','mimeType':'image/png','buffer':PNG}]); E.wait_for_selector(P+' [role=status]:has-text("қосылды")')
     ok('M2 the file went to the school folder of the cf-media bucket as a re-encoded picture', len(UP)==1 and UP[0][0].startswith('/storage/v1/object/cf-media/sc/') and UP[0][0].endswith(('.webp','.jpg')) and UP[0][1].startswith('multipart/form-data'), str(UP))
-    js=E.locator('textarea').first.input_value(); sl=json.loads(js)[1]
+    js=E.locator('textarea[aria-label="Слайдтар JSON"]').input_value(); sl=json.loads(js)[1]
     ok('M3 the slide JSON now carries img (public URL of that file) and the description as alt', sl.get('img','').startswith('https://') and '/storage/v1/object/public/cf-media/sc/' in sl['img'] and sl.get('alt')=='Пернетақтаның үш қатары', str(sl)[:200])
     ok('M3 only that slide changed', 'img' not in json.loads(js)[0] and 'img' not in json.loads(js)[2])
     ok('M4 a slide kind without picture support cannot take a file', E.locator(P+' input[type=file]').is_enabled())
     E.select_option(P+' select',index=8); ok('M4 …and the picker is off for it', E.locator(P+' input[type=file]').is_disabled())
-    E.select_option(P+' select',index=1); E.click(P+' button:text-is("Суретті алып тастау")'); ok('M5 remove takes img and alt away again', 'img' not in json.loads(E.locator('textarea').first.input_value())[1] and 'alt' not in json.loads(E.locator('textarea').first.input_value())[1])
-    E.fill('textarea >> nth=0','{ oops'); ok('M6 broken JSON: the panel says so instead of guessing', 'қатені түзет' in E.locator(P).inner_text() and E.locator(P+' input[type=file]').count()==0)
-    E.fill('textarea >> nth=0','[{"type":"content","title":"a","bullets":["b"]}]')
+    E.select_option(P+' select',index=1); E.click(P+' button:text-is("Суретті алып тастау")'); ok('M5 remove takes img and alt away again', 'img' not in json.loads(E.locator('textarea[aria-label="Слайдтар JSON"]').input_value())[1] and 'alt' not in json.loads(E.locator('textarea[aria-label="Слайдтар JSON"]').input_value())[1])
+    E.fill('textarea[aria-label="Слайдтар JSON"]','{ oops'); ok('M6 broken JSON: the panel says so instead of guessing', 'қатені түзет' in E.locator(P).inner_text() and E.locator(P+' input[type=file]').count()==0)
+    E.fill('textarea[aria-label="Слайдтар JSON"]','[{"type":"content","title":"a","bullets":["b"]}]')
     E.set_input_files(P+' input[type=file]',files=[{'name':'t.txt','mimeType':'text/plain','buffer':b'hello'}]); E.wait_for_selector(P+' [role=status]:has-text("PNG, JPEG")')
     ok('M6 a text file is refused in words, nothing uploaded', len(UP)==1)
     axe(E,'picture panel (the legacy JSON editor around it is not audited here)',"document.querySelector('section[aria-label=\"Сурет қосу\"]')")

@@ -24,6 +24,14 @@ export function fieldsOf(s: any): Field[] {
         out.push({ id: `x${i}`, label: `${i + 1}-бөлім: «Көрсету» басқанша жасырын`, chip: 'Мәтін', kind: 'bool', value: !!sec.hide, set: v => up({ hide: !!v }) });
       });
       break;
+    case 'canvas':
+      out.push(f('title', 'Тақырып (бет атауы)', 'Мәтін', 'text', 'title'));
+      (Array.isArray(s.blocks) ? s.blocks : []).forEach((b: any, i: number) => {
+        const up = (patch: any) => ({ ...s, blocks: s.blocks.map((x: any, k: number) => (k === i ? { ...x, ...patch } : x)) });
+        if (b?.kind === 'text') out.push({ id: `k${i}`, label: `${i + 1}-элемент: мәтін`, chip: 'Мәтін', kind: 'area', value: b.text ?? '', set: v => up({ text: v }) });
+        if (b?.kind === 'code') out.push({ id: `k${i}`, label: `${i + 1}-элемент: код`, chip: 'Код', kind: 'code', value: b.code ?? '', set: v => up({ code: v }) });
+      });
+      break;
     case 'quiz':
       out.push(f('prompt', 'Сұрақ', 'Интерактив', 'area', 'prompt'), L('options', 'Нұсқалар (әр жол — бір нұсқа)', 'Интерактив', 'options'),
         { id: 'answer', label: 'Дұрыс жауап', chip: 'Интерактив', kind: 'answer', value: Number.isInteger(s.answer) ? s.answer : -1, set: v => ({ ...s, answer: +v }) },

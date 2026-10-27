@@ -12,6 +12,7 @@ const m = (s: unknown) => (typeof s === 'string' ? (s.match(MARK) || []).length 
 /** How many hidden things this slide has (a hidden section counts once, whatever is inside it). */
 export const countSpoilers = (s: any): number =>
   (s?.bullets || []).reduce((a: number, b: string) => a + m(b), 0) + m(s?.prompt) +
+  (s?.blocks || []).reduce((a: number, b: any) => a + (b?.hide ? 1 : m(b?.text)), 0) +
   (s?.sections || []).reduce((a: number, sec: any) => a + (sec.hide ? 1 : m(sec.text) + (sec.bullets || []).reduce((x: number, b: string) => x + m(b), 0)), 0);
 
 export function useSpoilers(key: string | number) {

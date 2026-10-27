@@ -1,3 +1,5 @@
+import { canvasPage } from './canvas';
+
 /** Page types and templates (editor level only: the players still read the old slide `type`, so pageType/templateId are extra fields on a legacy slide). */
 export type PageType = 'slide' | 'scroll' | 'interactive';
 export const PAGE_TYPES: { id: PageType; label: string; hint: string }[] = [
@@ -21,6 +23,8 @@ export const TEMPLATES: Record<PageType, Tpl[]> = {
     { id: 'image-text', label: 'Мәтін + сурет', hint: 'Сурет қосу — төмендегі «Сурет қосу» арқылы', make: content(['Сурет туралы негізгі ой']) },
     { id: 'practice', label: 'Практика', hint: 'Тапсырмаға кіріспе', make: content(['Тапсырма шарты', 'Не істеу керек']) },
     { id: 'summary', label: 'Қорытынды', hint: 'Негізгі ойлар және келесі қадам', make: content(['Негізгі ой', 'Келесі қадам']) },
+    { id: 'canvas-blank', label: 'Бос кенеп', hint: 'Мәтін, сурет, код, фигураны еркін орналастыру', make: t => canvasPage(t) },
+    { id: 'canvas-two-col', label: 'Екі баған (кенеп)', hint: 'Тақырып және екі мәтін бағаны', make: t => canvasPage(t, 'two-col') },
   ],
   scroll: [
     { id: 'theory', label: 'Теориялық түсіндіру', hint: 'Ұғым, анықтама, мысал', make: stack(sec('Ұғым'), sec('Анықтама'), sec('Мысал')) },
@@ -46,7 +50,7 @@ export function pageOf(s: any): { pageType: PageType; templateId: string } {
   const legacy: Record<string, [PageType, string]> = {
     title: ['slide', 'title'], content: ['slide', 'explanation'], solution: ['scroll', 'theory'],
     quiz: ['interactive', 'single-choice'], task: ['interactive', 'short-answer'], code: ['interactive', 'code-task'], matching: ['interactive', 'matching'],
-    flashcards: ['interactive', ''], logic: ['interactive', ''], leaderboard: ['slide', 'summary'],
+    flashcards: ['interactive', ''], logic: ['interactive', ''], leaderboard: ['slide', 'summary'], canvas: ['slide', 'canvas-blank'],
   };
   const [t, id] = legacy[s?.type] || ['slide', ''];
   return { pageType: PAGE_TYPES.some(p => p.id === s?.pageType) ? s.pageType : t, templateId: typeof s?.templateId === 'string' ? s.templateId : id };

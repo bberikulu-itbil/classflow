@@ -4,10 +4,11 @@ import { TopBar } from './TopBar';
 import { INP } from './Widgets';
 import { AiPanel } from './AiPanel';
 import { ImagePanel } from './ImagePanel';
-import { ArrowDown, ArrowUp, Copy, Plus, Trash2, Undo2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, GripVertical, LayoutTemplate, Plus, Trash2, Undo2 } from 'lucide-react';
 import { Button, LinkButton, inputCls } from '../ui';
 import { checkPages, fieldsOf, type Field } from '../lessons/blocks';
 import { PagePicker } from '../lessons/PagePicker';
+import { CanvasEditor } from '../lessons/CanvasEditor';
 import { newPage, pageOf, PAGE_TYPES, TEMPLATES, tplLabel, typeLabel, type PageType } from '../lessons/pages';
 
 const SAMPLE = [
@@ -22,6 +23,8 @@ const SAMPLE = [
   { type: 'leaderboard', title: '🏆 Нәтиже' },
 ];
 
+const STATUS = ['Нобай', 'Тексеруде', 'Жарияланған'];
+const GRADES = ['5', '6', '7', '8', '9', '10', '11'];
 const WARN = 'Бет типін өзгерту кейбір орналасу параметрлерін өзгертуі мүмкін (мәтін мен код сақталады). Өзгерту алдында нобай сақталады — «Қайтару» батырмасымен алуға болады. Жалғастырасың ба?';
 const CHIP: Record<string, string> = { 'Мәтін': 'bg-accent-soft text-on-accent-soft', 'Код': 'bg-warning-soft text-text', 'Интерактив': 'bg-success-soft text-text', 'Ескертпе': 'bg-surface-2 text-text-secondary' };
 const TYPE_CHIP: Record<PageType, string> = { slide: 'Слайд', scroll: 'Ұзын бет', interactive: 'Интерактив' };
@@ -48,6 +51,8 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const isNew = id === 'new';
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('Информатика');
+  const [grade, setGrade] = useState(''), [duration, setDuration] = useState(''), [summary, setSummary] = useState(''), [status, setStatus] = useState(STATUS[0]), [planRaw, setPlanRaw] = useState<any>({});
+  const [canvasOpen, setCanvasOpen] = useState(false), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
   const [slidesJson, setSlidesJson] = useState('');
   const [termsJson, setTermsJson] = useState('');
   const [tab, setTab] = useState<'manual' | 'ai'>('manual'), [sel, setSel] = useState(0), [picking, setPicking] = useState(false), [chg, setChg] = useState(false);
@@ -57,6 +62,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
     if (isNew) {
       setTitle('');
       setSubject('Информатика');
+      setPlanRaw({}); setGrade(''); setDuration(''); setSummary(''); setStatus(STATUS[0]);
       setSlidesJson(JSON.stringify(SAMPLE, null, 1));
       setTermsJson(JSON.stringify([{ term: 'Алгоритм', definition: 'Есепті шешу қадамдарының тізбегі' }], null, 1));
     } else {
@@ -64,6 +70,8 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
         if (data) {
           setTitle(data.title || '');
           setSubject(data.subject || '');
+          const pl = data.plan && typeof data.plan === 'object' && !Array.isArray(data.plan) ? data.plan : {}, m = pl.meta || {};
+          setPlanRaw(pl); setGrade(String(m.grade || '')); setDuration(String(m.duration || '')); setSummary(String(m.summary || '')); setStatus(STATUS.includes(m.status) ? m.status : STATUS[0]);
           setSlidesJson(JSON.stringify(data.slides || [], null, 1));
           setTermsJson(JSON.stringify(data.terms || [], null, 1));
         }
@@ -80,7 +88,9 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const move = (i: number, d: number) => { const n = [...pages!]; [n[i], n[i + d]] = [n[i + d], n[i]]; put(n, 'Бет жылжытылды.'); setSel(i + d); };
   const dup = (i: number) => { const n = [...pages!]; n.splice(i + 1, 0, JSON.parse(JSON.stringify(n[i]))); put(n, 'Бет көшірілді.'); setSel(i + 1); };
   const del = (i: number) => { if (confirm(`«${pages![i].title || 'Бет ' + (i + 1)}» бетін өшіру керек пе?`)) { put(pages!.filter((_, k) => k !== i), 'Бет өшірілді.'); setSel(Math.max(0, i - 1)); } };
-  const create = (t: PageType, tpl: string, name: string) => { put([...pages!, newPage(t, tpl, name || TEMPLATES[t].find(x => x.id === tpl)!.label)], 'Бет қосылды.'); setSel(pages!.length); setPicking(false); setTab('manual'); };
+  const create = (t: PageType, tpl: string, name: string) => { const p = newPage(t, tpl, name || TEMPLATES[t].find(x => x.id === tpl)!.label); put([...pages!, p], 'Бет қосылды.'); setSel(pages!.length); setPicking(false); setTab('manual'); if (p.type === 'canvas') setCanvasOpen(true); };
+  const reorder = (from: number, to: number) => { setDragFrom(null); setDragOver(null); if (from === to) return; const n = [...pages!]; n.splice(to, 0, n.splice(from, 1)[0]); put(n, 'Бет жылжытылды.'); setSel(to); };
+  const setSlide = (sl: any) => setSlidesJson(prev => { try { const a = JSON.parse(prev); a[cur] = sl; return JSON.stringify(a, null, 1); } catch { return prev; } });
   const setType = (t: PageType) => { if (!page || t === pageOf(page).pageType || !confirm(WARN)) return; put(pages!.map((s, k) => (k === cur ? { ...s, pageType: t, templateId: '' } : s)), 'Бет типі өзгертілді.'); };
   const setTpl = (tid: string) => put(pages!.map((s, k) => (k === cur ? { ...s, pageType: pageOf(s).pageType, templateId: tid } : s)), 'Үлгі белгісі өзгертілді.');
   const issues = pages ? checkPages(pages) : [];
@@ -101,9 +111,10 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       alert('Тақырып жаз');
       return;
     }
-    const row = { title: title.trim(), subject, slides, terms };
+    const meta = { grade, duration: duration ? +duration : '', summary: summary.trim(), status };
+    const row = { title: title.trim(), subject, slides, terms, plan: { ...planRaw, meta } };
     if (isNew) {
-      await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id, plan: {} });
+      await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id });
     } else {
       await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
     }
@@ -113,12 +124,13 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const sel2 = 'min-h-[44px] w-full rounded-md border border-border-input bg-surface px-2 text-sm text-text';
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div data-theme="teal" className="min-h-screen bg-bg text-text">
       <TopBar me={me} onLogout={onLogout} />
       <div className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-2">
           <nav aria-label="Орналасу" className="text-sm text-text-secondary"><a className="underline" href="#lessons/modules">Модульдер</a> / <span>Дәріс</span></nav>
           <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title || 'Жаңа дәріс'}</h1>
+          <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
           {!isNew && <LinkButton variant="ghost" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
           <Button variant="success" onClick={save}>Сақтау</Button>
         </div>
@@ -154,6 +166,10 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block text-sm text-text-secondary sm:col-span-2">Дәріс атауы<input className={`${inputCls} mt-1 text-text`} value={title} onChange={e => setTitle(e.target.value)} placeholder="Сабақ тақырыбы" /></label>
                   <label className="block text-sm text-text-secondary">Пән<input className={`${inputCls} mt-1 text-text`} value={subject} onChange={e => setSubject(e.target.value)} placeholder="Пән" /></label>
+                  <label className="block text-sm text-text-secondary">Сынып<select className={`${inputCls} mt-1 text-text`} value={grade} onChange={e => setGrade(e.target.value)}><option value="">— таңдалмаған</option>{GRADES.map(g => <option key={g} value={g}>{g}-сынып</option>)}</select></label>
+                  <label className="block text-sm text-text-secondary">Ұзақтығы, минут<input type="number" min={5} max={240} className={`${inputCls} mt-1 text-text`} value={duration} onChange={e => setDuration(e.target.value)} placeholder="45" /></label>
+                  <label className="block text-sm text-text-secondary">Күйі<select className={`${inputCls} mt-1 text-text`} value={status} onChange={e => setStatus(e.target.value)}>{STATUS.map(x => <option key={x}>{x}</option>)}</select></label>
+                  <label className="block text-sm text-text-secondary sm:col-span-2">Қысқаша сипаттама<textarea rows={2} maxLength={400} className={`${inputCls} mt-1 py-2 text-text`} value={summary} onChange={e => setSummary(e.target.value)} placeholder="Дәрістің мақсаты немесе мазмұны" /></label>
                 </div>
               </section>
               <section aria-label="Беттер" className={card}>
@@ -162,8 +178,10 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
                   <ol aria-label="Дәріс беттері" className="space-y-2">{pages.map((s, i) => {
                     const p = pageOf(s), t = s.title || s.prompt || `Бет ${i + 1}`;
                     return (
-                      <li key={i} className={`flex flex-wrap items-center gap-1 rounded-xl border-2 p-1 ${i === cur ? 'border-accent bg-accent-soft' : 'border-border'}`}>
-                        <button type="button" aria-current={i === cur ? 'true' : undefined} onClick={() => setSel(i)} className="flex min-h-[56px] min-w-[12rem] flex-1 items-center gap-3 rounded-lg px-2 text-left">
+                      <li key={i} draggable onDragStart={e => { setDragFrom(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }} onDragEnd={() => { setDragFrom(null); setDragOver(null); }} onDragOver={e => { if (dragFrom !== null) { e.preventDefault(); setDragOver(i); } }} onDrop={e => { e.preventDefault(); if (dragFrom !== null) reorder(dragFrom, i); }}
+                        className={`flex flex-wrap items-center gap-1 rounded-xl border-2 p-1 ${dragOver === i && dragFrom !== null && dragFrom !== i ? 'border-dashed border-accent' : i === cur ? 'border-accent bg-accent-soft' : 'border-border'} ${dragFrom === i ? 'opacity-50' : ''}`}>
+                        <span aria-hidden="true" title="Сүйреп ауыстыру" className="flex h-11 w-6 shrink-0 cursor-grab items-center justify-center text-text-muted"><GripVertical size={18} /></span>
+                        <button type="button" aria-current={i === cur ? 'true' : undefined} onClick={() => setSel(i)} className="flex min-h-[56px] min-w-[10rem] flex-1 items-center gap-3 rounded-lg px-2 text-left">
                           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 font-bold tabular-nums">{i + 1}</span>
                           <span className="min-w-0 flex-1"><b className="block break-words">{t}</b><span className="text-sm text-text-secondary">{tplLabel(p.pageType, p.templateId) || typeLabel(p.pageType)} · {fieldsOf(s).length} блок</span></span>
                           <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold">{TYPE_CHIP[p.pageType]}</span>
@@ -184,6 +202,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
                 <section aria-label="Таңдалған бет ішіндегі блоктар" className={card}>
                   <h3 className="text-xl font-bold">Таңдалған бет ішіндегі блоктар <span className="text-base font-normal text-text-secondary">· {cur + 1}-бет</span></h3>
                   {fields.length ? <div className="space-y-2">{fields.map(f => <FieldRow key={cur + f.id} uid={'f' + cur} f={f} options={page.options || []} onChange={v => edit(f, v)} />)}</div> : <p className="text-sm text-text-secondary">Бұл бет түрінің өрістерін «Толық құрылым» ішінде өңдеуге болады.</p>}
+                  {page.type === 'canvas' && <Button variant="secondary" onClick={() => setCanvasOpen(true)}><LayoutTemplate size={16} aria-hidden="true" />Слайд редакторын ашу</Button>}
                   {page.type === 'code' && <p className="text-sm text-text-secondary">Код тесттері (input / out) «Толық құрылым» ішінде өңделеді.</p>}
                 </section>
               )}
@@ -237,6 +256,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           <p role="status" className="text-sm text-text-secondary">{msg}</p>
         </aside>
       </main>
+      {canvasOpen && page?.type === 'canvas' && <CanvasEditor pages={pages!} cur={cur} schoolId={me.school_id} onChange={setSlide} onSelect={setSel} onClose={ch => { setCanvasOpen(false); if (ch) setMsg('Слайд өзгерді. «Сақтау» батырмасын бас.'); }} />}
       {picking && <PagePicker onCancel={() => setPicking(false)} onCreate={create} />}
     </div>
   );
