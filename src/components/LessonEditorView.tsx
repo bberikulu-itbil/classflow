@@ -4,6 +4,7 @@ import { TopBar } from './TopBar';
 import { BTN_G, INP } from './Widgets';
 import { AiPanel } from './AiPanel';
 import { ImagePanel } from './ImagePanel';
+import { PagesPanel } from '../lessons/PagesPanel';
 
 const SAMPLE = [
   { type: 'title', title: 'Алгоритм', subtitle: '7-сынып · Информатика' },
@@ -72,14 +73,20 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           onChange={e => setSubject(e.target.value)}
           placeholder="Пән"
         />
-        <p className="text-xs text-slate-500">
-          Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, solution, leaderboard. solution: sections = [&#123;h, text | bullets, code?, hide?&#125;] — төмен қарай тізілген бөлімдер, hide:true — «Көрсету» басқанша жасырын. Мәтін ішінде ||жасырын|| — нүктелер болып тұрады, басқанда немесе тақтадағы Алға/Көрсету басқанда ашылады. ru: &#123;title, bullets, …&#125; — орысша өрістер (ҚАЗ/РУС ауыстырғышы). img + alt = сурет (title, content, quiz, task, code; төмендегі «Сурет қосу» арқылы); quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
+        <PagesPanel json={slidesJson} setJson={setSlidesJson} />
+        <details className="rounded-xl border border-border bg-surface p-3 text-text">
+          <summary className="cursor-pointer font-semibold">Толық құрылым және техникалық өрістер (JSON)</summary>
+          <div className="mt-2 space-y-2">
+        <p className="text-xs text-text-secondary">
+          Слайдтар (JSON). pageType (slide | scroll | interactive) және templateId — беттер тізімінен қойылады. Түрлері: title, content, quiz, task, code, logic, matching, flashcards, solution, leaderboard. solution: sections = [&#123;h, text | bullets, code?, hide?&#125;] — төмен қарай тізілген бөлімдер, hide:true — «Көрсету» басқанша жасырын. Мәтін ішінде ||жасырын|| — нүктелер болып тұрады, басқанда немесе тақтадағы Алға/Көрсету басқанда ашылады. ru: &#123;title, bullets, …&#125; — орысша өрістер (ҚАЗ/РУС ауыстырғышы). img + alt = сурет (title, content, quiz, task, code; төмендегі «Сурет қосу» арқылы); quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
         </p>
         <textarea
           className={`${INP} font-mono h-96 text-white`}
           value={slidesJson}
           onChange={e => setSlidesJson(e.target.value)}
         />
+          </div>
+        </details>
         <ImagePanel json={slidesJson} setJson={setSlidesJson} schoolId={me.school_id} />
         <p className="text-xs text-slate-500">Терминдер (JSON): [&#123;term, definition&#125;]</p>
         <textarea

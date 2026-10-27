@@ -51,7 +51,7 @@ with sync_playwright() as p:
         c=b.new_context(viewport={'width':vp[0],'height':vp[1]}); c.route('**/*',route)
         c.add_init_script("try{localStorage.setItem('sb-tsaqxuutacgbeaaqzivv-auth-token',%s)}catch(e){}"%json.dumps(SESSION))
         pg=c.new_page(); pg.on('console',lambda m: errors.append(m.text) if m.type=='error' and 'ERR_FAILED' not in m.text and 'status of 4' not in m.text and 'WebSocket' not in m.text and 'Refused to' not in m.text else None); pg.on('pageerror',lambda e: errors.append(str(e))); return pg
-    E=page(); E.goto(B+'#edit/new'); E.wait_for_selector('section[aria-label="Сурет қосу"]'); P='section[aria-label="Сурет қосу"]'
+    E=page(); E.goto(B+'#edit/new'); E.wait_for_selector('section[aria-label="Сурет қосу"]'); P='section[aria-label="Сурет қосу"]'; E.click('details > summary')
     ok('M1 editor has the picture panel with the slide list (leaderboard-like kinds are disabled)', E.locator(P+' select option').count()==9 and E.locator(P+' select option[disabled]').count()==4, str(E.locator(P+' select option[disabled]').count()))
     E.select_option(P+' select',index=1); E.fill(P+' input[type=text], '+P+' label:has-text("сипаттамасы") input','Пернетақтаның үш қатары')
     E.set_input_files(P+' input[type=file]',files=[{'name':'k.png','mimeType':'image/png','buffer':PNG}]); E.wait_for_selector(P+' [role=status]:has-text("қосылды")')
