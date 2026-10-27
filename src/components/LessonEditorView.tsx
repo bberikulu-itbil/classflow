@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { sb } from '../config';
 import { TopBar } from './TopBar';
-import { BTN_G, INP } from './Widgets';
+import { INP } from './Widgets';
 import { AiPanel } from './AiPanel';
 import { ImagePanel } from './ImagePanel';
-import { PagesPanel } from '../lessons/PagesPanel';
+import { ArrowDown, ArrowUp, Copy, Plus, Trash2, Undo2 } from 'lucide-react';
+import { Button, LinkButton, inputCls } from '../ui';
+import { checkPages, fieldsOf, type Field } from '../lessons/blocks';
+import { PagePicker } from '../lessons/PagePicker';
+import { newPage, pageOf, PAGE_TYPES, TEMPLATES, tplLabel, typeLabel, type PageType } from '../lessons/pages';
 
 const SAMPLE = [
   { type: 'title', title: 'Алгоритм', subtitle: '7-сынып · Информатика' },
@@ -18,12 +22,36 @@ const SAMPLE = [
   { type: 'leaderboard', title: '🏆 Нәтиже' },
 ];
 
+const WARN = 'Бет типін өзгерту кейбір орналасу параметрлерін өзгертуі мүмкін (мәтін мен код сақталады). Өзгерту алдында нобай сақталады — «Қайтару» батырмасымен алуға болады. Жалғастырасың ба?';
+const CHIP: Record<string, string> = { 'Мәтін': 'bg-accent-soft text-on-accent-soft', 'Код': 'bg-warning-soft text-text', 'Интерактив': 'bg-success-soft text-text', 'Ескертпе': 'bg-surface-2 text-text-secondary' };
+const TYPE_CHIP: Record<PageType, string> = { slide: 'Слайд', scroll: 'Ұзын бет', interactive: 'Интерактив' };
+const card = 'space-y-3 rounded-2xl border border-border bg-surface p-4';
+const iconBtn = 'flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-border disabled:opacity-30';
+
+function FieldRow({ f, uid, onChange, options }: { f: Field; uid: string; onChange: (v: any) => void; options: string[] }) {
+  const id = `${uid}-${f.id}`;
+  return (
+    <div className="space-y-1 rounded-xl border border-border p-3">
+      <div className="flex items-center justify-between gap-2"><label htmlFor={id} className="text-sm font-semibold">{f.label}</label><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${CHIP[f.chip]}`}>{f.chip}</span></div>
+      {f.kind === 'text' && <input id={id} className={inputCls} value={f.value} onChange={e => onChange(e.target.value)} />}
+      {f.kind === 'number' && <input id={id} type="number" min={0} max={100} className={inputCls + ' !w-28'} value={f.value} onChange={e => onChange(e.target.value)} />}
+      {f.kind === 'area' && <textarea id={id} rows={3} className={inputCls + ' py-2'} value={f.value} onChange={e => onChange(e.target.value)} />}
+      {f.kind === 'lines' && <textarea id={id} rows={Math.max(3, String(f.value).split('\n').length)} className={inputCls + ' py-2'} value={f.value} onChange={e => onChange(e.target.value)} />}
+      {f.kind === 'code' && <textarea id={id} rows={Math.max(4, String(f.value).split('\n').length)} spellCheck={false} className={inputCls + ' py-2 font-mono text-sm'} value={f.value} onChange={e => onChange(e.target.value)} />}
+      {f.kind === 'bool' && <label className="flex min-h-[44px] items-center gap-2 text-sm"><input id={id} type="checkbox" className="h-5 w-5" checked={f.value} onChange={e => onChange(e.target.checked)} />Иә</label>}
+      {f.kind === 'answer' && <select id={id} className={inputCls} value={f.value} onChange={e => onChange(e.target.value)}><option value={-1} disabled>— таңдалмаған —</option>{options.map((o, k) => <option key={k} value={k}>{String.fromCharCode(65 + k)}. {o}</option>)}</select>}
+    </div>
+  );
+}
+
 export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; onLogout: () => void }) {
   const isNew = id === 'new';
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('Информатика');
   const [slidesJson, setSlidesJson] = useState('');
   const [termsJson, setTermsJson] = useState('');
+  const [tab, setTab] = useState<'manual' | 'ai'>('manual'), [sel, setSel] = useState(0), [picking, setPicking] = useState(false), [chg, setChg] = useState(false);
+  const [msg, setMsg] = useState(''), [canUndo, setCanUndo] = useState(false), undo = React.useRef<string | null>(null);
 
   useEffect(() => {
     if (isNew) {
@@ -43,86 +71,173 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
     }
   }, [id, isNew]);
 
+  let pages: any[] | null = null;
+  try { const v = JSON.parse(slidesJson || '[]'); if (Array.isArray(v)) pages = v; } catch { /* the folded JSON box shows the problem */ }
+  const cur = pages && pages.length ? Math.min(sel, pages.length - 1) : -1, page = cur >= 0 ? pages![cur] : null;
+  const fields = page ? fieldsOf(page) : [];
+  const put = (next: any[], note: string, snap = true) => { if (snap) { undo.current = slidesJson; setCanUndo(true); } setSlidesJson(JSON.stringify(next, null, 1)); setMsg(note ? note + ' «Сақтау» батырмасын бас.' : ''); };
+  const edit = (f: Field, v: any) => put(pages!.map((s, k) => (k === cur ? f.set(v) : s)), '', false);
+  const move = (i: number, d: number) => { const n = [...pages!]; [n[i], n[i + d]] = [n[i + d], n[i]]; put(n, 'Бет жылжытылды.'); setSel(i + d); };
+  const dup = (i: number) => { const n = [...pages!]; n.splice(i + 1, 0, JSON.parse(JSON.stringify(n[i]))); put(n, 'Бет көшірілді.'); setSel(i + 1); };
+  const del = (i: number) => { if (confirm(`«${pages![i].title || 'Бет ' + (i + 1)}» бетін өшіру керек пе?`)) { put(pages!.filter((_, k) => k !== i), 'Бет өшірілді.'); setSel(Math.max(0, i - 1)); } };
+  const create = (t: PageType, tpl: string, name: string) => { put([...pages!, newPage(t, tpl, name || TEMPLATES[t].find(x => x.id === tpl)!.label)], 'Бет қосылды.'); setSel(pages!.length); setPicking(false); setTab('manual'); };
+  const setType = (t: PageType) => { if (!page || t === pageOf(page).pageType || !confirm(WARN)) return; put(pages!.map((s, k) => (k === cur ? { ...s, pageType: t, templateId: '' } : s)), 'Бет типі өзгертілді.'); };
+  const setTpl = (tid: string) => put(pages!.map((s, k) => (k === cur ? { ...s, pageType: pageOf(s).pageType, templateId: tid } : s)), 'Үлгі белгісі өзгертілді.');
+  const issues = pages ? checkPages(pages) : [];
+  const nInter = pages ? pages.filter(s => pageOf(s).pageType === 'interactive').length : 0;
+  const nBlocks = pages ? pages.reduce((a, s) => a + fieldsOf(s).length, 0) : 0;
+
+  const save = async () => {
+    let slides, terms;
+    try {
+      slides = JSON.parse(slidesJson);
+      terms = JSON.parse(termsJson || '[]');
+      if (!Array.isArray(slides)) throw 0;
+    } catch {
+      alert('JSON қате');
+      return;
+    }
+    if (!title.trim()) {
+      alert('Тақырып жаз');
+      return;
+    }
+    const row = { title: title.trim(), subject, slides, terms };
+    if (isNew) {
+      await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id, plan: {} });
+    } else {
+      await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
+    }
+    alert('Сақталды');
+    window.location.hash = '';
+  };
+  const sel2 = 'min-h-[44px] w-full rounded-md border border-border-input bg-surface px-2 text-sm text-text';
+
   return (
-    <div className="min-h-screen bg-bg text-white">
+    <div className="min-h-screen bg-bg text-text">
       <TopBar me={me} onLogout={onLogout} />
-      <div className="max-w-3xl mx-auto p-4 space-y-3">
-        <h2 className="font-bold text-xl text-black">{isNew ? 'Жаңа сабақ' : 'Сабақты өңдеу'}</h2>
-        <AiPanel
-          mode="slides"
-          countLabel="Слайд саны"
-          countDef={10}
-          onResult={r => {
-            setSlidesJson(JSON.stringify(r.slides || [], null, 1));
-            setTermsJson(JSON.stringify(r.terms || [], null, 1));
-            alert('Слайдтар дайын. Тест жауаптары мен код-тесттерді тексеріп шық!');
-          }}
-          onParams={v => {
-            if (!title.trim()) setTitle(v.topic);
-          }}
-        />
-        <input
-          className={`${INP} text-white`}
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Сабақ тақырыбы"
-        />
-        <input
-          className={`${INP} text-white`}
-          value={subject}
-          onChange={e => setSubject(e.target.value)}
-          placeholder="Пән"
-        />
-        <PagesPanel json={slidesJson} setJson={setSlidesJson} />
-        <details className="rounded-xl border border-border bg-surface p-3 text-text">
-          <summary className="cursor-pointer font-semibold">Толық құрылым және техникалық өрістер (JSON)</summary>
-          <div className="mt-2 space-y-2">
-        <p className="text-xs text-text-secondary">
-          Слайдтар (JSON). pageType (slide | scroll | interactive) және templateId — беттер тізімінен қойылады. Түрлері: title, content, quiz, task, code, logic, matching, flashcards, solution, leaderboard. solution: sections = [&#123;h, text | bullets, code?, hide?&#125;] — төмен қарай тізілген бөлімдер, hide:true — «Көрсету» басқанша жасырын. Мәтін ішінде ||жасырын|| — нүктелер болып тұрады, басқанда немесе тақтадағы Алға/Көрсету басқанда ашылады. ru: &#123;title, bullets, …&#125; — орысша өрістер (ҚАЗ/РУС ауыстырғышы). img + alt = сурет (title, content, quiz, task, code; төмендегі «Сурет қосу» арқылы); quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
-        </p>
-        <textarea
-          className={`${INP} font-mono h-96 text-white`}
-          value={slidesJson}
-          onChange={e => setSlidesJson(e.target.value)}
-        />
-          </div>
-        </details>
-        <ImagePanel json={slidesJson} setJson={setSlidesJson} schoolId={me.school_id} />
-        <p className="text-xs text-slate-500">Терминдер (JSON): [&#123;term, definition&#125;]</p>
-        <textarea
-          className={`${INP} font-mono h-28 text-white`}
-          value={termsJson}
-          onChange={e => setTermsJson(e.target.value)}
-        />
-        <button
-          className={BTN_G}
-          onClick={async () => {
-            let slides, terms;
-            try {
-              slides = JSON.parse(slidesJson);
-              terms = JSON.parse(termsJson || '[]');
-              if (!Array.isArray(slides)) throw 0;
-            } catch {
-              alert('JSON қате');
-              return;
-            }
-            if (!title.trim()) {
-              alert('Тақырып жаз');
-              return;
-            }
-            const row = { title: title.trim(), subject, slides, terms };
-            if (isNew) {
-              await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id, plan: {} });
-            } else {
-              await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
-            }
-            alert('Сақталды');
-            window.location.hash = '';
-          }}
-        >
-          Сақтау
-        </button>
+      <div className="border-b border-border bg-surface">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-2">
+          <nav aria-label="Орналасу" className="text-sm text-text-secondary"><a className="underline" href="#lessons/modules">Модульдер</a> / <span>Дәріс</span></nav>
+          <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title || 'Жаңа дәріс'}</h1>
+          {!isNew && <LinkButton variant="ghost" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
+          <Button variant="success" onClick={save}>Сақтау</Button>
+        </div>
+        <div role="tablist" aria-label="Жасау тәсілі" className="mx-auto flex max-w-7xl gap-1 px-4">
+          {([['manual', 'Қолмен жасау'], ['ai', 'ЖИ арқылы жасау']] as const).map(([k, l]) => (
+            <button key={k} type="button" role="tab" id={'tab-' + k} aria-selected={tab === k} aria-controls="tabpanel" onClick={() => setTab(k)} className={`min-h-[48px] border-b-4 px-4 font-semibold ${tab === k ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text'}`}>{l}</button>
+          ))}
+        </div>
       </div>
+      <main id="tabpanel" role="tabpanel" aria-labelledby={'tab-' + tab} className="mx-auto grid max-w-7xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-4">
+          {tab === 'ai' && (
+            <AiPanel
+              mode="slides"
+              countLabel="Слайд саны"
+              countDef={10}
+              onResult={r => {
+                setSlidesJson(JSON.stringify(r.slides || [], null, 1));
+                setTermsJson(JSON.stringify(r.terms || [], null, 1));
+                setSel(0); setTab('manual');
+                alert('Слайдтар дайын. Тест жауаптары мен код-тесттерді тексеріп шық! ЖИ нәтижесі нобай болып қалады — әр бетті қарап шық.');
+              }}
+              onParams={v => {
+                if (!title.trim()) setTitle(v.topic);
+              }}
+            />
+          )}
+          {tab === 'manual' && (
+            <>
+              <div><h2 className="text-3xl font-bold">Дәріс конструкторы</h2><p className="text-text-secondary">Негізгі ақпаратты толтырып, дәрісті беттерге бөліп құрастырыңыз.</p></div>
+              <section aria-label="Негізгі ақпарат" className={card}>
+                <h3 className="text-xl font-bold">Негізгі ақпарат</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm text-text-secondary sm:col-span-2">Дәріс атауы<input className={`${inputCls} mt-1 text-text`} value={title} onChange={e => setTitle(e.target.value)} placeholder="Сабақ тақырыбы" /></label>
+                  <label className="block text-sm text-text-secondary">Пән<input className={`${inputCls} mt-1 text-text`} value={subject} onChange={e => setSubject(e.target.value)} placeholder="Пән" /></label>
+                </div>
+              </section>
+              <section aria-label="Беттер" className={card}>
+                <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-xl font-bold">Дәріс беттері {pages ? `(${pages.length})` : ''}</h3><p className="text-sm text-text-secondary">Бет типі көріністі анықтайды, ал блоктар бет ішіндегі мазмұнды құрайды.</p></div></div>
+                {!pages ? <p role="alert" className="text-sm text-danger">Алдымен төмендегі «Толық құрылым» ішіндегі JSON қатесін түзет.</p> : (
+                  <ol aria-label="Дәріс беттері" className="space-y-2">{pages.map((s, i) => {
+                    const p = pageOf(s), t = s.title || s.prompt || `Бет ${i + 1}`;
+                    return (
+                      <li key={i} className={`flex flex-wrap items-center gap-1 rounded-xl border-2 p-1 ${i === cur ? 'border-accent bg-accent-soft' : 'border-border'}`}>
+                        <button type="button" aria-current={i === cur ? 'true' : undefined} onClick={() => setSel(i)} className="flex min-h-[56px] min-w-[12rem] flex-1 items-center gap-3 rounded-lg px-2 text-left">
+                          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 font-bold tabular-nums">{i + 1}</span>
+                          <span className="min-w-0 flex-1"><b className="block break-words">{t}</b><span className="text-sm text-text-secondary">{tplLabel(p.pageType, p.templateId) || typeLabel(p.pageType)} · {fieldsOf(s).length} блок</span></span>
+                          <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold">{TYPE_CHIP[p.pageType]}</span>
+                        </button>
+                        <span className="flex">
+                          <button type="button" aria-label={`${i + 1}-бетті жоғары жылжыту`} disabled={i === 0} onClick={() => move(i, -1)} className={iconBtn}><ArrowUp size={18} aria-hidden="true" /></button>
+                          <button type="button" aria-label={`${i + 1}-бетті төмен жылжыту`} disabled={i === pages!.length - 1} onClick={() => move(i, 1)} className={iconBtn}><ArrowDown size={18} aria-hidden="true" /></button>
+                          <button type="button" aria-label={`${i + 1}-бетті көшіру`} onClick={() => dup(i)} className={iconBtn}><Copy size={18} aria-hidden="true" /></button>
+                          <button type="button" aria-label={`${i + 1}-бетті өшіру`} onClick={() => del(i)} className={iconBtn + ' !text-danger'}><Trash2 size={18} aria-hidden="true" /></button>
+                        </span>
+                      </li>
+                    );
+                  })}</ol>
+                )}
+                <button type="button" disabled={!pages} onClick={() => setPicking(true)} className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent font-semibold text-accent hover:bg-accent-soft disabled:opacity-40"><Plus size={18} aria-hidden="true" />Жаңа бет: алдымен типін, кейін үлгісін таңдаңыз</button>
+              </section>
+              {page && (
+                <section aria-label="Таңдалған бет ішіндегі блоктар" className={card}>
+                  <h3 className="text-xl font-bold">Таңдалған бет ішіндегі блоктар <span className="text-base font-normal text-text-secondary">· {cur + 1}-бет</span></h3>
+                  {fields.length ? <div className="space-y-2">{fields.map(f => <FieldRow key={cur + f.id} uid={'f' + cur} f={f} options={page.options || []} onChange={v => edit(f, v)} />)}</div> : <p className="text-sm text-text-secondary">Бұл бет түрінің өрістерін «Толық құрылым» ішінде өңдеуге болады.</p>}
+                  {page.type === 'code' && <p className="text-sm text-text-secondary">Код тесттері (input / out) «Толық құрылым» ішінде өңделеді.</p>}
+                </section>
+              )}
+              <ImagePanel json={slidesJson} setJson={setSlidesJson} schoolId={me.school_id} />
+              <details className="rounded-2xl border border-border bg-surface p-4">
+                <summary className="cursor-pointer text-lg font-bold">Толық құрылым және техникалық өрістер (JSON)</summary>
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-text-secondary">
+                    Слайдтар (JSON). pageType (slide | scroll | interactive) және templateId — беттер тізімінен қойылады. Түрлері: title, content, quiz, task, code, logic, matching, flashcards, solution, leaderboard. solution: sections = [&#123;h, text | bullets, code?, hide?, img?&#125;] — төмен қарай тізілген бөлімдер, hide:true — «Көрсету» басқанша жасырын. Мәтін ішінде ||жасырын|| — нүктелер болып тұрады, басқанда немесе тақтадағы Алға/Көрсету басқанда ашылады. ru: &#123;title, bullets, …&#125; — орысша өрістер (ҚАЗ/РУС ауыстырғышы). img + alt = сурет (title, content, quiz, task, code; төмендегі «Сурет қосу» арқылы); quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
+                  </p>
+                  <textarea aria-label="Слайдтар JSON" className={`${INP} h-96 font-mono`} value={slidesJson} onChange={e => setSlidesJson(e.target.value)} />
+                  <p className="text-xs text-text-secondary">Терминдер (JSON): [&#123;term, definition&#125;]</p>
+                  <textarea aria-label="Терминдер JSON" className={`${INP} h-28 font-mono`} value={termsJson} onChange={e => setTermsJson(e.target.value)} />
+                </div>
+              </details>
+            </>
+          )}
+        </div>
+        <aside aria-label="Құрастыру көмегі" className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary">Құрастыру көмегі</h2>
+          {page && (
+            <section aria-label="Белсенді бет" className="space-y-2 rounded-2xl border-2 border-accent bg-accent-soft p-4">
+              <h3 className="text-lg font-bold">Белсенді бет</h3>
+              <p className="text-sm text-text-secondary">{typeLabel(pageOf(page).pageType)} · «{tplLabel(pageOf(page).pageType, pageOf(page).templateId) || 'үлгісіз'}» үлгісі</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" aria-expanded={chg} onClick={() => setChg(c => !c)}>Бет түрін өзгерту</Button>
+                {canUndo && <Button variant="secondary" onClick={() => { setSlidesJson(undo.current!); undo.current = null; setCanUndo(false); setMsg('Соңғы өзгеріс қайтарылды.'); }}><Undo2 size={16} aria-hidden="true" />Қайтару</Button>}
+              </div>
+              {chg && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold">Бет типі<select aria-label={`${cur + 1}-бет: типі`} className={sel2} value={pageOf(page).pageType} onChange={e => setType(e.target.value as PageType)}>{PAGE_TYPES.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select></label>
+                  <label className="block text-sm font-semibold">Үлгі<select aria-label={`${cur + 1}-бет: үлгісі`} className={sel2} value={pageOf(page).templateId} onChange={e => setTpl(e.target.value)}>
+                    {!TEMPLATES[pageOf(page).pageType].some(x => x.id === pageOf(page).templateId) && <option value={pageOf(page).templateId}>{pageOf(page).templateId || '— үлгісіз'}</option>}
+                    {TEMPLATES[pageOf(page).pageType].map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+                  </select></label>
+                </div>
+              )}
+            </section>
+          )}
+          <section aria-label="Келесі қадам" className="space-y-2 rounded-2xl border border-border bg-surface p-4">
+            <h3 className="text-lg font-bold">Келесі қадам</h3>
+            <p className="text-sm text-text-secondary">Беттерді реттеңіз немесе бетке жаңа элемент қосыңыз.</p>
+            {!isNew && <LinkButton variant="secondary" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
+          </section>
+          <section aria-label="Тексеру" className="space-y-2 rounded-2xl border border-border bg-surface p-4">
+            <h3 className="text-lg font-bold">Тексеру</h3>
+            <p className="text-sm text-text-secondary">{pages ? `${pages.length} бет · ${nBlocks} блок · ${nInter} интерактивті бет` : 'JSON қатесі бар'}</p>
+            {issues.length > 0 ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{issues.map((x, k) => <li key={k}>{x}</li>)}</ul> : pages && <p className="text-sm text-success">Ескертулер жоқ.</p>}
+            <Button variant="success" onClick={save}>Сақтау</Button>
+          </section>
+          <p role="status" className="text-sm text-text-secondary">{msg}</p>
+        </aside>
+      </main>
+      {picking && <PagePicker onCancel={() => setPicking(false)} onCreate={create} />}
     </div>
   );
 }
