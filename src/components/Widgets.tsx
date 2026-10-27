@@ -472,6 +472,7 @@ export function renderSlide(s: any, ctx: any = {}) {
               ) : (<>
                 {sec.text && <p className={`${big ? 'text-2xl' : 'text-lg'} whitespace-pre-wrap text-slate-200`}>{inner(sec.text)}</p>}
                 {Array.isArray(sec.bullets) && <ul className={`${big ? 'text-2xl space-y-2' : 'text-lg space-y-1'} list-disc pl-6 text-slate-200`}>{sec.bullets.map((b: string, k: number) => <li key={k}>{inner(b)}</li>)}</ul>}
+                {imgBlock(sec, big)}
                 {codeBlock({ code: sec.code, lang: sec.lang }, big)}
               </>)}
             </section>

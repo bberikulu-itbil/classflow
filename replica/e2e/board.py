@@ -210,6 +210,10 @@ with sync_playwright() as p:
     # exit button: closes the tab, or (when the browser refuses) goes back to the remote
     ne=len(errors); M.evaluate("window.close=()=>{window.__closed=1}"); M.click('button:has-text("Слайдтан шығу")'); M.wait_for_function("location.hash.startsWith('#remote/')",timeout=3000)
     ok('B25 exit tries to close the tab and falls back to the remote', M.evaluate("window.__closed")==1 and M.evaluate("location.hash")=='#remote/'+SID, M.evaluate("location.hash")); M.wait_for_timeout(500); del errors[ne:]
+    # a section of a stacked solution slide can carry a picture (site-shipped lec/ file); a foreign path is ignored
+    SL[1]={'type':'solution','title':'Есеп','sections':[{'h':'Алгоритм','bullets':['қадам'],'img':'lec/pw.svg','alt':'Үлгі суреті'},{'h':'Қауіпті','bullets':['x'],'img':'javascript:alert(1)'}]}; S['sess']['current_slide']=1; S['sess']['active_task_id']=None
+    G=page(); G.goto(URL); G.wait_for_selector('h2:text-is("Есеп")'); G.wait_for_timeout(400); shot(G,'board_solution_img')
+    ok('B26 a solution section shows its picture, and an unsafe src is dropped', G.locator('figure img[alt="Үлгі суреті"]').count()==1 and G.locator('figure img').evaluate('e=>e.naturalWidth')>0 and G.locator('figure img').count()==1)
     # ended
     E=page(); S.clear(); S.update(fresh()); S['sess']['status']='ended'; E.goto(URL); E.wait_for_selector('h1:text-is("Сабақ аяқталды")'); ok('B16 ended session says so and shows no tools', E.locator('[role=toolbar]').count()==0)
     b.close()
