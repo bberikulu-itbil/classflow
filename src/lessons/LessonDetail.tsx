@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Pencil, Play } from 'lucide-react';
+import { ArrowLeft, Eye, Pencil, Play } from 'lucide-react';
 import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { Tabs } from '../ui/Tabs';
@@ -118,7 +118,7 @@ export function LessonDetail({ id, me }: { id: string; me: { id: string } }) {
           <h1 className="text-2xl font-bold break-words">{lesson.title}</h1>
           <p className="text-text-secondary">{subjectOf(lesson)}</p>
         </div>
-        <LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
+        <div className="flex gap-2"><LinkButton href={'#preview/' + lesson.id}><Eye size={16} aria-hidden="true" />Көру</LinkButton><LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton></div>
       </div>
       <Card><QuarterChips f={f} set={set} /></Card>
       <section aria-label="Сыныптар" className="space-y-2">

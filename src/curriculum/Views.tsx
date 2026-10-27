@@ -246,9 +246,10 @@ export function ModulesView({ me }: { me: Me }) {
                           return (
                             <li key={p.lesson_id} className="flex flex-wrap items-center gap-1 rounded-md px-2 hover:bg-surface-2">
                               <span className="w-6 text-sm text-text-muted">{i + 1}.</span>
-                              <a href={'#edit/' + l.id} className="min-w-0 flex-1 py-2 break-words text-accent underline">{l.title}</a>
+                              <a href={'#preview/' + l.id} className="min-w-0 flex-1 py-2 break-words text-accent underline">{l.title}</a>
                               {!editing && clsName && <Button variant="success" className="!min-h-[44px]" disabled={!!DEMO} loading={busy === l.id} onClick={() => start(l.id)} aria-label={`${l.title}: ${clsName} сыныбымен бастау`}><Play size={14} aria-hidden="true" />Бастау · {clsName}</Button>}
                               {editing && <>
+                                <a href={'#edit/' + l.id} aria-label={`${l.title}: JSON-редактор`} title="Редактор" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-2"><Pencil size={16} aria-hidden="true" /></a>
                                 <IconBtn label={`${l.title}: жоғары`} disabled={i === 0} onClick={() => act(() => st.swapLessons(me, p, ps[i - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
                                 <IconBtn label={`${l.title}: төмен`} disabled={i === ps.length - 1} onClick={() => act(() => st.swapLessons(me, p, ps[i + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
                                 <IconBtn label={`${l.title}: модульден алу`} onClick={() => act(() => st.unplaceLesson(me, l.id))}><X size={16} aria-hidden="true" /></IconBtn>
