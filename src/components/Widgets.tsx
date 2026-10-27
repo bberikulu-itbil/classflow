@@ -398,8 +398,8 @@ const codeBlock = (s: any, big: boolean) => s.code
     </figure>
   : null;
 
-/** Optional `img` (https URL or data:image) with `alt` on title, content, quiz, task, code and plain slides. Anything else is ignored. */
-const imgBlock = (s: any, big: boolean) => typeof s.img === 'string' && /^(https:\/\/|data:image\/)/.test(s.img)
+/** Optional `img` (https URL, data:image, or a picture shipped with the site under lec/) with `alt` on title, content, quiz, task, code and plain slides. Anything else is ignored. */
+const imgBlock = (s: any, big: boolean) => typeof s.img === 'string' && /^(https:\/\/|data:image\/|lec\/[\w-]+\.(svg|png|webp|jpe?g)$)/.test(s.img)
   ? <figure key="img" className="my-4 flex justify-center">
       <img src={s.img} alt={s.alt || ''} className={`${big ? 'max-h-[55vh]' : 'max-h-[45vh]'} max-w-full rounded-xl bg-white object-contain`} />
     </figure>
