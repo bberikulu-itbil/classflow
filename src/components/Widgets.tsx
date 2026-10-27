@@ -40,7 +40,7 @@ export function clock(task: any) {
   return <span className="font-mono" style={{ color }}>{text}</span>;
 }
 
-export function lbTable(rows: any[]) {
+export function lbTable(rows: any[], hide = false) {
   return (
     <table className="w-full text-lg">
       <tbody>
@@ -49,7 +49,7 @@ export function lbTable(rows: any[]) {
             <td className="py-1 w-10 text-slate-400">{i + 1}</td>
             <td>{r.full_name}</td>
             <td className="text-slate-400 text-sm">{r.group_no ? 'Топ ' + r.group_no : ''}</td>
-            <td className="text-right font-black text-amber-400">{r.points}</td>
+            <td className="text-right font-black text-amber-400">{hide ? '•••' : r.points}</td>
           </tr>
         ))}
       </tbody>
@@ -409,7 +409,7 @@ const imgBlock = (s: any, big: boolean) => typeof s.img === 'string' && /^(https
 export function renderSlide(s: any, ctx: any = {}) {
   const sp = ctx.sp, R = (t: string) => rich(t, sp);
   const big = ctx.mode === 'board';
-  const wrap = (...k: any[]) => <div className="w-full max-w-5xl mx-auto p-4">{k}</div>;
+  const wrap = (...k: any[]) => <div className="cf-slide w-full max-w-5xl mx-auto p-4">{k}</div>;
 
   switch (s.type) {
     case 'title':

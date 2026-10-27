@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Dice5, Pause, Play, RotateCcw } from 'lucide-react';
 import { Button, inputCls } from '../ui';
-import { fmt, lbTable } from '../components/Widgets';
+import { fmt } from '../components/Widgets';
 
 function beep() {
   try {
@@ -104,16 +104,6 @@ export function ConvBody() {
       {bad && <p id="conv-err" role="alert" className="text-sm text-danger">Бұл санау жүйесінде мұндай таңба болмайды (немесе сан тым ұзын).</p>}
       {v != null && <p className="text-sm text-text-secondary">Биттер: {raw.bin.length}{v >= 32n && v <= 126n && <> · ASCII таңбасы: <b className="font-mono text-text">{String.fromCharCode(Number(v))}</b></>}</p>}
       <p className="text-xs text-text-muted">Тек теріс емес бүтін сандар.</p>
-    </div>
-  );
-}
-
-export function ScoreBody({ count, groups, lb }: { count: number; groups: any[]; lb: any[] }) {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-text-secondary">Қатысушы: {count}</p>
-      <div><h3 className="mb-1 font-bold">Топтар</h3>{groups.length ? groups.map((g, i) => <div key={i} className="flex justify-between text-xl"><span>Топ {g.group_no}</span><b className="text-warning">{g.points}</b></div>) : <p className="text-sm text-text-muted">Топ жоқ</p>}</div>
-      <div><h3 className="mb-1 font-bold">Үздіктер</h3>{lb.length ? lbTable(lb.slice(0, 8)) : <p className="text-sm text-text-muted">Әзірге ұпай жоқ</p>}</div>
     </div>
   );
 }

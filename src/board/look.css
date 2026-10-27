@@ -1,0 +1,33 @@
+/* Board colour looks. Slide components are written for a dark background (white / light-slate text);
+   on a light or vivid board the same classes are remapped inside .cf-slide only. Code blocks keep their own dark panel. */
+.cf-light .cf-slide .text-white { color: #0f172a; }
+.cf-light .cf-slide .text-slate-100, .cf-light .cf-slide .text-slate-200 { color: #1e293b; }
+.cf-light .cf-slide .text-slate-400, .cf-light .cf-slide .text-slate-500 { color: #475569; }
+.cf-light .cf-slide .text-blue-400 { color: #1d4ed8; }
+.cf-light .cf-slide .text-amber-400 { color: #92400e; }
+.cf-light .cf-slide .text-emerald-400, .cf-light .cf-slide .text-emerald-300 { color: #047857; }
+.cf-light .cf-slide .text-emerald-100 { color: #064e3b; }
+.cf-light .cf-slide .text-indigo-300 { color: #4338ca; }
+.cf-light .cf-slide .text-red-300 { color: #b91c1c; }
+.cf-light .cf-slide .bg-slate-800, .cf-light .cf-slide .bg-slate-900 { background-color: #e2e8f0; }
+.cf-light .cf-slide .bg-slate-700, .cf-light .cf-slide .bg-slate-600 { background-color: #cbd5e1; }
+.cf-light .cf-slide .bg-emerald-900, .cf-light .cf-slide .bg-emerald-950 { background-color: #d1fae5; }
+.cf-light .cf-slide .bg-indigo-900, .cf-light .cf-slide .bg-indigo-950 { background-color: #e0e7ff; }
+.cf-light .cf-slide .bg-red-950 { background-color: #fee2e2; }
+.cf-light .cf-slide .border-slate-500, .cf-light .cf-slide .border-slate-600 { border-color: #64748b; }
+.cf-light .cf-slide .border-slate-700, .cf-light .cf-slide .border-slate-800 { border-color: #cbd5e1; }
+
+.cf-vivid .cf-slide .text-slate-100, .cf-vivid .cf-slide .text-slate-200, .cf-vivid .cf-slide .text-slate-300 { color: #ffffff; }
+.cf-vivid .cf-slide .text-slate-400, .cf-vivid .cf-slide .text-slate-500 { color: #f1f5f9; }
+.cf-vivid .cf-slide .text-blue-400, .cf-vivid .cf-slide .text-amber-400 { color: #fde68a; }
+.cf-vivid .cf-slide .text-emerald-400, .cf-vivid .cf-slide .text-emerald-300 { color: #bbf7d0; }
+.cf-vivid .cf-slide .text-indigo-300 { color: #e0e7ff; }
+.cf-vivid .cf-slide .text-red-300 { color: #fecaca; }
+.cf-vivid .cf-slide .bg-slate-800, .cf-vivid .cf-slide .bg-slate-900 { background-color: rgba(0, 0, 0, 0.32); }
+.cf-vivid .cf-slide .bg-slate-700, .cf-vivid .cf-slide .bg-slate-600 { background-color: rgba(0, 0, 0, 0.45); }
+.cf-vivid .cf-slide .border-slate-500, .cf-vivid .cf-slide .border-slate-600,
+.cf-vivid .cf-slide .border-slate-700, .cf-vivid .cf-slide .border-slate-800 { border-color: rgba(255, 255, 255, 0.5); }
+
+/* coloured buttons keep white text on a light board */
+.cf-light .cf-slide .bg-emerald-500.text-white, .cf-light .cf-slide .bg-emerald-600.text-white, .cf-light .cf-slide .bg-emerald-700.text-white,
+.cf-light .cf-slide .bg-blue-500.text-white, .cf-light .cf-slide .bg-blue-600.text-white { color: #ffffff; }
