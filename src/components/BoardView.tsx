@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Binary, Dice5, Maximize, Minimize, Pencil, Timer as TimerIcon, Trophy } from 'lucide-react';
 import { sb } from '../config';
 import { renderSlide, spaced, fmt, lbTable, clock } from './Widgets';
 import qrcode from 'qrcode-generator';
+import { DockBtn, Win, usePersist, useWide } from '../board/Win';
+import { QrDock, qrReserve, type Qr } from '../board/QrDock';
+import { DrawBar, DrawLayer, type Pen, type Stroke } from '../board/Draw';
+import { ConvBody, RandomBody, ScoreBody, TimerBody, useTimer } from '../board/Tools';
+
+// clock() is a hook; as its own component the hook count no longer changes when a task appears
+const TaskClock = ({ task }: { task: any }) => <>{clock(task)}</>;
 
 export function BoardView({ sid }: { sid: string }) {
   const [session, setSession] = useState<any>(null);
@@ -11,13 +19,18 @@ export function BoardView({ sid }: { sid: string }) {
   const [groupScores, setGroupScores] = useState<any[]>([]);
   const [task, setTask] = useState<any>(null);
   const [subsCount, setSubsCount] = useState(0);
+  const [qr, setQr] = usePersist<Qr>('cf_board_qr', { side: 'right', y: 0.1, open: window.innerWidth >= 1024, big: false });
+  const [pen, setPen] = usePersist<Pen>('cf_board_pen', { tool: 'pen', color: '#ef4444', width: 6, bg: 'clear' });
+  const [draw, setDraw] = useState(false), [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [wins, setWins] = useState<string[]>([]), [full, setFull] = useState(!!document.fullscreenElement);
+  const timer = useTimer(), wide = useWide();
 
   const refresh = async () => {
     try {
       const [sRes, curRes, pRes, lbRes, gsRes] = await Promise.all([
         sb.from('cf_sessions').select('*').eq('id', sid).single(),
         sb.rpc('cf_slide', { p_session: sid }),
-        sb.from('cf_participants').select('student_id,presence').eq('session_id', sid),
+        sb.from('cf_participants').select('student_id,full_name,presence').eq('session_id', sid),
         sb.rpc('cf_leaderboard', { p_session: sid }),
         sb.rpc('cf_group_scores', { p_session: sid }),
       ]);
@@ -55,61 +68,77 @@ export function BoardView({ sid }: { sid: string }) {
     };
   }, [sid]);
 
-  if (!session) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white text-2xl">Жүктелуде...</div>;
+  const slideNo = session?.current_slide;
+  // an annotation belongs to its slide; a blank board (white, grid, dark) is kept across slides
+  useEffect(() => { if (pen.bg === 'clear') setStrokes([]); }, [slideNo]);
+  useEffect(() => {
+    const f = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', f);
+    const k = (e: KeyboardEvent) => { if (e.key !== 'Escape') return; if (draw) setDraw(false); else setWins(w => w.slice(0, -1)); };
+    window.addEventListener('keydown', k);
+    return () => { document.removeEventListener('fullscreenchange', f); window.removeEventListener('keydown', k); };
+  }, [draw]);
+
+  if (!session) return <div data-theme="dark" className="min-h-screen bg-bg flex items-center justify-center text-text text-2xl">Жүктелуде...</div>;
 
   const qrSvg = (() => {
     try {
-      const qr = qrcode(0, 'M');
-      qr.addData(location.origin + location.pathname + '#join/' + session.join_code);
-      qr.make();
-      return qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      const q = qrcode(0, 'M');
+      q.addData(location.origin + location.pathname + '#join/' + session.join_code);
+      q.make();
+      return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
     } catch {
       return '';
     }
   })();
 
+  const ended = session.status === 'ended';
+  const toggle = (id: string) => setWins(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]));
+  const raise = (id: string) => setWins(w => (w[w.length - 1] === id ? w : [...w.filter(x => x !== id), id]));
+  const fullscreen = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch { /* not allowed in this browser */ } };
+  const people = parts.map((p: any) => ({ name: p.full_name || '—', online: p.presence === 'online' }));
+  const reserve = wide && !ended && qr.open ? qrReserve(qr) : 0;
+  const win = (id: string, title: string, icon: React.ReactNode, at: { x: number; y: number }, body: React.ReactNode, w?: number) => wins.includes(id) && (
+    <Win key={id} id={id} title={title} icon={icon} at={at} w={w} z={50 + wins.indexOf(id)} onFocus={() => raise(id)} onClose={() => toggle(id)}>{body}</Win>
+  );
+  const tl = !timer.running && !timer.done && timer.left === timer.total ? 'Таймер' : fmt(timer.left);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-      {session.status === 'ended' ? (
-        <div className="flex-1 flex items-center justify-center">
-          <h1 className="text-5xl font-black">Сабақ аяқталды</h1>
-        </div>
+    <div data-theme="dark" className="relative min-h-screen bg-bg text-text">
+      {ended ? (
+        <main className="flex min-h-screen items-center justify-center"><h1 className="text-5xl font-black">Сабақ аяқталды</h1></main>
       ) : (
-        <div className="flex flex-1">
-          <div className="flex-1 flex items-center justify-center p-8">
+        <>
+          <main className="flex min-h-screen items-center justify-center pb-32 pt-16" style={{ paddingLeft: 32 + (qr.side === 'left' ? reserve : 0), paddingRight: 32 + (qr.side === 'right' ? reserve : 0) }}>
             {renderSlide(currentSlide?.slide || {}, { mode: 'board', lb: () => lbTable(leaderboard) })}
-          </div>
-          <div className="w-80 p-4 border-l border-slate-800 space-y-4 hidden lg:block bg-slate-900">
-            <div className="text-center space-y-2">
-              <div
-                className="mx-auto w-44 h-44 bg-white p-2 rounded-xl"
-                dangerouslySetInnerHTML={{ __html: qrSvg }}
-              />
-              <div className="text-xs text-slate-400">немесе кодты енгіз</div>
-              <div className="text-4xl font-black tracking-widest text-blue-400 font-mono">{spaced(session.join_code)}</div>
+          </main>
+          {session.slide_count > 0 && <p className="fixed left-4 top-16 z-20 rounded-full sm:top-4 bg-surface-2 px-3 py-1 text-sm text-text-secondary">Слайд {(session.current_slide || 0) + 1} / {session.slide_count}</p>}
+          {task && (
+            <div role="status" className={`fixed inset-x-2 top-3 z-40 mx-auto flex w-fit items-center gap-3 whitespace-nowrap rounded-full px-4 py-2 text-lg font-semibold shadow-lg ${task.status === 'open' ? 'bg-success-soft text-text' : 'bg-surface-2 text-text-secondary'}`}>
+              {task.status === 'open' ? <span>Тапсырды {subsCount} / {parts.length}</span> : <span>Тапсырма жабық</span>}
+              <TaskClock task={task} />
             </div>
-            <div className="text-sm text-slate-400">Қатысушы: {parts.length}</div>
-            {task && (
-              <div className={`p-3 rounded-xl flex justify-between items-center ${task.status === 'open' ? 'bg-emerald-900' : 'bg-slate-800'}`}>
-                {task.status === 'open' ? <span>Тапсырды {subsCount} / {parts.length}</span> : <span>⏹ Тапсырма жабық</span>}
-                {clock(task)}
-              </div>
+          )}
+          <QrDock q={qr} set={setQr} svg={qrSvg} code={session.join_code} count={parts.length} />
+          {draw && <DrawLayer pen={pen} strokes={strokes} onCommit={s => setStrokes(a => [...a, s])} />}
+          <div role="toolbar" aria-label={draw ? 'Сызу құралдары' : 'Тақта құралдары'} className="fixed inset-x-2 bottom-3 z-40 mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border border-border bg-surface p-1.5 text-text shadow-2xl">
+            {draw ? (
+              <DrawBar pen={pen} set={setPen} canUndo={strokes.length > 0} undo={() => setStrokes(a => a.slice(0, -1))} clear={() => setStrokes([])} close={() => setDraw(false)} />
+            ) : (
+              <>
+                <DockBtn label="Сызу" onClick={() => setDraw(true)}><Pencil size={22} /></DockBtn>
+                <DockBtn label={tl} pressed={wins.includes('timer')} onClick={() => toggle('timer')}><TimerIcon size={22} /></DockBtn>
+                <DockBtn label="Кездейсоқ" pressed={wins.includes('rand')} onClick={() => toggle('rand')}><Dice5 size={22} /></DockBtn>
+                <DockBtn label="Сан жүйесі" pressed={wins.includes('conv')} onClick={() => toggle('conv')}><Binary size={22} /></DockBtn>
+                <DockBtn label="Ұпай" pressed={wins.includes('score')} onClick={() => toggle('score')}><Trophy size={22} /></DockBtn>
+                <DockBtn label={full ? 'Терезеге' : 'Толық экран'} onClick={fullscreen}>{full ? <Minimize size={22} /> : <Maximize size={22} />}</DockBtn>
+              </>
             )}
-            <div>
-              <h3 className="font-bold mb-1">👥 Топтар</h3>
-              {groupScores.map((g: any, i: number) => (
-                <div key={i} className="flex justify-between text-xl">
-                  <span>Топ {g.group_no}</span>
-                  <b className="text-amber-400">{g.points}</b>
-                </div>
-              ))}
-            </div>
-            <div>
-              <h3 className="font-bold mb-1">🏆 Үздіктер</h3>
-              {lbTable(leaderboard.slice(0, 5))}
-            </div>
           </div>
-        </div>
+          {win('timer', 'Таймер', <TimerIcon size={18} />, { x: 24, y: 96 }, <TimerBody t={timer} />, 320)}
+          {win('rand', 'Кездейсоқ оқушы', <Dice5 size={18} />, { x: 64, y: 120 }, <RandomBody people={people} />, 340)}
+          {win('conv', 'Санау жүйелері', <Binary size={18} />, { x: 104, y: 144 }, <ConvBody />, 360)}
+          {win('score', 'Топтар мен ұпай', <Trophy size={18} />, { x: 144, y: 168 }, <ScoreBody count={parts.length} groups={groupScores} lb={leaderboard} />, 360)}
+        </>
       )}
     </div>
   );
