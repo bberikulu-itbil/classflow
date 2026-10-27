@@ -36,6 +36,7 @@ def stub(r):
     pick=lambda rows: (out(rows[0] if rows else None) if one else out(rows))
     if '/rpc/' in u.path:
         if name=='cf_slide': return out({'slide':SL[min(S['sess']['current_slide'],len(SL)-1)]})
+        if name=='cf_goto': S['sess']['current_slide']=json.loads(q.post_data or '{}')['p_index']; RPC.append(json.loads(q.post_data or '{}')); return out(None)
         if name=='cf_leaderboard': return out(S['lb'])
         if name=='cf_group_scores': return out(S['gs'])
         return out(None)
@@ -51,6 +52,7 @@ def route(r):
     elif u.startswith(B): r.continue_()
     elif 'supabase.co' in u and 'realtime' not in u: stub(r)
     else: r.abort()
+RPC=[]
 URL=B+'#board/'+SID
 def axe(pg,name):
     pg.wait_for_timeout(300); pg.evaluate(AXE)
@@ -106,8 +108,8 @@ with sync_playwright() as p:
     A.click('button:has-text("Таймер")'); A.wait_for_selector('section[role=dialog][aria-label="Таймер"]'); T='section[aria-label="Таймер"]'
     A.click(T+' button:text-is("1 мин")'); ok('B8 preset shows 1:00', A.locator(T+' [role=timer]').inner_text()=='1:00')
     A.click(T+' button:text-is("Бастау")'); A.wait_for_timeout(2300); v=A.locator(T+' [role=timer]').inner_text(); ok('B8 it counts down', v in ('0:58','0:57'), v)
-    A.click('button[aria-label="Таймер: жабу"]'); A.wait_for_timeout(300); ok('B8 closing the window does not stop it: the dock shows the time', A.locator('[role=toolbar] button').nth(1).inner_text().strip() in ('0:57','0:56','0:55','0:58'), A.locator('[role=toolbar] button').nth(1).inner_text())
-    A.locator('[role=toolbar] button').nth(1).click(); A.click(T+' button:text-is("Тоқтату")'); v=A.locator(T+' [role=timer]').inner_text(); A.wait_for_timeout(1200); ok('B8 pause holds the time', A.locator(T+' [role=timer]').inner_text()==v)
+    A.click('button[aria-label="Таймер: жабу"]'); A.wait_for_timeout(300); ok('B8 closing the window does not stop it: the dock shows the time', A.locator('[role=toolbar] button').nth(2).inner_text().strip() in ('0:57','0:56','0:55','0:58'), A.locator('[role=toolbar] button').nth(2).inner_text())
+    A.locator('[role=toolbar] button').nth(2).click(); A.click(T+' button:text-is("Тоқтату")'); v=A.locator(T+' [role=timer]').inner_text(); A.wait_for_timeout(1200); ok('B8 pause holds the time', A.locator(T+' [role=timer]').inner_text()==v)
     A.click(T+' button:text-is("Қайта")'); ok('B8 reset returns to 1:00', A.locator(T+' [role=timer]').inner_text()=='1:00')
     A.click('button:has-text("Кездейсоқ")'); R='section[aria-label="Кездейсоқ оқушы"]'; A.wait_for_selector(R)
     names=[]
@@ -131,6 +133,18 @@ with sync_playwright() as p:
     ok('B12 the one just used is on top', int(A.locator(C).evaluate('e=>getComputedStyle(e).zIndex'))>=int(A.locator('section[aria-label="Топтар мен ұпай"]').evaluate('e=>getComputedStyle(e).zIndex')))
     A.keyboard.press('Escape'); ok('B12 Escape closes the top window only', A.locator('section[role=dialog]').count()==3)
     axe(A,'board with windows open'); shot(A,'board_tools')
+    # flipping slides from the board
+    N=page(); ready(N); dk='[role=toolbar][aria-label="Тақта құралдары"]'
+    ok('B17 dock has Артқа and Алға, both enabled on a middle slide', N.locator(dk+' button:has-text("Артқа")').is_enabled() and N.locator(dk+' button:has-text("Алға")').is_enabled())
+    N.click(dk+' button:has-text("Алға")'); N.wait_for_selector('text=Слайд 3 / 5'); ok('B17 Алға calls cf_goto with the next index and the slide changes', RPC[-1]=={'p_session':SID,'p_index':2} and N.locator('text=Қорытынды').count()>=1, str(RPC[-1:]))
+    N.click(dk+' button:has-text("Артқа")'); N.wait_for_selector('text=Слайд 2 / 5'); ok('B17 Артқа goes back', RPC[-1]['p_index']==1 and N.locator('text=Цикл дегеніміз не?').count()==1)
+    N.keyboard.press('ArrowRight'); N.wait_for_selector('text=Слайд 3 / 5'); N.keyboard.press('ArrowLeft'); N.wait_for_selector('text=Слайд 2 / 5'); N.keyboard.press('PageDown'); N.wait_for_selector('text=Слайд 3 / 5'); ok('B17 arrow and Page keys flip too', [r['p_index'] for r in RPC[-3:]]==[2,1,2], str(RPC[-3:]))
+    n0=len(RPC); N.click('button:has-text("Таймер")'); N.fill('section[aria-label="Таймер"] input[type=number]','7'); N.press('section[aria-label="Таймер"] input[type=number]','ArrowRight'); N.wait_for_timeout(200); ok('B17 arrow keys inside a text box do not flip slides', len(RPC)==n0)
+    N.click('button[aria-label="Таймер: жабу"]'); N.click(dk+' button:has-text("Сызу")')
+    N.click('[role=toolbar] button:has-text("Алға")'); N.wait_for_selector('text=Слайд 4 / 5'); ok('B17 the drawing bar flips slides as well, staying in draw mode', N.locator('canvas').count()==1 and RPC[-1]['p_index']==3)
+    N.keyboard.press('Escape'); S['sess']['current_slide']=4; N.wait_for_selector('text=Слайд 5 / 5',timeout=14000); ok('B17 on the last slide Алға is off, on the first Артқа is off', N.locator(dk+' button:has-text("Алға")').is_disabled())
+    S['sess']['current_slide']=0; N.wait_for_selector('text=Слайд 1 / 5',timeout=14000); ok('B17 first slide: Артқа is off', N.locator(dk+' button:has-text("Артқа")').is_disabled())
+    N.click(dk+' button:has-text("Алға")'); N.wait_for_selector('text=Слайд 2 / 5'); axe(N,'board with Артқа / Алға')
     # a new slide wipes the annotations of the old one
     A.click('button:has-text("Сызу")'); A.mouse.move(700,600); A.mouse.down(); A.mouse.move(900,650,steps=5); A.mouse.up(); n=ink(); S['sess']['current_slide']=2
     A.wait_for_function("document.querySelector('canvas').getContext('2d').getImageData(0,0,50,50) && true"); A.wait_for_selector('text=Қорытынды',timeout=14000); A.wait_for_timeout(200)

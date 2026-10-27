@@ -3,6 +3,7 @@ import { sb } from '../config';
 import { TopBar } from './TopBar';
 import { BTN_G, INP } from './Widgets';
 import { AiPanel } from './AiPanel';
+import { ImagePanel } from './ImagePanel';
 
 const SAMPLE = [
   { type: 'title', title: 'Алгоритм', subtitle: '7-сынып · Информатика' },
@@ -72,13 +73,14 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           placeholder="Пән"
         />
         <p className="text-xs text-slate-500">
-          Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, leaderboard. quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
+          Слайдтар (JSON). Түрлері: title, content, quiz, task, code, logic, matching, flashcards, leaderboard. img + alt = сурет (title, content, quiz, task, code; төмендегі «Сурет қосу» арқылы); quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
         </p>
         <textarea
           className={`${INP} font-mono h-96 text-white`}
           value={slidesJson}
           onChange={e => setSlidesJson(e.target.value)}
         />
+        <ImagePanel json={slidesJson} setJson={setSlidesJson} schoolId={me.school_id} />
         <p className="text-xs text-slate-500">Терминдер (JSON): [&#123;term, definition&#125;]</p>
         <textarea
           className={`${INP} font-mono h-28 text-white`}

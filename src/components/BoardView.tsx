@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Binary, Dice5, Maximize, Minimize, Pencil, Timer as TimerIcon, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Binary, Dice5, Maximize, Minimize, Pencil, Timer as TimerIcon, Trophy } from 'lucide-react';
 import { sb } from '../config';
 import { renderSlide, spaced, fmt, lbTable, clock } from './Widgets';
 import qrcode from 'qrcode-generator';
@@ -68,15 +68,28 @@ export function BoardView({ sid }: { sid: string }) {
     };
   }, [sid]);
 
-  const slideNo = session?.current_slide;
+  const slideNo = session?.current_slide, total = session?.slide_count || 0;
+  // same call as the remote's Артқа / Алға; refresh() shows the new slide at once instead of waiting for realtime
+  const go = async (i: number) => {
+    if (i < 0 || i >= total) return;
+    const { error } = await sb.rpc('cf_goto', { p_session: sid, p_index: i });
+    if (error) console.error(error); else refresh();
+  };
+  const prev = slideNo > 0 ? () => go(slideNo - 1) : undefined, next = slideNo < total - 1 ? () => go(slideNo + 1) : undefined;
   // an annotation belongs to its slide; a blank board (white, grid, dark) is kept across slides
   useEffect(() => { if (pen.bg === 'clear') setStrokes([]); }, [slideNo]);
   useEffect(() => {
     const f = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', f);
-    const k = (e: KeyboardEvent) => { if (e.key !== 'Escape') return; if (draw) setDraw(false); else setWins(w => w.slice(0, -1)); };
+    const k = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.key === 'Escape') { if (draw) setDraw(false); else setWins(w => w.slice(0, -1)); return; }
+      if (e.altKey || e.ctrlKey || e.metaKey || t?.closest('input,textarea,select,[contenteditable=true]')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); next?.(); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev?.(); }
+    };
     window.addEventListener('keydown', k);
     return () => { document.removeEventListener('fullscreenchange', f); window.removeEventListener('keydown', k); };
-  }, [draw]);
+  }, [draw, slideNo, total]);
 
   if (!session) return <div data-theme="dark" className="min-h-screen bg-bg flex items-center justify-center text-text text-2xl">Жүктелуде...</div>;
 
@@ -122,15 +135,17 @@ export function BoardView({ sid }: { sid: string }) {
           {draw && <DrawLayer pen={pen} strokes={strokes} onCommit={s => setStrokes(a => [...a, s])} />}
           <div role="toolbar" aria-label={draw ? 'Сызу құралдары' : 'Тақта құралдары'} className="fixed inset-x-2 bottom-3 z-40 mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border border-border bg-surface p-1.5 text-text shadow-2xl">
             {draw ? (
-              <DrawBar pen={pen} set={setPen} canUndo={strokes.length > 0} undo={() => setStrokes(a => a.slice(0, -1))} clear={() => setStrokes([])} close={() => setDraw(false)} />
+              <DrawBar pen={pen} set={setPen} canUndo={strokes.length > 0} undo={() => setStrokes(a => a.slice(0, -1))} clear={() => setStrokes([])} close={() => setDraw(false)} nav={{ prev, next }} />
             ) : (
               <>
+                <DockBtn label="Артқа" disabled={!prev} onClick={() => prev?.()}><ArrowLeft size={22} /></DockBtn>
                 <DockBtn label="Сызу" onClick={() => setDraw(true)}><Pencil size={22} /></DockBtn>
                 <DockBtn label={tl} pressed={wins.includes('timer')} onClick={() => toggle('timer')}><TimerIcon size={22} /></DockBtn>
                 <DockBtn label="Кездейсоқ" pressed={wins.includes('rand')} onClick={() => toggle('rand')}><Dice5 size={22} /></DockBtn>
                 <DockBtn label="Сан жүйесі" pressed={wins.includes('conv')} onClick={() => toggle('conv')}><Binary size={22} /></DockBtn>
                 <DockBtn label="Ұпай" pressed={wins.includes('score')} onClick={() => toggle('score')}><Trophy size={22} /></DockBtn>
                 <DockBtn label={full ? 'Терезеге' : 'Толық экран'} onClick={fullscreen}>{full ? <Minimize size={22} /> : <Maximize size={22} />}</DockBtn>
+                <DockBtn label="Алға" strong disabled={!next} onClick={() => next?.()}><ArrowRight size={22} /></DockBtn>
               </>
             )}
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ArrowUpRight, Eraser, Highlighter, Pencil, Square, Trash2, Undo2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Eraser, Highlighter, Pencil, Square, Trash2, Undo2, X } from 'lucide-react';
 import { DockBtn } from './Win';
 
 export type Tool = 'pen' | 'marker' | 'eraser' | 'arrow' | 'rect';
@@ -72,10 +72,12 @@ const WIDTHS = [['Жіңішке', 3, 6], ['Орташа', 6, 12], ['Жуан', 
 const BGS: [Bg, string][] = [['clear', 'Слайд'], ['white', 'Ақ'], ['grid', 'Тор'], ['dark', 'Қара']];
 const Sep = () => <span aria-hidden="true" className="mx-1 hidden h-8 w-px bg-border sm:block" />;
 
-export function DrawBar({ pen, set, canUndo, undo, clear, close }: { pen: Pen; set: (p: Pen) => void; canUndo: boolean; undo: () => void; clear: () => void; close: () => void }) {
+export function DrawBar({ pen, set, canUndo, undo, clear, close, nav }: { pen: Pen; set: (p: Pen) => void; canUndo: boolean; undo: () => void; clear: () => void; close: () => void; nav: { prev?: () => void; next?: () => void } }) {
   return (
     <>
-      <DockBtn label="Жабу" onClick={close}><X size={22} /></DockBtn><Sep />
+      <DockBtn label="Жабу" onClick={close}><X size={22} /></DockBtn>
+      <DockBtn label="Артқа" disabled={!nav.prev} onClick={() => nav.prev?.()}><ArrowLeft size={22} /></DockBtn>
+      <DockBtn label="Алға" strong disabled={!nav.next} onClick={() => nav.next?.()}><ArrowRight size={22} /></DockBtn><Sep />
       {TOOLS.map(x => <DockBtn key={x.t} label={x.n} pressed={pen.tool === x.t} onClick={() => set({ ...pen, tool: x.t })}>{x.i}</DockBtn>)}<Sep />
       <div role="group" aria-label="Түс" className="flex">
         {COLORS.map(([n, c]) => (

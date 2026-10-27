@@ -41,10 +41,10 @@ export function IconB({ label, onClick, pressed, children }: { label: string; on
 }
 
 /** Big icon-over-label button of the tool dock; the visible label is its name. */
-export function DockBtn({ label, onClick, pressed, disabled, children }: { label: string; onClick: () => void; pressed?: boolean; disabled?: boolean; children: React.ReactNode }) {
+export function DockBtn({ label, onClick, pressed, disabled, strong, children }: { label: string; onClick: () => void; pressed?: boolean; disabled?: boolean; strong?: boolean; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={pressed} disabled={disabled}
-      className={`flex min-h-[56px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[11px] font-medium leading-tight disabled:opacity-40 ${pressed ? 'bg-accent text-on-accent' : 'text-text hover:bg-surface-2'}`}>
+      className={`flex min-h-[56px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[11px] font-medium leading-tight disabled:opacity-40 ${pressed || strong ? 'bg-accent text-on-accent' : 'text-text hover:bg-surface-2'}`}>
       <span aria-hidden="true">{children}</span>{label}
     </button>
   );
