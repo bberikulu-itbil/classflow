@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { sb } from '../config';
+import { sb, DEMO } from '../config';
 import { TopBar } from './TopBar';
 import { INP } from './Widgets';
 import { AiPanel } from './AiPanel';
@@ -23,6 +23,8 @@ const SAMPLE = [
   { type: 'leaderboard', title: '🏆 Нәтиже' },
 ];
 
+const DK = 'cf_demo_lessons'; // demo mode has no database: lectures live in this browser only
+const demoAll = (): Record<string, any> => { try { return JSON.parse(localStorage.getItem(DK) || '{}'); } catch { return {}; } };
 const STATUS = ['Нобай', 'Тексеруде', 'Жарияланған'];
 const GRADES = ['5', '6', '7', '8', '9', '10', '11'];
 const WARN = 'Бет типін өзгерту кейбір орналасу параметрлерін өзгертуі мүмкін (мәтін мен код сақталады). Өзгерту алдында нобай сақталады — «Қайтару» батырмасымен алуға болады. Жалғастырасың ба?';
@@ -52,6 +54,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('Информатика');
   const [grade, setGrade] = useState(''), [duration, setDuration] = useState(''), [summary, setSummary] = useState(''), [status, setStatus] = useState(STATUS[0]), [planRaw, setPlanRaw] = useState<any>({});
+  const [loadErr, setLoadErr] = useState('');
   const [canvasOpen, setCanvasOpen] = useState(false), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
   const [slidesJson, setSlidesJson] = useState('');
   const [termsJson, setTermsJson] = useState('');
@@ -59,23 +62,23 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [msg, setMsg] = useState(''), [canUndo, setCanUndo] = useState(false), undo = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (isNew) {
-      setTitle('');
-      setSubject('Информатика');
-      setPlanRaw({}); setGrade(''); setDuration(''); setSummary(''); setStatus(STATUS[0]);
-      setSlidesJson(JSON.stringify(SAMPLE, null, 1));
-      setTermsJson(JSON.stringify([{ term: 'Алгоритм', definition: 'Есепті шешу қадамдарының тізбегі' }], null, 1));
-    } else {
-      sb.from('cf_lessons').select('*').eq('id', id).single().then(({ data }) => {
-        if (data) {
-          setTitle(data.title || '');
-          setSubject(data.subject || '');
-          const pl = data.plan && typeof data.plan === 'object' && !Array.isArray(data.plan) ? data.plan : {}, m = pl.meta || {};
-          setPlanRaw(pl); setGrade(String(m.grade || '')); setDuration(String(m.duration || '')); setSummary(String(m.summary || '')); setStatus(STATUS.includes(m.status) ? m.status : STATUS[0]);
-          setSlidesJson(JSON.stringify(data.slides || [], null, 1));
-          setTermsJson(JSON.stringify(data.terms || [], null, 1));
-        }
+    setLoadErr('');
+    const apply = (data: any) => {
+      setTitle(data.title || ''); setSubject(data.subject || '');
+      const pl = data.plan && typeof data.plan === 'object' && !Array.isArray(data.plan) ? data.plan : {}, m = pl.meta || {};
+      setPlanRaw(pl); setGrade(String(m.grade || '')); setDuration(String(m.duration || '')); setSummary(String(m.summary || '')); setStatus(STATUS.includes(m.status) ? m.status : STATUS[0]);
+      setSlidesJson(JSON.stringify(data.slides || [], null, 1)); setTermsJson(JSON.stringify(data.terms || [], null, 1)); setSel(0);
+    };
+    const sample = { slides: SAMPLE, terms: [{ term: 'Алгоритм', definition: 'Есепті шешу қадамдарының тізбегі' }] };
+    if (isNew) apply({ subject: 'Информатика', ...sample });
+    else if (DEMO) apply(demoAll()[id] || { title: 'Демо дәріс', subject: 'Информатика', ...sample });
+    else {
+      let live = true;
+      sb.from('cf_lessons').select('*').eq('id', id).maybeSingle().then(({ data, error }) => {
+        if (!live) return;
+        if (error || !data) setLoadErr(error?.message || 'Дәріс табылмады'); else apply(data);
       });
+      return () => { live = false; };
     }
   }, [id, isNew]);
 
@@ -88,16 +91,19 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const move = (i: number, d: number) => { const n = [...pages!]; [n[i], n[i + d]] = [n[i + d], n[i]]; put(n, 'Бет жылжытылды.'); setSel(i + d); };
   const dup = (i: number) => { const n = [...pages!]; n.splice(i + 1, 0, JSON.parse(JSON.stringify(n[i]))); put(n, 'Бет көшірілді.'); setSel(i + 1); };
   const del = (i: number) => { if (confirm(`«${pages![i].title || 'Бет ' + (i + 1)}» бетін өшіру керек пе?`)) { put(pages!.filter((_, k) => k !== i), 'Бет өшірілді.'); setSel(Math.max(0, i - 1)); } };
+  const secs = (fn: (a: any[]) => any[], note: string) => put(pages!.map((s, k) => (k === cur ? { ...s, sections: fn([...(s.sections || [])]) } : s)), note);
   const create = (t: PageType, tpl: string, name: string) => { const p = newPage(t, tpl, name || TEMPLATES[t].find(x => x.id === tpl)!.label); put([...pages!, p], 'Бет қосылды.'); setSel(pages!.length); setPicking(false); setTab('manual'); if (p.type === 'canvas') setCanvasOpen(true); };
   const reorder = (from: number, to: number) => { setDragFrom(null); setDragOver(null); if (from === to) return; const n = [...pages!]; n.splice(to, 0, n.splice(from, 1)[0]); put(n, 'Бет жылжытылды.'); setSel(to); };
   const setSlide = (sl: any) => setSlidesJson(prev => { try { const a = JSON.parse(prev); a[cur] = sl; return JSON.stringify(a, null, 1); } catch { return prev; } });
   const setType = (t: PageType) => { if (!page || t === pageOf(page).pageType || !confirm(WARN)) return; put(pages!.map((s, k) => (k === cur ? { ...s, pageType: t, templateId: '' } : s)), 'Бет типі өзгертілді.'); };
   const setTpl = (tid: string) => put(pages!.map((s, k) => (k === cur ? { ...s, pageType: pageOf(s).pageType, templateId: tid } : s)), 'Үлгі белгісі өзгертілді.');
+  const row = (f: Field) => <FieldRow key={cur + f.id} uid={'f' + cur} f={f} options={page.options || []} onChange={v => edit(f, v)} />;
   const issues = pages ? checkPages(pages) : [];
   const nInter = pages ? pages.filter(s => pageOf(s).pageType === 'interactive').length : 0;
   const nBlocks = pages ? pages.reduce((a, s) => a + fieldsOf(s).length, 0) : 0;
 
   const save = async () => {
+    if (loadErr) return;
     let slides, terms;
     try {
       slides = JSON.parse(slidesJson);
@@ -113,6 +119,12 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
     }
     const meta = { grade, duration: duration ? +duration : '', summary: summary.trim(), status };
     const row = { title: title.trim(), subject, slides, terms, plan: { ...planRaw, meta } };
+    if (DEMO) {
+      const all = demoAll(), key = isNew ? 'demo-' + Date.now().toString(36) : id;
+      all[key] = row;
+      try { localStorage.setItem(DK, JSON.stringify(all)); } catch { alert('Браузер сақтауға рұқсат бермеді'); return; }
+      alert('Демо режимінде сақталды (тек осы браузерде)'); window.location.hash = ''; return;
+    }
     if (isNew) {
       await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id });
     } else {
@@ -132,7 +144,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title || 'Жаңа дәріс'}</h1>
           <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
           {!isNew && <LinkButton variant="ghost" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
-          <Button variant="success" onClick={save}>Сақтау</Button>
+          <Button variant="success" disabled={!!loadErr} onClick={save}>Сақтау</Button>
         </div>
         <div role="tablist" aria-label="Жасау тәсілі" className="mx-auto flex max-w-7xl gap-1 px-4">
           {([['manual', 'Қолмен жасау'], ['ai', 'ЖИ арқылы жасау']] as const).map(([k, l]) => (
@@ -142,6 +154,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       </div>
       <main id="tabpanel" role="tabpanel" aria-labelledby={'tab-' + tab} className="mx-auto grid max-w-7xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-4">
+          {loadErr && <p role="alert" className="rounded-xl border-2 border-danger bg-danger-soft p-3 text-danger">Дәріс жүктелмеді: {loadErr}. Бос мәтінді қателесіп сақтап жібермеу үшін «Сақтау» өшірілген.</p>}
           {tab === 'ai' && (
             <AiPanel
               mode="slides"
@@ -201,7 +214,20 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
               {page && (
                 <section aria-label="Таңдалған бет ішіндегі блоктар" className={card}>
                   <h3 className="text-xl font-bold">Таңдалған бет ішіндегі блоктар <span className="text-base font-normal text-text-secondary">· {cur + 1}-бет</span></h3>
-                  {fields.length ? <div className="space-y-2">{fields.map(f => <FieldRow key={cur + f.id} uid={'f' + cur} f={f} options={page.options || []} onChange={v => edit(f, v)} />)}</div> : <p className="text-sm text-text-secondary">Бұл бет түрінің өрістерін «Толық құрылым» ішінде өңдеуге болады.</p>}
+                  {fields.length ? <div className="space-y-2">{page.type === 'solution' ? <>
+                    {fields.filter(f => !/^[hbtcx]\d+$/.test(f.id)).map(row)}
+                    {(page.sections || []).map((_: any, i: number, all: any[]) => (
+                      <div key={i} role="group" aria-label={`${i + 1}-бөлім`} className="space-y-2 rounded-xl border-2 border-border p-2">
+                        <div className="flex items-center justify-between"><b>{i + 1}-бөлім</b><span className="flex">
+                          <button type="button" aria-label={`${i + 1}-бөлімді жоғары жылжыту`} disabled={i === 0} className={iconBtn} onClick={() => secs(a => { [a[i - 1], a[i]] = [a[i], a[i - 1]]; return a; }, 'Бөлім жылжытылды.')}><ArrowUp size={18} aria-hidden="true" /></button>
+                          <button type="button" aria-label={`${i + 1}-бөлімді төмен жылжыту`} disabled={i === all.length - 1} className={iconBtn} onClick={() => secs(a => { [a[i + 1], a[i]] = [a[i], a[i + 1]]; return a; }, 'Бөлім жылжытылды.')}><ArrowDown size={18} aria-hidden="true" /></button>
+                          <button type="button" aria-label={`${i + 1}-бөлімді өшіру`} className={iconBtn + ' !text-danger'} onClick={() => { if (confirm(`${i + 1}-бөлімді өшіру керек пе?`)) secs(a => a.filter((_, k) => k !== i), 'Бөлім өшірілді.'); }}><Trash2 size={18} aria-hidden="true" /></button>
+                        </span></div>
+                        {fields.filter(f => new RegExp(`^[hbtcx]${i}$`).test(f.id)).map(row)}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => secs(a => [...a, { h: 'Жаңа бөлім', bullets: ['…'] }], 'Бөлім қосылды.')} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent font-semibold text-accent hover:bg-accent-soft"><Plus size={18} aria-hidden="true" />Бөлім қосу</button>
+                  </> : fields.map(row)}</div> : <p className="text-sm text-text-secondary">Бұл бет түрінің өрістерін «Толық құрылым» ішінде өңдеуге болады.</p>}
                   {page.type === 'canvas' && <Button variant="secondary" onClick={() => setCanvasOpen(true)}><LayoutTemplate size={16} aria-hidden="true" />Слайд редакторын ашу</Button>}
                   {page.type === 'code' && <p className="text-sm text-text-secondary">Код тесттері (input / out) «Толық құрылым» ішінде өңделеді.</p>}
                 </section>
@@ -251,7 +277,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
             <h3 className="text-lg font-bold">Тексеру</h3>
             <p className="text-sm text-text-secondary">{pages ? `${pages.length} бет · ${nBlocks} блок · ${nInter} интерактивті бет` : 'JSON қатесі бар'}</p>
             {issues.length > 0 ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{issues.map((x, k) => <li key={k}>{x}</li>)}</ul> : pages && <p className="text-sm text-success">Ескертулер жоқ.</p>}
-            <Button variant="success" onClick={save}>Сақтау</Button>
+            <Button variant="success" disabled={!!loadErr} onClick={save}>Сақтау</Button>
           </section>
           <p role="status" className="text-sm text-text-secondary">{msg}</p>
         </aside>

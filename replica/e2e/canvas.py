@@ -33,6 +33,7 @@ def stub(r):
     pick=lambda rows: (out(rows[0] if rows else None) if one else out(rows))
     if '/storage/v1/object/' in u.path and q.method=='POST': UP.append((u.path,q.headers.get('content-type'),len(q.post_data_buffer or b''))); return out({'Key':'cf-media/x'})
     if name=='profiles': return out(ME)
+    if name=='cf_lessons' and q.method=='GET' and 'eq.bad' in q.url: return out({'code':'22P02','message':'invalid input syntax for type uuid: "bad"'},400)
     if name=='cf_lessons':
         if q.method in ('POST','PATCH'): SAVED.append(json.loads(q.post_data or '{}')); return out([])
         return pick([LESSON])
@@ -113,6 +114,15 @@ with sync_playwright() as p:
     M=page((390,800)); M.goto(B+'#edit/l-c'); M.wait_for_selector(PL+' li'); M.locator(PL+' li >> nth=1 >> button >> nth=0').click(); M.click('button:has-text("Слайд редакторын ашу")'); M.wait_for_selector(DG)
     ok('C25 390px: the editor stage fits the screen', M.evaluate("document.querySelector('[role=dialog] [style*=container-type]').getBoundingClientRect().right<=window.innerWidth+1"))
     G=page(); G.goto(B+'#lessons/modules'); G.wait_for_timeout(500); ok('C26 other screens are not teal', G.evaluate("document.querySelector('[data-theme=teal]')===null"))
+    L=page(); L.goto(B+'#edit/bad'); L.wait_for_selector('main [role=alert]')
+    ok('C27 a lecture that fails to load shows the reason and blocks Сақтау (no empty overwrite)', 'uuid' in L.locator('main [role=alert]').first.inner_text() and all(L.locator('button:has-text("Сақтау")').nth(i).is_disabled() for i in range(L.locator('button:has-text("Сақтау")').count())))
+    L.evaluate("location.hash='#edit/new'"); L.wait_for_timeout(500)
+    ok('C27 …and the error does not follow to #edit/new', L.locator('main [role=alert]').count()==0 and L.locator('button:has-text("Сақтау") >> nth=0').is_enabled())
+    D=page(); D.goto(B+'?demo=teacher#edit/l1'); D.wait_for_selector('input[placeholder="Сабақ тақырыбы"]'); D.wait_for_timeout(300)
+    ok('C28 demo: an existing demo id opens a sample lecture, not a database error', D.locator('input[placeholder="Сабақ тақырыбы"]').input_value()=='Демо дәріс' and D.locator('main [role=alert]').count()==0)
+    D.fill('input[placeholder="Сабақ тақырыбы"]','Менің демо'); D.click('button:has-text("Сақтау") >> nth=0'); D.wait_for_timeout(300)
+    D.goto(B+'?demo=teacher#edit/l1'); D.wait_for_selector('input[placeholder="Сабақ тақырыбы"]'); D.wait_for_timeout(300)
+    ok('C28 demo: save then reopen gives the saved lecture back (browser storage)', D.locator('input[placeholder="Сабақ тақырыбы"]').input_value()=='Менің демо')
     b.close()
 bad=[r for r in results if not r[1]]
 ok('no console errors', not errors, str(errors[:3]))
