@@ -1,4 +1,5 @@
 import React from 'react';
+import { BookOpen, Settings } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { BTN } from './Widgets';
 import { STAFF } from '../config';
@@ -10,10 +11,10 @@ export function TopBar({ right, me }: { right?: React.ReactNode; me: any; onLogo
       <div className="flex items-center gap-2 text-sm">
         {right}
         <a href={STAFF.includes(me?.role) ? '#assign' : '#hw'} className={BTN}>
-          📚 Үй тапсырмасы
+          <BookOpen size={16} aria-hidden="true" className="mr-1.5 inline" />Үй тапсырмасы
         </a>
         <a href="#profile" className={BTN}>
-          ⚙ {me?.full_name}
+          <Settings size={16} aria-hidden="true" className="mr-1.5 inline" />{me?.full_name}
         </a>
       </div>
     </div>

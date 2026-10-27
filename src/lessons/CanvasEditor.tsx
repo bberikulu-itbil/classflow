@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlignCenter, AlignLeft, AlignRight, Bold, ChevronDown, ChevronUp, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Video, Sigma, MousePointerClick } from 'lucide-react';
 import { Button, inputCls } from '../ui';
-import { track } from '../board/Win';
+import { track, useWide } from '../board/Win';
 import { uploadSlideImage } from './media';
 import { BG, BlockView, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
 
@@ -24,6 +24,7 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
   const [selId, setSel] = useState<string | null>(null), [tab, setTab] = useState<Tab>('design'), [editing, setEditing] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number | 'fit'>('fit'), [avail, setAvail] = useState(800), [grid, setGrid] = useState(true), [snap, setSnap] = useState(true);
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
+  const wide = useWide();
   const latest = useRef(slide), hist = useRef<any[]>([]), lastKey = useRef<string | null>(null), changed = useRef(false);
   const cb = useRef(onChange), area = useRef<HTMLDivElement>(null), head = useRef<HTMLHeadingElement>(null);
   latest.current = slide; cb.current = onChange;
@@ -126,7 +127,7 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
     <div role="dialog" aria-modal="true" aria-labelledby="ce-h" className="fixed inset-0 z-50 flex flex-col bg-bg text-text">
       <header className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">
         <Button variant="ghost" onClick={() => onClose(changed.current)}>← Конструкторға қайту</Button>
-        <h2 id="ce-h" ref={head} tabIndex={-1} className="min-w-0 flex-1 truncate text-lg font-bold outline-none">Слайд редакторы <span className="font-normal text-text-secondary">· {cur + 1}-бет {slide.title ? '· ' + slide.title : ''}</span></h2>
+        <h2 id="ce-h" ref={head} tabIndex={-1} className="min-w-0 flex-1 truncate text-lg font-bold outline-none max-md:sr-only">Слайд редакторы <span className="font-normal text-text-secondary">· {cur + 1}-бет {slide.title ? '· ' + slide.title : ''}</span></h2>
         <Button variant="secondary" onClick={undo} disabled={!nHist}><Undo2 size={16} aria-hidden="true" />Болдырмау</Button>
         <div role="group" aria-label="Масштаб" className="flex items-center gap-1">
           <button type="button" aria-label="Кішірейту" className={tb} onClick={() => setZoom(Math.max(0.5, Math.round((z - 0.25) * 100) / 100))}><Minus size={18} aria-hidden="true" /></button>
@@ -142,20 +143,21 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
         <aside aria-label="Элементтер" className="space-y-3 overflow-y-auto border-b border-border bg-surface p-3 lg:border-b-0 lg:border-r">
           <section aria-label="Элемент қосу" className="space-y-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">Элементтер</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-4 gap-2 lg:grid-cols-2">
               {([['text', 'Мәтін', Type], ['image', 'Сурет', ImageIcon], ['code', 'Код', Code2], ['shape', 'Фигура', Shapes]] as const).map(([k, l, I]) => (
-                <button key={k} type="button" onClick={() => add(k)} className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-surface-2 text-sm font-semibold hover:border-accent"><I size={20} aria-hidden="true" />{l}</button>
+                <button key={k} type="button" onClick={() => add(k)} className="flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-surface-2 text-sm font-semibold hover:border-accent lg:min-h-[64px]"><I size={20} aria-hidden="true" />{l}</button>
               ))}
               {SOON.map(([l, I]) => (
-                <button key={l} type="button" disabled title="Жақында қосылады" aria-label={`${l} (жақында)`} className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-sm opacity-50"><I size={20} aria-hidden="true" />{l}</button>
+                <button key={l} type="button" disabled title="Жақында қосылады" aria-label={`${l} (жақында)`} className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-sm opacity-50 max-lg:hidden"><I size={20} aria-hidden="true" />{l}</button>
               ))}
             </div>
           </section>
+          <details open={wide || undefined} className="group space-y-2">
+            <summary className="cursor-pointer text-sm font-bold uppercase tracking-wider text-text-secondary max-lg:min-h-[44px] max-lg:leading-[44px] lg:pointer-events-none lg:list-none">Жылдам үлгілер және қабаттар</summary>
           <section aria-label="Жылдам үлгілер" className="space-y-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">Жылдам үлгілер</h3>
             <div className="grid grid-cols-2 gap-2">{LAYOUTS.map(l => <button key={l.id} type="button" onClick={() => layout(l.id)} className="min-h-[44px] rounded-lg border border-border px-2 text-sm font-medium hover:border-accent hover:bg-accent-soft">{l.label}</button>)}</div>
           </section>
-          <section aria-label="Қабаттар" className="space-y-2">
+          <section aria-label="Қабаттар" className="mt-3 space-y-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">Қабаттар</h3>
             {blocks.length === 0 ? <p className="text-sm text-text-secondary">Бет бос. Жоғарыдан элемент қосыңыз.</p> : (
               <ol className="max-h-56 space-y-1 overflow-y-auto">{[...blocks].reverse().map(b => (
@@ -163,6 +165,7 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
               ))}</ol>
             )}
           </section>
+          </details>
         </aside>
 
         <div ref={area} className="relative flex min-h-[18rem] overflow-auto bg-surface-2 p-6" onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>

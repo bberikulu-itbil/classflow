@@ -116,6 +116,9 @@ with sync_playwright() as p:
     P.click('button[aria-label="Жасырын элемент, көрсету үшін бас"]'); ok('C24 …and the cover opens on click', P.locator('text=ЖАСЫРЫН СӨЗ').count()==1)
     M=page((390,800)); M.goto(B+'#edit/l-c'); M.wait_for_selector(PL+' li'); M.locator(PL+' li >> nth=1 >> button >> nth=0').click(); M.click('button:has-text("Слайд редакторын ашу")'); M.wait_for_selector(DG)
     ok('C25 390px: the editor stage fits the screen', M.evaluate("document.querySelector('[role=dialog] [style*=container-type]').getBoundingClientRect().right<=window.innerWidth+1"))
+    if os.environ.get('SHOTS'):
+        M.screenshot(path=os.environ['SHOTS']+'/canvas_phone.png')
+        T_=page((820,1000)); T_.goto(B+'#edit/l-c'); T_.wait_for_selector(PL+' li'); T_.locator(PL+' li >> nth=1 >> button >> nth=0').click(); T_.click('button:has-text("Слайд редакторын ашу")'); T_.wait_for_selector(DG); T_.screenshot(path=os.environ['SHOTS']+'/canvas_tablet.png')
     G=page(); G.goto(B+'#lessons/modules'); G.wait_for_timeout(500); ok('C26 other screens are not teal', G.evaluate("document.querySelector('[data-theme=teal]')===null"))
     L=page(); L.goto(B+'#edit/bad'); L.wait_for_selector('main [role=alert]')
     ok('C27 a lecture that fails to load shows the reason and blocks Сақтау (no empty overwrite)', 'uuid' in L.locator('main [role=alert]').first.inner_text() and all(L.locator('button:has-text("Сақтау")').nth(i).is_disabled() for i in range(L.locator('button:has-text("Сақтау")').count())))
