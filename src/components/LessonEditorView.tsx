@@ -54,7 +54,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('Информатика');
   const [grade, setGrade] = useState(''), [duration, setDuration] = useState(''), [summary, setSummary] = useState(''), [status, setStatus] = useState(STATUS[0]), [planRaw, setPlanRaw] = useState<any>({});
-  const [loadErr, setLoadErr] = useState('');
+  const [loadErr, setLoadErr] = useState(''), [savedAt, setSavedAt] = useState('');
   const [canvasOpen, setCanvasOpen] = useState(false), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
   const [slidesJson, setSlidesJson] = useState('');
   const [termsJson, setTermsJson] = useState('');
@@ -102,7 +102,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const nInter = pages ? pages.filter(s => pageOf(s).pageType === 'interactive').length : 0;
   const nBlocks = pages ? pages.reduce((a, s) => a + fieldsOf(s).length, 0) : 0;
 
-  const save = async () => {
+  const save = async (stay = false) => {
     if (loadErr) return;
     let slides, terms;
     try {
@@ -123,13 +123,17 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       const all = demoAll(), key = isNew ? 'demo-' + Date.now().toString(36) : id;
       all[key] = row;
       try { localStorage.setItem(DK, JSON.stringify(all)); } catch { alert('Браузер сақтауға рұқсат бермеді'); return; }
+      if (stay) { setSavedAt(new Date().toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' })); return; }
       alert('Демо режимінде сақталды (тек осы браузерде)'); window.location.hash = ''; return;
     }
     if (isNew) {
-      await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id });
+      const { error } = await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id });
+      if (error) { alert('Сақталмады: ' + error.message); return; }
     } else {
-      await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
+      const { error } = await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) { alert('Сақталмады: ' + error.message); return; }
     }
+    if (stay) { setSavedAt(new Date().toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' })); return; }
     alert('Сақталды');
     window.location.hash = '';
   };
@@ -144,7 +148,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title || 'Жаңа дәріс'}</h1>
           <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
           {!isNew && <LinkButton variant="ghost" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
-          <Button disabled={!!loadErr} onClick={save}>Сақтау</Button>
+          <Button disabled={!!loadErr} onClick={() => save()}>Сақтау</Button>
         </div>
         <div role="tablist" aria-label="Жасау тәсілі" className="mx-auto flex max-w-7xl gap-1 px-4">
           {([['manual', 'Қолмен жасау'], ['ai', 'ЖИ арқылы жасау']] as const).map(([k, l]) => (
@@ -277,12 +281,12 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
             <h3 className="text-lg font-bold">Тексеру</h3>
             <p className="text-sm text-text-secondary">{pages ? `${pages.length} бет · ${nBlocks} блок · ${nInter} интерактивті бет` : 'JSON қатесі бар'}</p>
             {issues.length > 0 ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{issues.map((x, k) => <li key={k}>{x}</li>)}</ul> : pages && <p className="text-sm text-success">Ескертулер жоқ.</p>}
-            <Button disabled={!!loadErr} onClick={save}>Сақтау</Button>
+            <Button disabled={!!loadErr} onClick={() => save()}>Сақтау</Button>
           </section>
           <p role="status" className="text-sm text-text-secondary">{msg}</p>
         </aside>
       </main>
-      {canvasOpen && page?.type === 'canvas' && <CanvasEditor pages={pages!} cur={cur} schoolId={me.school_id} onChange={setSlide} onSelect={setSel} onClose={ch => { setCanvasOpen(false); if (ch) setMsg('Слайд өзгерді. «Сақтау» батырмасын бас.'); }} />}
+      {canvasOpen && page?.type === 'canvas' && <CanvasEditor pages={pages!} cur={cur} schoolId={me.school_id} title={title} status={status} saved={savedAt} previewHref={isNew ? undefined : '#preview/' + id} onTitle={setTitle} onAdd={() => setPicking(true)} onReorder={(f, t) => { reorder(f, t); setSel(cur === f ? t : cur < f && cur >= t ? cur + 1 : cur > f && cur <= t ? cur - 1 : cur); }} onSave={() => save(!isNew)} onChange={setSlide} onSelect={setSel} onClose={ch => { setCanvasOpen(false); if (ch) setMsg('Слайд өзгерді. «Сақтау» батырмасын бас.'); }} />}
       {picking && <PagePicker onCancel={() => setPicking(false)} onCreate={create} />}
     </div>
   );
