@@ -1,3 +1,4 @@
+import { rich } from '../lessons/spoil';
 import React, { useState, useEffect } from 'react';
 import { runPy, norm, sha256 } from '../utils/pyodide';
 
@@ -406,6 +407,7 @@ const imgBlock = (s: any, big: boolean) => typeof s.img === 'string' && /^(https
   : null;
 
 export function renderSlide(s: any, ctx: any = {}) {
+  const sp = ctx.sp, R = (t: string) => rich(t, sp);
   const big = ctx.mode === 'board';
   const wrap = (...k: any[]) => <div className="w-full max-w-5xl mx-auto p-4">{k}</div>;
 
@@ -423,7 +425,7 @@ export function renderSlide(s: any, ctx: any = {}) {
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
         <ul className={`${big ? 'text-3xl space-y-4' : 'text-xl space-y-2'} list-disc pl-6 text-slate-200`}>
           {(s.bullets || []).map((b: string, i: number) => (
-            <li key={i}>{b}</li>
+            <li key={i}>{R(b)}</li>
           ))}
         </ul>,
         codeBlock(s, big),
@@ -432,7 +434,7 @@ export function renderSlide(s: any, ctx: any = {}) {
     case 'quiz':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         codeBlock(s, big),
         imgBlock(s, big),
         <div className="grid gap-2">
@@ -446,28 +448,35 @@ export function renderSlide(s: any, ctx: any = {}) {
     case 'task':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         codeBlock(s, big),
         imgBlock(s, big)
       );
     case 'code':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         imgBlock(s, big),
         s.starter && <pre className={`p-3 bg-[#0F172A] rounded-xl text-[#E2E8F5] font-mono ${big ? 'text-xl' : 'text-sm'}`}>{s.starter}</pre>
       );
     case 'solution':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-2 text-white`}>{s.title}</h2>,
-        ...(s.sections || []).map((sec: any, i: number) => (
-          <section key={i} className="mt-6 border-t border-slate-700 pt-4">
-            {sec.h && <h3 className={`${big ? 'text-3xl' : 'text-xl'} mb-2 font-bold text-blue-400`}>{sec.h}</h3>}
-            {sec.text && <p className={`${big ? 'text-2xl' : 'text-lg'} whitespace-pre-wrap text-slate-200`}>{sec.text}</p>}
-            {Array.isArray(sec.bullets) && <ul className={`${big ? 'text-2xl space-y-2' : 'text-lg space-y-1'} list-disc pl-6 text-slate-200`}>{sec.bullets.map((b: string, k: number) => <li key={k}>{b}</li>)}</ul>}
-            {codeBlock({ code: sec.code, lang: sec.lang }, big)}
-          </section>
-        ))
+        ...(s.sections || []).map((sec: any, i: number) => {
+          const idx = sec.hide && sp ? sp.n++ : -1, closed = idx >= 0 && !sp.shown.has(idx), inner = sec.hide ? (t: string) => rich(t) : R;
+          return (
+            <section key={i} className="mt-6 border-t border-slate-700 pt-4">
+              {sec.h && <h3 className={`${big ? 'text-3xl' : 'text-xl'} mb-2 font-bold text-blue-400`}>{sec.h}</h3>}
+              {closed ? (
+                <button type="button" onClick={() => sp.show(idx)} aria-label={`${sec.h || ''}: көрсету`} className={`${big ? 'text-2xl' : 'text-lg'} w-full cursor-pointer rounded-xl border border-dashed border-slate-500 bg-slate-800 px-4 py-3 text-left text-slate-200 hover:bg-slate-700`}>Көрсету</button>
+              ) : (<>
+                {sec.text && <p className={`${big ? 'text-2xl' : 'text-lg'} whitespace-pre-wrap text-slate-200`}>{inner(sec.text)}</p>}
+                {Array.isArray(sec.bullets) && <ul className={`${big ? 'text-2xl space-y-2' : 'text-lg space-y-1'} list-disc pl-6 text-slate-200`}>{sec.bullets.map((b: string, k: number) => <li key={k}>{inner(b)}</li>)}</ul>}
+                {codeBlock({ code: sec.code, lang: sec.lang }, big)}
+              </>)}
+            </section>
+          );
+        })
       );
     case 'flashcards':
       return wrap(
@@ -482,7 +491,7 @@ export function renderSlide(s: any, ctx: any = {}) {
     case 'logic':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         <LogicGate gate={s.gate} />
       );
     case 'leaderboard':
@@ -493,7 +502,7 @@ export function renderSlide(s: any, ctx: any = {}) {
     default:
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{s.prompt}</p>,
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         imgBlock(s, big)
       );
   }

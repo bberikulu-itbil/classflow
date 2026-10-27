@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { sb } from '../config';
 import { BTN, BTN_P, INP, renderSlide, CodeIDE, lbTable } from './Widgets';
 import { tr, useLang } from '../lessons/lang';
+import { spCtx, useSpoilers } from '../lessons/spoil';
 
 export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   const [lang, flipLang] = useLang();
   const [session, setSession] = useState<any>(null);
   const [currentSlideData, setCurrentSlideData] = useState<any>(null);
+  const spoil = useSpoilers(currentSlideData?.index ?? -1);
   const [task, setTask] = useState<any>(null);
   const [mySub, setMySub] = useState<any>(null);
   const [mePart, setMePart] = useState<any>(null);
@@ -237,7 +239,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
             {slide.prompt && <p className="text-xl whitespace-pre-wrap">{slide.prompt}</p>}
           </div>
         ) : (
-          renderSlide(slide, { mode: 'student', lb: () => lbTable(leaderboard) })
+          renderSlide(slide, { mode: 'student', lb: () => lbTable(leaderboard), sp: spCtx(spoil) })
         )}
       </div>
 

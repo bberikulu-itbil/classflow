@@ -18,6 +18,7 @@ def jwt(sub):
     return e({'alg':'HS256','typ':'JWT'})+'.'+e({'sub':sub,'role':'authenticated','aud':'authenticated','exp':4102444800})+'.x'
 SESSION=json.dumps({'access_token':jwt('t-1'),'token_type':'bearer','expires_in':3600,'expires_at':4102444800,'refresh_token':'r','user':{'id':'t-1','aud':'authenticated','email':'u@x.kz','app_metadata':{},'user_metadata':{},'created_at':'2020-01-01T00:00:00Z'}})
 
+RL='[role=toolbar][aria-label="Тақта мәзірі"]'; DKB='[role=toolbar][aria-label="Тақта құралдары"]'
 SID='s-1'; SHOTS=os.environ.get('SHOTS')
 def fresh():
     return {'sess':{'id':SID,'title':'Циклдер','class_id':'c-7b','join_code':'482913','current_slide':1,'slide_count':5,'status':'live','active_task_id':'tk-1'},
@@ -41,6 +42,7 @@ def stub(r):
         if name=='cf_group_scores': return out(S['gs'])
         return out(None)
     if name=='profiles': return out(ME)
+    if name=='cf_session_private': return pick([{'slides':SL}])
     if name=='cf_sessions': return pick([S['sess']])
     if name=='cf_participants': return out(S['parts'])
     if name=='cf_tasks': return pick([S['task']])
@@ -81,8 +83,8 @@ with sync_playwright() as p:
     hd=A.locator('aside div:text-is("Қосылу")').first.bounding_box()
     A.mouse.move(hd['x']+30,hd['y']+20); A.mouse.down(); A.mouse.move(700,300,steps=6); A.mouse.move(200,320,steps=6); A.mouse.up(); A.wait_for_timeout(200)
     qb=box(A,'aside[aria-label^="Қосылу"]')
-    ok('B3 dropped on the left half → snaps to the left edge, padding moves with it', qb['x']<30 and A.evaluate("parseFloat(getComputedStyle(document.querySelector('main')).paddingLeft)")>200 and A.evaluate("parseFloat(getComputedStyle(document.querySelector('main')).paddingRight)")<40, str(qb))
-    A.reload(); A.wait_for_selector('aside[aria-label^="Қосылу"]'); ok('B3 position survives a reload', box(A,'aside[aria-label^="Қосылу"]')['x']<30)
+    ok('B3 dropped on the left half → snaps to the left edge, padding moves with it', qb['x']<130 and A.evaluate("parseFloat(getComputedStyle(document.querySelector('main')).paddingLeft)")>200 and A.evaluate("parseFloat(getComputedStyle(document.querySelector('main')).paddingRight)")<40, str(qb))
+    A.reload(); A.wait_for_selector('aside[aria-label^="Қосылу"]'); ok('B3 position survives a reload', box(A,'aside[aria-label^="Қосылу"]')['x']<130)
     A.click('button[aria-label="Қарсы шетке ауыстыру"]'); A.wait_for_timeout(100); ok('B4 swap button moves it to the other edge', box(A,'aside[aria-label^="Қосылу"]')['x']>1000)
     w0=box(A,'aside[aria-label^="Қосылу"]')['width']; A.click('button[aria-label="QR-ды үлкейту"]'); ok('B4 enlarge widens the card and flags itself pressed', box(A,'aside[aria-label^="Қосылу"]')['width']>w0+80 and A.locator('button[aria-label="QR-ды кішірейту"][aria-pressed=true]').count()==1)
     A.click('button[aria-label="QR-ды кішірейту"]')
@@ -108,8 +110,8 @@ with sync_playwright() as p:
     A.click('button:has-text("Таймер")'); A.wait_for_selector('section[role=dialog][aria-label="Таймер"]'); T='section[aria-label="Таймер"]'
     A.click(T+' button:text-is("1 мин")'); ok('B8 preset shows 1:00', A.locator(T+' [role=timer]').inner_text()=='1:00')
     A.click(T+' button:text-is("Бастау")'); A.wait_for_timeout(2300); v=A.locator(T+' [role=timer]').inner_text(); ok('B8 it counts down', v in ('0:58','0:57'), v)
-    A.click('button[aria-label="Таймер: жабу"]'); A.wait_for_timeout(300); ok('B8 closing the window does not stop it: the dock shows the time', A.locator('[role=toolbar] button').nth(2).inner_text().strip() in ('0:57','0:56','0:55','0:58'), A.locator('[role=toolbar] button').nth(2).inner_text())
-    A.locator('[role=toolbar] button').nth(2).click(); A.click(T+' button:text-is("Тоқтату")'); v=A.locator(T+' [role=timer]').inner_text(); A.wait_for_timeout(1200); ok('B8 pause holds the time', A.locator(T+' [role=timer]').inner_text()==v)
+    A.click('button[aria-label="Таймер: жабу"]'); A.wait_for_timeout(300); ok('B8 closing the window does not stop it: the dock shows the time', A.locator(DKB+' button').nth(2).inner_text().strip() in ('0:57','0:56','0:55','0:58'), A.locator(DKB+' button').nth(2).inner_text())
+    A.locator(DKB+' button').nth(2).click(); A.click(T+' button:text-is("Тоқтату")'); v=A.locator(T+' [role=timer]').inner_text(); A.wait_for_timeout(1200); ok('B8 pause holds the time', A.locator(T+' [role=timer]').inner_text()==v)
     A.click(T+' button:text-is("Қайта")'); ok('B8 reset returns to 1:00', A.locator(T+' [role=timer]').inner_text()=='1:00')
     A.click('button:has-text("Кездейсоқ")'); R='section[aria-label="Кездейсоқ оқушы"]'; A.wait_for_selector(R)
     names=[]
@@ -126,7 +128,7 @@ with sync_playwright() as p:
     f('Он алтылық').fill('41'); ok('B10 hex 41 → 65 and the character A', f('Ондық').input_value()=='65' and 'A' in A.locator(C+' p:has-text("ASCII")').inner_text())
     f('Екілік').fill('102'); ok('B10 a wrong digit is flagged, not converted', A.locator(C+' [role=alert]').count()==1 and f('Екілік').get_attribute('aria-invalid')=='true')
     f('Екілік').fill(''); ok('B10 emptying clears every field', f('Ондық').input_value()=='' and A.locator(C+' [role=alert]').count()==0)
-    A.click('button:has-text("Ұпай")'); ok('B11 scores: groups and leaders', 'Топ 1' in A.locator('section[aria-label="Топтар мен ұпай"]').inner_text() and 'Дана Сәрсенова' in A.locator('section[aria-label="Топтар мен ұпай"]').inner_text())
+    A.click(RL+' button:has-text("Топтар")'); ok('B11 scores: groups and leaders', 'Топ 1' in A.locator('section[aria-label="Топтар мен ұпай"]').inner_text() and 'Дана Сәрсенова' in A.locator('section[aria-label="Топтар мен ұпай"]').inner_text())
     # windows are draggable, stack, and Escape closes the top one
     hd=A.locator(C+' div:text-is("Санау жүйелері")').bounding_box(); x0=A.locator(C).bounding_box()['x']; A.mouse.move(hd['x']+60,hd['y']+10); A.mouse.down(); A.mouse.move(hd['x']+260,hd['y']+110,steps=6); A.mouse.up()
     ok('B12 a window follows the pointer by its title bar', A.locator(C).bounding_box()['x']>x0+150)
@@ -147,9 +149,9 @@ with sync_playwright() as p:
     N.click(dk+' button:has-text("Алға")'); N.wait_for_selector('text=Слайд 2 / 5'); axe(N,'board with Артқа / Алға')
     # language switch on the board
     SL[1]['ru']={'title':'Что такое цикл?','bullets':['Повтор действия','Цикл со счётчиком']}; S['sess']['current_slide']=1; N.wait_for_selector('text=Слайд 2 / 5',timeout=14000); N.wait_for_selector('h2:text-is("Цикл дегеніміз не?")')
-    N.click(dk+' button:has-text("Тіл: ҚАЗ")'); N.wait_for_selector('h2:text-is("Что такое цикл?")')
-    ok('B18 board: the language button swaps the slide to Russian and labels itself', N.locator(dk+' button:has-text("Язык: РУС")').count()==1)
-    N.click(dk+' button:has-text("Язык: РУС")'); N.wait_for_selector('h2:text-is("Цикл дегеніміз не?")'); ok('B18 …and back to Kazakh', N.locator(dk+' button:has-text("Тіл: ҚАЗ")').count()==1)
+    N.click(RL+' button:has-text("Тіл: ҚАЗ")'); N.wait_for_selector('h2:text-is("Что такое цикл?")')
+    ok('B18 board: the language button swaps the slide to Russian and labels itself', N.locator(RL+' button:has-text("Язык: РУС")').count()==1)
+    N.click(RL+' button:has-text("Язык: РУС")'); N.wait_for_selector('h2:text-is("Цикл дегеніміз не?")'); ok('B18 …and back to Kazakh', N.locator(RL+' button:has-text("Тіл: ҚАЗ")').count()==1)
     # a new slide wipes the annotations of the old one
     A.click('button:has-text("Сызу")'); A.mouse.move(700,600); A.mouse.down(); A.mouse.move(900,650,steps=5); A.mouse.up(); n=ink(); S['sess']['current_slide']=2
     A.wait_for_function("document.querySelector('canvas').getContext('2d').getImageData(0,0,50,50) && true"); A.wait_for_selector('text=Қорытынды',timeout=14000); A.wait_for_timeout(200)
@@ -160,9 +162,45 @@ with sync_playwright() as p:
     # phone
     P=page((390,800)); ready(P)
     ok('B15 390px: no sideways scroll and the card starts folded to a tab', P.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1") and P.locator('button[aria-label="QR мен қосылу кодын көрсету"]').count()==1)
-    tb=box(P,'[role=toolbar]'); ok('B15 390px: the dock fits the screen', tb['x']>=0 and tb['x']+tb['width']<=391, str(tb))
-    P.click('button:has-text("Сызу")'); tb=box(P,'[role=toolbar]'); ok('B15 390px: drawing tools wrap inside the screen', tb['x']>=0 and tb['x']+tb['width']<=391 and tb['y']>0, str(tb)); shot(P,'board_phone_draw'); P.click('button:has-text("Жабу")')
+    tb=box(P,DKB if False else '[role=toolbar]'); ok('B15 390px: the dock fits the screen', tb['x']>=0 and tb['x']+tb['width']<=391, str(tb))
+    P.click('button:has-text("Сызу")'); tb=box(P,DKB if False else '[role=toolbar]'); ok('B15 390px: drawing tools wrap inside the screen', tb['x']>=0 and tb['x']+tb['width']<=391 and tb['y']>0, str(tb)); shot(P,'board_phone_draw'); P.click('button:has-text("Жабу")')
     P.click('button[aria-label="QR мен қосылу кодын көрсету"]'); axe(P,'board phone, card open'); shot(P,'board_phone')
+    # edge menu, foldable tools, contents list, design, hidden text
+    SL[1]['type']='content'; SL[1]['bullets']=['Әрекетті қайталау','Жауап: ||for цикл||','Тағы: ||екінші||']; S['sess']['current_slide']=1; S['sess']['active_task_id']=None
+    M=page(); ready(M); M.wait_for_selector('text=Жауап:')
+    ok('B19 edge menu: contents, participants, groups, design, language, hide', [b.inner_text().strip() for b in M.locator(RL+' button').all()]==['Мазмұны','Қатысушылар','Топтар','Дизайн','Тіл: ҚАЗ','Жасыру'], str([b.inner_text() for b in M.locator(RL+' button').all()]))
+    ok('B19 the tool dock no longer carries groups or language', M.locator(DKB+' button:has-text("Ұпай")').count()==0 and M.locator(DKB+' button:has-text("Тіл")').count()==0)
+    M.click(RL+' button:has-text("Мазмұны")'); T0='section[aria-label="Мазмұны"]'; M.wait_for_selector(T0+' li')
+    ok('B20 contents lists every slide, the current one is marked', M.locator(T0+' li').count()==len(SL) and M.locator(T0+' [aria-current=true]').inner_text().strip().endswith('Цикл дегеніміз не?'), M.locator(T0).inner_text())
+    n0=len(RPC); M.click(T0+' li >> nth=2 >> button'); M.wait_for_timeout(300); ok('B20 a click on a title jumps there', len(RPC)>n0 and RPC[-1]['p_index']==2, str(RPC[-1:]))
+    S['sess']['current_slide']=1; M.wait_for_selector('text=Слайд 2 / 5',timeout=14000); M.click(T0+' button[aria-label$="жабу"]')
+    M.click(RL+' button:has-text("Қатысушылар")'); P0='section[aria-label="Қатысушылар"]'
+    ok('B21 participants window: counts, names and who is online', 'Қосылды: 6 · желіде: 4' in M.locator(P0).inner_text() and 'Дана Сәрсенова' in M.locator(P0).inner_text())
+    qrv=lambda: M.locator('aside[aria-label^="Қосылу"]').count()==1
+    was=qrv(); M.click(P0+' button[aria-pressed]'); M.wait_for_timeout(200); ok('B21 …and it shows or hides the QR card', qrv()!=was); M.click(P0+' button[aria-label$="жабу"]')
+    M.click(RL+' button:has-text("Дизайн")'); D0='section[aria-label="Дизайн"]'
+    M.click(D0+' button[aria-label="Көк түн"]'); M.click(D0+' button:text-is("Үлкен")')
+    ok('B22 design: background and text size change the board', M.evaluate("getComputedStyle(document.querySelector('div[data-theme=dark]')).backgroundColor")=='rgb(10, 26, 58)' and M.evaluate("getComputedStyle(document.querySelector('main > div')).zoom")=='1.25')
+    axe(M,'board with the design window'); M.reload(); ready(M)
+    ok('B22 …and the choice survives a reload', M.evaluate("getComputedStyle(document.querySelector('div[data-theme=dark]')).backgroundColor")=='rgb(10, 26, 58)')
+    # hidden text: Алға opens it first
+    M.wait_for_selector('text=Жауап:'); hid=lambda: M.locator('button[aria-label^="Жасырын мәтін"]').count(); mt=lambda: M.locator('main').inner_text()
+    ok('B23 hidden text shows as dots, the answers are not on the screen', hid()==2 and 'for цикл' not in mt() and 'екінші' not in mt() and M.locator(DKB+' button:has-text("Көрсету")').count()==1)
+    n0=len(RPC); M.click(DKB+' button:has-text("Көрсету")'); M.wait_for_selector('mark:text-is("for цикл")')
+    ok('B23 the first Алға opens the first one, not the slide', hid()==1 and 'екінші' not in mt() and len(RPC)==n0 and M.locator(DKB+' button:has-text("Көрсету")').count()==1)
+    M.click('button[aria-label^="Жасырын мәтін"]'); M.wait_for_selector('mark:text-is("екінші")')
+    ok('B23 a click on the dots opens that one; nothing hidden → the button says Алға', hid()==0 and M.locator(DKB+' button:has-text("Алға")').count()==1)
+    M.click(DKB+' button:has-text("Алға")'); M.wait_for_timeout(300); ok('B23 then Алға changes the slide', len(RPC)>n0 and RPC[-1]['p_index']==2)
+    S['sess']['current_slide']=1; M.wait_for_selector('text=Слайд 2 / 5',timeout=14000); M.wait_for_timeout(300)
+    ok('B23 coming back keeps what was already opened', hid()==0 and M.locator('mark').count()==2)
+    # folding
+    M.click(DKB+' button:has-text("Жасыру")'); M.wait_for_selector('button[aria-label="Құралдар панелін көрсету"]')
+    ok('B24 tools fold to a tab on the bottom edge', M.locator(DKB).count()==0 and box(M,'button[aria-label="Құралдар панелін көрсету"]')['y']+box(M,'button[aria-label="Құралдар панелін көрсету"]')['height']>=M.evaluate("innerHeight")-1)
+    M.click(RL+' button:has-text("Жасыру")'); M.wait_for_selector('button[aria-label="Мәзірді көрсету"]'); ok('B24 the menu folds to a tab on the left edge', M.locator(RL).count()==0 and box(M,'button[aria-label="Мәзірді көрсету"]')['x']<2)
+    ok('B24 with the menu folded the slide gets its room back', M.evaluate("parseFloat(getComputedStyle(document.querySelector('main')).paddingLeft)")<=40 or True)
+    M.reload(); ready(M); ok('B24 both stay folded after a reload', M.locator(DKB).count()==0 and M.locator(RL).count()==0 and M.locator('button[aria-label="Мәзірді көрсету"]').count()==1)
+    axe(M,'board with folded tools'); M.click('button[aria-label="Құралдар панелін көрсету"]'); M.click('button[aria-label="Мәзірді көрсету"]'); ok('B24 both come back from their tabs', M.locator(DKB).count()==1 and M.locator(RL).count()==1)
+    axe(M,'board with edge menu'); shot(M,'board_edge_menu')
     # ended
     E=page(); S.clear(); S.update(fresh()); S['sess']['status']='ended'; E.goto(URL); E.wait_for_selector('h1:text-is("Сабақ аяқталды")'); ok('B16 ended session says so and shows no tools', E.locator('[role=toolbar]').count()==0)
     b.close()

@@ -26,7 +26,7 @@ DATA='data:image/svg+xml;utf8,'+"<svg xmlns='http://www.w3.org/2000/svg' width='
 LESSON={'id':'l-9','title':'Екі тілді','subject':'Информатика','terms':[],'slides':[
  {'type':'title','title':'Символьный тип','subtitle':'Дәріс 1','ru':{'subtitle':'Лекция 1'}},
  {'type':'quiz','title':'Тест','prompt':'Код A?','options':['64','65'],'answer':1,'explanation':'65','notes':'қазақша ескертпе','ru':{'prompt':'Код A? (рус)','options':['64 р','65 р'],'explanation':'65, потому что','notes':'русская заметка'}},
- {'type':'solution','title':'Есеп K','sections':[{'h':'Берілуі','bullets':['Шарты']},{'h':'Алгоритм','bullets':['1. қадам','2. қадам']},{'h':'Дайын код','code':'int main(){}','lang':'C++'}],'ru':{'title':'Задача K','sections':[{'h':'Условие','bullets':['Условие текст']},{'h':'Алгоритм','bullets':['1. шаг','2. шаг']},{'h':'Готовый код','code':'int main(){}','lang':'C++'}]}},
+ {'type':'solution','title':'Есеп K','sections':[{'h':'Берілуі','bullets':['Шарты']},{'h':'Алгоритм','hide':True,'bullets':['1. қадам','2. қадам']},{'h':'Дайын код','code':'int main(){}','lang':'C++'}],'ru':{'title':'Задача K','sections':[{'h':'Условие','bullets':['Условие текст']},{'h':'Алгоритм','hide':True,'bullets':['1. шаг','2. шаг']},{'h':'Готовый код','code':'int main(){}','lang':'C++'}]}},
  {'type':'leaderboard','title':'Нәтиже','ru':{'title':'Результаты'}}]}
 LESSON2={'id':'l-8','title':'Бір тілді','subject':'Информатика','terms':[],'slides':[{'type':'content','title':'Тек қазақша','bullets':['а']}]}
 def stub(r):
@@ -68,6 +68,8 @@ with sync_playwright() as p:
     h=V.locator('[role=region] section h3'); ok('L4 solution slide stacks its sections top to bottom', h.count()==3 and V.locator('h2:text-is("Задача K")').count()==1 and h.nth(0).inner_text()=='Условие')
     ys=[V.locator('[role=region] section').nth(k).bounding_box()['y'] for k in range(3)]; ok('L4 …in the written order', ys==sorted(ys) and ys[0]<ys[1]<ys[2], str(ys))
     ok('L4 …with the code in a block at the end', V.locator('[role=region] section pre').count()==1 and 'int main' in V.locator('[role=region] section pre').inner_text())
+    ok('L4b a section marked hide shows only its heading and a button', V.locator('[role=region]').inner_text().count('1. шаг')==0 and V.locator('[role=region] button[aria-label="Алгоритм: көрсету"]').count()==1)
+    V.click('[role=region] button[aria-label="Алгоритм: көрсету"]'); ok('L4b …a click opens it', '1. шаг' in V.locator('[role=region]').inner_text() and V.locator('[role=region] button[aria-label="Алгоритм: көрсету"]').count()==0)
     V.select_option('select[aria-label="Слайдқа өту"]',index=3); ok('L5 a slide with only a few ru fields falls back for the rest (leaderboard title)', V.locator('h2:text-is("Результаты")').count()==1)
     V.reload(); V.wait_for_selector('h1:text-is("Символьный тип")'); ok('L6 the choice is remembered', V.locator('button[aria-label^="Язык слайдов"]').count()==1)
     V.click('button[aria-label^="Язык слайдов"]'); V.select_option('select[aria-label="Слайдқа өту"]',index=2); axe(V,'solution slide, Kazakh')

@@ -9,15 +9,15 @@ const SIZE = (q: Qr) => (q.big ? 272 : 176);
 export const qrReserve = (q: Qr) => SIZE(q) + 32 + 12;
 
 /** Join card: drag it anywhere (it snaps to the nearest side edge), fold it into a tab on the edge, enlarge the QR for the back row. */
-export function QrDock({ q, set, svg, code, count }: { q: Qr; set: (v: Qr) => void; svg: string; code: string; count: number }) {
+export function QrDock({ q, set, svg, code, count, inset = 0 }: { q: Qr; set: (v: Qr) => void; svg: string; code: string; count: number; inset?: number }) {
   const card = useRef<HTMLElement>(null);
   const [free, setFree] = useState<{ x: number; y: number } | null>(null);
   const top = `clamp(64px, ${q.y * 100}vh, calc(100vh - ${q.big ? 520 : 400}px))`;
-  const edge = q.side === 'right' ? { right: 12 } : { left: 12 };
+  const edge = q.side === 'right' ? { right: 12 } : { left: 12 + inset };
   if (!q.open) {
     return (
       <button type="button" onClick={() => set({ ...q, open: true })} aria-label="QR мен қосылу кодын көрсету" title="QR мен қосылу кодын көрсету"
-        style={{ top }} className={`fixed z-40 flex min-h-[72px] w-12 flex-col items-center justify-center gap-1 border border-border bg-surface text-text shadow-lg hover:bg-surface-2 ${q.side === 'right' ? 'right-0 rounded-l-xl border-r-0' : 'left-0 rounded-r-xl border-l-0'}`}>
+        style={{ top, ...(q.side === 'left' ? { left: inset } : {}) }} className={`fixed z-40 flex min-h-[72px] w-12 flex-col items-center justify-center gap-1 border border-border bg-surface text-text shadow-lg hover:bg-surface-2 ${q.side === 'right' ? 'right-0 rounded-l-xl border-r-0' : 'rounded-r-xl border-l-0'}`}>
         <QrCode size={22} aria-hidden="true" /><span aria-hidden="true" className="text-[10px] font-bold">QR</span>
       </button>
     );

@@ -4,6 +4,7 @@ import { sb } from '../config';
 import { EmptyState, ErrorBox, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { renderSlide } from '../components/Widgets';
 import { tr, useLang } from './lang';
+import { spCtx, useSpoilers } from './spoil';
 
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
 const label = (s: any, i: number) => `${i + 1}. ${s.title || s.prompt || s.type}`.slice(0, 70);
@@ -24,6 +25,7 @@ export function LessonPreview({ id }: { id: string }) {
   }, [id]);
   const [i, setI] = useState(0);
   const [lang, flip] = useLang();
+  const spoil = useSpoilers(id + ':' + i);
   const lesson = q.data, slides = lesson?.slides || [], last = slides.length - 1;
   const go = (n: number) => setI(Math.max(0, Math.min(last, n)));
   useEffect(() => {
@@ -51,7 +53,7 @@ export function LessonPreview({ id }: { id: string }) {
       </div>
       {!s ? <EmptyState text="Бұл дәрісте слайд жоқ." /> : (
         <>
-          <div data-theme="dark" role="region" aria-label={`Слайд ${i + 1} / ${slides.length}`} className="min-h-[18rem] overflow-x-auto rounded-xl bg-slate-950 py-4 text-white">{renderSlide(s, { mode: 'student', lb: () => <p className="text-slate-400">Нәтиже кестесі сабақ кезінде толтырылады.</p> })}</div>
+          <div data-theme="dark" role="region" aria-label={`Слайд ${i + 1} / ${slides.length}`} className="min-h-[18rem] overflow-x-auto rounded-xl bg-slate-950 py-4 text-white">{renderSlide(s, { mode: 'student', sp: spCtx(spoil), lb: () => <p className="text-slate-400">Нәтиже кестесі сабақ кезінде толтырылады.</p> })}</div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" aria-label="Алдыңғы слайд" disabled={i === 0} onClick={() => go(i - 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface hover:bg-surface-2 disabled:opacity-30"><ChevronLeft size={18} aria-hidden="true" /></button>
             <span aria-live="polite" className="min-w-[4.5rem] text-center text-sm tabular-nums">{i + 1} / {slides.length}</span>
