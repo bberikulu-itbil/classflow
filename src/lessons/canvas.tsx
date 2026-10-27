@@ -27,6 +27,8 @@ export const INK = [['#111827', 'Қара'], ['#FFFFFF', 'Ақ'], ['#2F6F65', '�
 export const LANGS = ['cpp', 'python', 'text'];
 
 const lum = (h: string) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+/** WCAG contrast ratio of two #rrggbb colours. */
+export const ratio = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
 /** Readable default text colour for a background. */
 export const ink = (bg: string) => (lum(bg) < 0.4 ? '#FFFFFF' : '#111827');
 

@@ -3,15 +3,16 @@ import { AlignCenter, AlignLeft, AlignRight, Bold, ChevronDown, ChevronUp, Code2
 import { Button, inputCls } from '../ui';
 import { track } from '../board/Win';
 import { uploadSlideImage } from './media';
-import { BG, BlockView, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, slim } from './canvas';
+import { BG, BlockView, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
 
 type Tab = 'design' | 'content' | 'action';
 const KIND_LABEL: Record<string, string> = { text: 'Мәтін', code: 'Код', image: 'Сурет', shape: 'Фигура' };
 const SOON = [['Видео', Video], ['Кесте', Table2], ['Формула', Sigma], ['Интерактив', MousePointerClick]] as const;
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
-const HPOS: Record<string, React.CSSProperties> = { nw: { left: -7, top: -7, cursor: 'nwse-resize' }, n: { left: 'calc(50% - 7px)', top: -7, cursor: 'ns-resize' }, ne: { right: -7, top: -7, cursor: 'nesw-resize' }, e: { right: -7, top: 'calc(50% - 7px)', cursor: 'ew-resize' }, se: { right: -7, bottom: -7, cursor: 'nwse-resize' }, s: { left: 'calc(50% - 7px)', bottom: -7, cursor: 'ns-resize' }, sw: { left: -7, bottom: -7, cursor: 'nesw-resize' }, w: { left: -7, top: 'calc(50% - 7px)', cursor: 'ew-resize' } };
+const HPOS = (k: number): Record<string, React.CSSProperties> => { const o = -k / 2, c = `calc(50% - ${k / 2}px)`; return { nw: { left: o, top: o, cursor: 'nwse-resize' }, n: { left: c, top: o, cursor: 'ns-resize' }, ne: { right: o, top: o, cursor: 'nesw-resize' }, e: { right: o, top: c, cursor: 'ew-resize' }, se: { right: o, bottom: o, cursor: 'nwse-resize' }, s: { left: c, bottom: o, cursor: 'ns-resize' }, sw: { left: o, bottom: o, cursor: 'nesw-resize' }, w: { left: o, top: c, cursor: 'ew-resize' } }; };
 const side = 'space-y-2 rounded-xl border border-border bg-surface p-3';
-const tb = 'flex h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2 aria-pressed:bg-accent aria-pressed:text-on-accent disabled:opacity-40';
+const coarse = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+const tb = 'flex h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 items-center justify-center rounded-md hover:bg-surface-2 aria-pressed:bg-accent aria-pressed:text-on-accent disabled:opacity-40';
 
 const label = (b: CBlock, i: number) => `${i + 1}. ${KIND_LABEL[b.kind]}${b.kind === 'text' && b.text ? ': ' + b.text.replace(/\s+/g, ' ').slice(0, 24) : b.kind === 'code' && b.code ? ': ' + b.code.replace(/\s+/g, ' ').slice(0, 20) : ''}`;
 
@@ -28,7 +29,7 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
   latest.current = slide; cb.current = onChange;
   const sel = blocks.find(b => b.id === selId) || null, selIdx = sel ? blocks.indexOf(sel) : -1;
   const z = zoom === 'fit' ? clamp((avail - 48) / W, 0.3, 2) : zoom;
-  const zr = useRef(z); zr.current = z;
+  const hs = coarse() ? 24 : 14, zr = useRef(z); zr.current = z;
 
   useEffect(() => { head.current?.focus(); }, []);
   useEffect(() => { setSel(null); setEditing(null); hist.current = []; lastKey.current = null; setNHist(0); }, [cur]);
@@ -157,15 +158,15 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
           <section aria-label="Қабаттар" className="space-y-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">Қабаттар</h3>
             {blocks.length === 0 ? <p className="text-sm text-text-secondary">Бет бос. Жоғарыдан элемент қосыңыз.</p> : (
-              <ol className="space-y-1">{[...blocks].reverse().map(b => (
-                <li key={b.id}><button type="button" aria-pressed={b.id === selId} onClick={() => { setSel(b.id); setEditing(null); }} className={`min-h-[40px] w-full truncate rounded-lg px-2 text-left text-sm ${b.id === selId ? 'bg-accent-soft font-semibold text-on-accent-soft' : 'hover:bg-surface-2'}`}>{label(b, blocks.indexOf(b))}{b.hide ? ' · жасырын' : ''}</button></li>
+              <ol className="max-h-56 space-y-1 overflow-y-auto">{[...blocks].reverse().map(b => (
+                <li key={b.id}><button type="button" aria-pressed={b.id === selId} onClick={() => { setSel(b.id); setEditing(null); }} className={`min-h-[36px] w-full truncate rounded-lg px-2 text-left text-sm [@media(pointer:coarse)]:min-h-[44px] ${b.id === selId ? 'bg-accent-soft font-semibold text-on-accent-soft' : 'hover:bg-surface-2'}`}>{label(b, blocks.indexOf(b))}{b.hide ? ' · жасырын' : ''}</button></li>
               ))}</ol>
             )}
           </section>
         </aside>
 
-        <div ref={area} className="relative min-h-[18rem] overflow-auto bg-surface-2 p-6" onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
-          <div className="relative mx-auto" style={{ width: W * z }} onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
+        <div ref={area} className="relative flex min-h-[18rem] overflow-auto bg-surface-2 p-6" onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
+          <div className="relative m-auto shrink-0" style={{ width: W * z }} onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
             <Stage bg={bg} clip={false} className="shadow-lg">
               <div aria-hidden="true" onPointerDown={() => { setSel(null); setEditing(null); }} style={{ position: 'absolute', inset: 0, backgroundImage: grid ? 'radial-gradient(rgba(100,116,139,.55) 1px, transparent 1.5px)' : 'none', backgroundSize: `${20 / 9.6}cqw ${20 / 9.6}cqw` }} />
               {blocks.map((b, i) => {
@@ -177,9 +178,9 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
                       ? <textarea aria-label="Мәтінді өңдеу" autoFocus value={b.text} onChange={e => patch(b.id, { text: e.target.value }, 'type' + b.id)} onBlur={() => setEditing(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLElement).blur(); } }}
                           style={{ width: '100%', height: '100%', background: 'transparent', border: 0, outline: 0, resize: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25 }} />
                       : <BlockView b={b} bg={bg} R={t => t} />}
-                    {b.kind === 'image' && !imgOk(b.src) && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: fs(22), background: 'rgba(148,163,184,.25)' }}>Сурет таңдалмаған</div>}
+                    {b.kind === 'image' && !imgOk(b.src) && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1F2A30', fontSize: fs(22), background: 'rgba(255,255,255,.85)' }}>Сурет таңдалмаған</div>}
                     {b.hide && <span style={{ position: 'absolute', right: 0, top: 0, background: '#475569', color: '#fff', fontSize: fs(16), padding: '0 .6cqw' }}>жасырын</span>}
-                    {on && editing !== b.id && HANDLES.map(h => <span key={h} aria-hidden="true" onPointerDown={e => resize(e, b, h)} style={{ position: 'absolute', width: 14, height: 14, background: 'var(--color-accent)', border: '2px solid #fff', borderRadius: 3, touchAction: 'none', ...HPOS[h] }} />)}
+                    {on && editing !== b.id && HANDLES.map(h => <span key={h} aria-hidden="true" onPointerDown={e => resize(e, b, h)} style={{ position: 'absolute', width: hs, height: hs, background: 'var(--color-accent)', border: '2px solid #fff', borderRadius: 3, touchAction: 'none', ...HPOS(hs)[h] }} />)}
                   </div>
                 );
               })}
@@ -216,7 +217,7 @@ export function CanvasEditor({ pages, cur, schoolId, onChange, onSelect, onClose
                 </div>
               </section>
               {(sel.kind === 'text' || sel.kind === 'code') && <section className={side}><h3 className="font-bold">Қаріп</h3>{numIn('Өлшемі', sel.size, n => patch(sel.id, { size: n }, 's' + sel.id), 8, 160)}</section>}
-              {sel.kind === 'text' && <section className={side}><h3 className="font-bold">Мәтін түсі</h3>{sw(INK, sel.color || ink(bg), c => patch(sel.id, { color: c }), 'Мәтін түсі')}</section>}
+              {sel.kind === 'text' && <section className={side}><h3 className="font-bold">Мәтін түсі</h3>{sw(INK, sel.color || ink(bg), c => patch(sel.id, { color: c }), 'Мәтін түсі')}{ratio(sel.color || ink(bg), bg) < 4.5 && <p role="note" className="text-sm text-danger">Бұл түс осы фонда нашар көрінеді (контраст {ratio(sel.color || ink(bg), bg).toFixed(1)}:1, кемі 4.5:1 керек). Басқа түс таңда.</p>}</section>}
               {sel.kind === 'shape' && (
                 <section className={side}><h3 className="font-bold">Фигура</h3>{sw(INK, sel.fill, c => patch(sel.id, { fill: c }), 'Толтыру')}
                   <label className="block text-xs font-semibold text-text-secondary">Пішіні<select className={inputCls + ' mt-1 text-text'} value={sel.shape} onChange={e => patch(sel.id, { shape: e.target.value as any })}><option value="rect">Төртбұрыш</option><option value="ellipse">Эллипс</option></select></label></section>

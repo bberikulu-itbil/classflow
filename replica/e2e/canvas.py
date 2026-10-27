@@ -61,6 +61,7 @@ with sync_playwright() as p:
     ok('C1 teal is the editor root only', E.evaluate("document.querySelector('[data-theme=teal]')!==null && getComputedStyle(document.querySelector('[data-theme=teal]')).getPropertyValue('--color-accent').trim()==='#2F6F65'"))
     ok('C2 the page card for a canvas page reads as Слайд and the blocks card lists its text boxes', 'Слайд' in E.locator(PL+' li >> nth=1').inner_text() and E.locator('section[aria-label="Таңдалған бет ішіндегі блоктар"]').count()==1)
     E.locator(PL+' li >> nth=1 >> button >> nth=0').click(); E.click('button:has-text("Слайд редакторын ашу")'); E.wait_for_selector(DG)
+    ok('C3 the stage sits in the middle of the work area, not glued to the top', E.locator(DG+' [style*="container-type"]').first.evaluate('e=>e.getBoundingClientRect().y-e.parentElement.parentElement.getBoundingClientRect().y')>60)
     ok('C3 the editor opens full screen with palette, stage, properties tabs, layers and the page strip', E.locator(DG+' aside[aria-label="Элементтер"]').count()==1 and E.locator(DG+' [role=tab]').count()==3 and E.locator(DG+' section[aria-label="Қабаттар"] li').count()==4 and E.locator(DG+' nav[aria-label="Беттер лентасы"] button').count()==3 and E.locator(BLK).count()==4)
     ok('C3 not-yet-built elements are shown but disabled', all(E.locator(DG+f' button[aria-label="{n} (жақында)"]').is_disabled() for n in ['Видео','Кесте','Формула','Интерактив']))
     st=E.locator(DG+' [style*="container-type"]').first; sb_=st.bounding_box(); zoom=sb_['width']/960
@@ -76,6 +77,8 @@ with sync_playwright() as p:
     E.fill(DG+' label:has-text("X") input','100'); d=jraw()[1]['blocks'][0]; ok('C8 the number fields in Дизайн write x', d['x']==100)
     E.click(DG+' button[aria-label="Мәтін түсі: Қызыл"]'); E.click(DG+' button[aria-label="Қалың"]'); E.click(DG+' button[aria-label="Қаріпті үлкейту"]'); E.click(DG+' button[aria-label="Ортаға"]'); d=jraw()[1]['blocks'][0]
     ok('C9 colour swatch + floating toolbar (bold off, size +2, centre) write into the block', d['color']=='#B42318' and not d.get('bold') and d['size']==42 and d['align']=='center', str(d))
+    E.click(DG+' button[aria-label="Мәтін түсі: Ақ"]'); ok('C9b white text on a white slide shows a contrast warning', E.locator(DG+' [role=note]').count()==1 and 'нашар' in E.locator(DG+' [role=note]').inner_text())
+    E.click(DG+' button[aria-label="Мәтін түсі: Қара"]'); ok('C9b …and it goes with a readable colour', E.locator(DG+' [role=note]').count()==0)
     E.click(DG+' [role=tab]:has-text("Мазмұн")'); E.fill(DG+' textarea >> nth=0','Жаңа ат'); d=jraw()[1]['blocks'][0]; ok('C10 Мазмұн edits the text', d['text']=='Жаңа ат')
     E.click(DG+' button:has-text("Мәтін") >> nth=0'); ok('C11 palette Мәтін adds a text block and selects it', len(jraw()[1]['blocks'])==5 and jraw()[1]['blocks'][-1]['kind']=='text')
     E.click(DG+' button:text-is("Код")'); E.click(DG+' button:text-is("Фигура")'); E.click(DG+' button:text-is("Сурет")'); bl=jraw()[1]['blocks']

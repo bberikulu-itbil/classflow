@@ -144,7 +144,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title || 'Жаңа дәріс'}</h1>
           <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
           {!isNew && <LinkButton variant="ghost" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
-          <Button variant="success" disabled={!!loadErr} onClick={save}>Сақтау</Button>
+          <Button disabled={!!loadErr} onClick={save}>Сақтау</Button>
         </div>
         <div role="tablist" aria-label="Жасау тәсілі" className="mx-auto flex max-w-7xl gap-1 px-4">
           {([['manual', 'Қолмен жасау'], ['ai', 'ЖИ арқылы жасау']] as const).map(([k, l]) => (
@@ -277,7 +277,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
             <h3 className="text-lg font-bold">Тексеру</h3>
             <p className="text-sm text-text-secondary">{pages ? `${pages.length} бет · ${nBlocks} блок · ${nInter} интерактивті бет` : 'JSON қатесі бар'}</p>
             {issues.length > 0 ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{issues.map((x, k) => <li key={k}>{x}</li>)}</ul> : pages && <p className="text-sm text-success">Ескертулер жоқ.</p>}
-            <Button variant="success" disabled={!!loadErr} onClick={save}>Сақтау</Button>
+            <Button disabled={!!loadErr} onClick={save}>Сақтау</Button>
           </section>
           <p role="status" className="text-sm text-text-secondary">{msg}</p>
         </aside>
