@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LessonPreview } from './lessons/Preview';
+import { ModulesView } from './curriculum/Views';
 import { sb, STAFF, DEMO } from './config';
 import { LoginView } from './components/LoginView';
 import { RemoteView } from './components/RemoteView';
@@ -118,6 +119,7 @@ export default function App() {
   if (routeKey === 'assign' && isStaff) return framed('3xl', <AssignView />);
   if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
   if (routeKey === 'lesson' && isStaff) return framed('5xl', <LessonDetail key={routeId} id={routeId} me={me} />);
+  if (routeKey === 'course' && isStaff) return framed('5xl', <ModulesView key={routeId} me={me} courseId={routeId} />);
   if (routeKey === 'preview' && isStaff) return framed('5xl', <LessonPreview key={routeId} id={routeId} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
   if (routeKey === 'jeopardy-edit') return shell(<SharedEdit key={routeId} payload={routeId} me={me} canSave={isStaff} />);

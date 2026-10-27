@@ -67,3 +67,4 @@ Module type (needs `supabase/012_module_kind.sql`, after 008): a module is **С�
 Slide `code` (+ optional `lang`): `content`, `quiz` and `task` slides can carry a monospace code block that is shown, not run (C++ lectures; `code` slides still run Python only). Check: `replica/unit/slides_code.tsx`.
 
 Lecture preview: `#preview/<lecture id>` (title link in a module, «Көру» on the lecture page) walks the slides read-only with arrows, a jump list and the teacher notes / right answers under the slide; no class or live session needed. Editing stays at `#edit/<id>` (pencil in module edit mode). Tests: `curriculum_cloud.py` (P1–P5).
+Course page: «Ашу» on a course card opens `#course/<course id>` — its own page (back link, cover, counts) with every module of that course already open; modules and lectures carry icons (type, quarter, parallel, count; lecture row icon). Tests: `curriculum.py` (C3, K1–K9).

@@ -19,9 +19,9 @@ export const ROLE_NAMES: Record<string, string> = {
 
 export const TEACHER: Section[] = [
   { key: 'home', label: 'Басты бет', icon: House, routes: [''], subs: [] },
-  { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'preview', 'edit', 'plans', 'plan'], subs: [
+  { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'course', 'preview', 'edit', 'plans', 'plan'], subs: [
     { key: 'modules', label: 'Сабақтар', to: 'lessons/modules', also: ['preview'] },
-    { key: 'courses', label: 'Курстар', to: 'lessons/courses' },
+    { key: 'courses', label: 'Курстар', to: 'lessons/courses', also: ['course'] },
     { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine', also: ['lesson'] },
     { key: 'schedule', label: 'КТП (кесте)', to: 'lessons/schedule' },
     { key: 'editor', label: 'Сабақ редакторы', to: 'edit/new' },
