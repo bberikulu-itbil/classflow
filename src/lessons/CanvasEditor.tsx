@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BringToFront, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Video, Sigma, MousePointerClick } from 'lucide-react';
 import { Button, LinkButton, inputCls } from '../ui';
+import { renderSlide } from '../components/Widgets';
+import { FieldRow } from './FieldRow';
+import { fieldsOf } from './blocks';
+import { pageOf, typeLabel } from './pages';
 import { track, useWide } from '../board/Win';
 import { uploadSlideImage } from './media';
-import { BG, BlockView, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
+import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
 
 type Tab = 'design' | 'content' | 'action';
 type Rail = 'elements' | 'templates' | 'layers' | 'bg';
@@ -23,7 +27,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   pages: any[]; cur: number; schoolId: string; title: string; status: string; saved: string; previewHref?: string;
   onTitle: (t: string) => void; onChange: (slide: any) => void; onSelect: (i: number) => void; onAdd: () => void; onReorder: (from: number, to: number) => void; onSave: () => void; onClose: (changed: boolean) => void;
 }) {
-  const slide = pages[cur], bg = bgOf(slide), blocks = blocksOf(slide);
+  const slide = pages[cur], bg = bgOf(slide), blocks = blocksOf(slide), isCv = slide.type === 'canvas';
   const [selId, setSel] = useState<string | null>(null), [tab, setTab] = useState<Tab>('design'), [editing, setEditing] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number | 'fit'>('fit'), [avail, setAvail] = useState(800), [grid, setGrid] = useState(true), [snap, setSnap] = useState(true);
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
@@ -124,6 +128,10 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
     <label className="block text-xs font-semibold text-text-secondary">{lab}<input type="number" min={lo} max={hi} className={inputCls + ' mt-1 !min-h-[40px] text-text'} value={Math.round(v)} onChange={e => set(num(e.target.value))} /></label>
   );
 
+  const convert = () => {
+    if (!confirm('Бет кенепке айналады: мәтін сақталады, ал орналасуы жаңа 16:9 макетке ауысады.' + (slide.ru ? ' Орысша аударма (ru) осы бетте өшеді.' : '') + ' «Болдырмау» арқылы қайтаруға болады. Жалғастырасың ба?')) return;
+    commit(toCanvas(latest.current)); setMsg('Бет кенепке айналды.');
+  };
   const ib = (lab: string, I: React.ElementType, fn: () => void, extra: { on?: boolean; off?: boolean } = {}) => <button type="button" aria-label={lab} title={lab} aria-pressed={extra.on} disabled={extra.off} className={tb} onClick={fn}><I size={16} aria-hidden="true" /></button>;
   const sep = <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />;
   const txt = sel && (sel.kind === 'text' || sel.kind === 'code');
@@ -143,7 +151,12 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
       </header>
 
       <div role="toolbar" aria-label="Элемент құралдары" className="flex min-h-[52px] flex-wrap items-center gap-1 border-b border-border bg-surface px-3 py-1">
-        {!sel ? <p className="text-sm text-text-secondary">Элементті таңдаңыз немесе сол жақтан қосыңыз. Мәтінді екі рет шертіп өңдейсіз.</p> : (<>
+        {!isCv ? (<>
+          <span className="mr-2 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-on-accent-soft">{typeLabel(pageOf(slide).pageType)}</span>
+          {canConvert(slide)
+            ? <><Button variant="secondary" onClick={convert}><LayoutTemplate size={16} aria-hidden="true" />Кенепке айналдыру</Button><span className="text-sm text-text-secondary">Элементтерді еркін орналастыру үшін.</span></>
+            : <span className="text-sm text-text-secondary">Бұл беттің түрі өз ойнатқышымен көрсетіледі, мазмұнын оң жақтан өңде.</span>}
+        </>) : !sel ? <p className="text-sm text-text-secondary">Элементті таңдаңыз немесе сол жақтан қосыңыз. Мәтінді екі рет шертіп өңдейсіз.</p> : (<>
           <span className="mr-2 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-on-accent-soft">{KIND_LABEL[sel.kind]}</span>
           {txt && <>
             {ib('Қаріпті кішірейту', Minus, () => patch(sel.id, { size: sel.size - 2 }))}
@@ -165,12 +178,12 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-        <nav aria-label="Құралдар" className="flex shrink-0 gap-1 border-b border-border bg-surface p-1 lg:w-[4.75rem] lg:flex-col lg:border-b-0 lg:border-r">
+        {isCv && <nav aria-label="Құралдар" className="flex shrink-0 gap-1 border-b border-border bg-surface p-1 lg:w-[4.75rem] lg:flex-col lg:border-b-0 lg:border-r">
           {RAIL.map(([k, l, I]) => (
             <button key={k} type="button" aria-pressed={rail === k} aria-controls="ce-fly" onClick={() => setRail(r => (r === k ? null : k))} className="flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px] font-semibold leading-tight text-text-secondary hover:bg-surface-2 aria-pressed:bg-accent-soft aria-pressed:text-on-accent-soft lg:flex-none"><I size={20} aria-hidden="true" />{l}</button>
           ))}
-        </nav>
-        {rail && (
+        </nav>}
+        {isCv && rail && (
           <aside id="ce-fly" aria-label={RAIL.find(r => r[0] === rail)![1]} className="max-h-44 shrink-0 space-y-3 overflow-y-auto border-b border-border bg-surface p-3 lg:max-h-none lg:w-64 lg:border-b-0 lg:border-r">
             {rail === 'elements' && (
               <section aria-label="Элемент қосу" className="space-y-2">
@@ -212,7 +225,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
         )}
 
         <div ref={area} className="relative flex min-h-[18rem] min-w-0 flex-1 overflow-auto bg-surface-2 p-6" onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
-          <div className="relative m-auto shrink-0" style={{ width: W * z }} onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
+          {!isCv ? <div className="m-auto w-full max-w-4xl"><div data-theme="dark" role="region" aria-label="Беттің көрінісі" className="overflow-x-auto rounded-xl bg-slate-950 py-4 text-white">{renderSlide(slide, { mode: 'preview' })}</div></div> : <div className="relative m-auto shrink-0" style={{ width: W * z }} onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
             <Stage bg={bg} clip={false} className="shadow-lg">
               <div aria-hidden="true" onPointerDown={() => { setSel(null); setEditing(null); }} style={{ position: 'absolute', inset: 0, backgroundImage: grid ? 'radial-gradient(rgba(100,116,139,.55) 1px, transparent 1.5px)' : 'none', backgroundSize: `${20 / 9.6}cqw ${20 / 9.6}cqw` }} />
               {blocks.map((b, i) => {
@@ -231,11 +244,12 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
                 );
               })}
             </Stage>
-          </div>
+          </div>}
         </div>
 
-        {propsOpen && (
+        {(propsOpen || !isCv) && (
         <aside id="ce-props" aria-label="Қасиеттер" className="min-h-0 shrink-0 space-y-3 overflow-y-auto border-t border-border bg-surface p-3 lg:w-80 lg:border-l lg:border-t-0">
+          {isCv ? (<>
           <div role="tablist" aria-label="Қасиеттер бөлімі" className="flex gap-1 border-b border-border">
             {([['design', 'Дизайн'], ['content', 'Мазмұн'], ['action', 'Әрекет']] as const).map(([k, l]) => (
               <button key={k} type="button" role="tab" id={'ce-t-' + k} aria-selected={tab === k} aria-controls="ce-panel" onClick={() => setTab(k)} className={`min-h-[44px] flex-1 border-b-4 font-semibold ${tab === k ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text'}`}>{l}</button>
@@ -292,6 +306,14 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
             ))}
             <p role="status" className="min-h-[1.25rem] text-sm text-text-secondary">{msg}</p>
           </div>
+          </>) : (
+            <section aria-label="Бет мазмұны" className="space-y-2">
+              <h3 className="font-bold">Бет мазмұны · {typeLabel(pageOf(slide).pageType)}</h3>
+              {fieldsOf(slide).map(f => <FieldRow key={cur + f.id} uid={'ce' + cur} f={f} options={slide.options || []} onChange={v => commit(f.set(v), 'f' + cur + f.id)} />)}
+              {slide.type === 'solution' && <p className="text-xs text-text-secondary">Бөлімдерді қосу, жылжыту және өшіру — конструкторда.</p>}
+              <p role="status" className="min-h-[1.25rem] text-sm text-text-secondary">{msg}</p>
+            </section>
+          )}
         </aside>
         )}
       </div>
@@ -299,16 +321,16 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-surface px-3 py-1">
         <div className="flex items-center gap-1">
           <span className="mr-2 text-sm text-text-secondary tabular-nums">{cur + 1} / {pages.length} бет</span>
-          <button type="button" aria-label="Тор" aria-pressed={grid} title="Тор" className={tb} onClick={() => setGrid(g => !g)}><Grid3x3 size={18} aria-hidden="true" /></button>
-          <button type="button" aria-label="Торға тарту" aria-pressed={snap} title="Торға тарту" className={tb} onClick={() => setSnap(s => !s)}><Magnet size={18} aria-hidden="true" /></button>
+          {isCv && <button type="button" aria-label="Тор" aria-pressed={grid} title="Тор" className={tb} onClick={() => setGrid(g => !g)}><Grid3x3 size={18} aria-hidden="true" /></button>}
+          {isCv && <button type="button" aria-label="Торға тарту" aria-pressed={snap} title="Торға тарту" className={tb} onClick={() => setSnap(s => !s)}><Magnet size={18} aria-hidden="true" /></button>}
         </div>
-        <div role="group" aria-label="Масштаб" className="flex items-center gap-1">
+        {isCv && <div role="group" aria-label="Масштаб" className="flex items-center gap-1">
           <button type="button" aria-label="Кішірейту" className={tb} onClick={() => setZoom(Math.max(0.3, Math.round((z - 0.1) * 100) / 100))}><Minus size={18} aria-hidden="true" /></button>
           <input type="range" aria-label="Масштаб деңгейі" min={30} max={150} step={5} value={Math.round(z * 100)} onChange={e => setZoom(+e.target.value / 100)} className="w-28 accent-[var(--color-accent)] sm:w-40" />
           <button type="button" aria-label="Үлкейту" className={tb} onClick={() => setZoom(Math.min(1.5, Math.round((z + 0.1) * 100) / 100))}><Plus size={18} aria-hidden="true" /></button>
           <span aria-live="polite" className="min-w-[3.2rem] text-center text-sm font-semibold tabular-nums">{Math.round(z * 100)}%</span>
           <Button variant="secondary" aria-pressed={zoom === 'fit'} onClick={() => setZoom('fit')}>Сыйғызу</Button>
-        </div>
+        </div>}
       </div>
 
       <nav aria-label="Беттер лентасы" className="flex gap-2 overflow-x-auto border-t border-border bg-surface px-3 py-2">
@@ -316,7 +338,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
           <button key={i} type="button" draggable aria-current={i === cur ? 'true' : undefined} aria-label={`${i + 1}-бет${p.title ? ': ' + p.title : ''}`}
             onDragStart={e => { setDragFrom(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }} onDragEnd={() => { setDragFrom(null); setDragOver(null); }}
             onDragOver={e => { if (dragFrom !== null) { e.preventDefault(); setDragOver(i); } }} onDrop={e => { e.preventDefault(); if (dragFrom !== null) { onReorder(dragFrom, i); } setDragFrom(null); setDragOver(null); }}
-            onClick={() => { if (i === cur) return; onSelect(i); if (p.type !== 'canvas') onClose(changed.current); }}
+            onClick={() => { if (i !== cur) onSelect(i); }}
             className={`w-36 shrink-0 rounded-lg border-2 p-1 text-left ${dragOver === i && dragFrom !== null && dragFrom !== i ? 'border-dashed border-accent' : i === cur ? 'border-accent' : 'border-border hover:border-text-muted'} ${dragFrom === i ? 'opacity-50' : ''}`}>
             {p.type === 'canvas' ? <div className="pointer-events-none"><CanvasSlide s={{ ...p, title: '' }} R={t => t} /></div> : <div className="flex aspect-video items-center justify-center rounded bg-surface-2 px-1 text-center text-xs text-text-secondary">{p.title || p.prompt || 'Бет'}</div>}
             <span className="mt-1 block truncate text-xs font-semibold">{i + 1}. {p.title || p.prompt || 'Бет'}</span>

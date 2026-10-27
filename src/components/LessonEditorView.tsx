@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, Copy, GripVertical, LayoutTemplate, Plus, Trash2, U
 import { Button, LinkButton, inputCls } from '../ui';
 import { checkPages, fieldsOf, type Field } from '../lessons/blocks';
 import { PagePicker } from '../lessons/PagePicker';
+import { FieldRow } from '../lessons/FieldRow';
 import { CanvasEditor } from '../lessons/CanvasEditor';
 import { newPage, pageOf, PAGE_TYPES, TEMPLATES, tplLabel, typeLabel, type PageType } from '../lessons/pages';
 
@@ -28,26 +29,9 @@ const demoAll = (): Record<string, any> => { try { return JSON.parse(localStorag
 const STATUS = ['Нобай', 'Тексеруде', 'Жарияланған'];
 const GRADES = ['5', '6', '7', '8', '9', '10', '11'];
 const WARN = 'Бет типін өзгерту кейбір орналасу параметрлерін өзгертуі мүмкін (мәтін мен код сақталады). Өзгерту алдында нобай сақталады — «Қайтару» батырмасымен алуға болады. Жалғастырасың ба?';
-const CHIP: Record<string, string> = { 'Мәтін': 'bg-accent-soft text-on-accent-soft', 'Код': 'bg-warning-soft text-text', 'Интерактив': 'bg-success-soft text-text', 'Ескертпе': 'bg-surface-2 text-text-secondary' };
 const TYPE_CHIP: Record<PageType, string> = { slide: 'Слайд', scroll: 'Ұзын бет', interactive: 'Интерактив' };
 const card = 'space-y-3 rounded-2xl border border-border bg-surface p-4';
 const iconBtn = 'flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-border disabled:opacity-30';
-
-function FieldRow({ f, uid, onChange, options }: { f: Field; uid: string; onChange: (v: any) => void; options: string[] }) {
-  const id = `${uid}-${f.id}`;
-  return (
-    <div className="space-y-1 rounded-xl border border-border p-3">
-      <div className="flex items-center justify-between gap-2"><label htmlFor={id} className="text-sm font-semibold">{f.label}</label><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${CHIP[f.chip]}`}>{f.chip}</span></div>
-      {f.kind === 'text' && <input id={id} className={inputCls} value={f.value} onChange={e => onChange(e.target.value)} />}
-      {f.kind === 'number' && <input id={id} type="number" min={0} max={100} className={inputCls + ' !w-28'} value={f.value} onChange={e => onChange(e.target.value)} />}
-      {f.kind === 'area' && <textarea id={id} rows={3} className={inputCls + ' py-2'} value={f.value} onChange={e => onChange(e.target.value)} />}
-      {f.kind === 'lines' && <textarea id={id} rows={Math.max(3, String(f.value).split('\n').length)} className={inputCls + ' py-2'} value={f.value} onChange={e => onChange(e.target.value)} />}
-      {f.kind === 'code' && <textarea id={id} rows={Math.max(4, String(f.value).split('\n').length)} spellCheck={false} className={inputCls + ' py-2 font-mono text-sm'} value={f.value} onChange={e => onChange(e.target.value)} />}
-      {f.kind === 'bool' && <label className="flex min-h-[44px] items-center gap-2 text-sm"><input id={id} type="checkbox" className="h-5 w-5" checked={f.value} onChange={e => onChange(e.target.checked)} />Иә</label>}
-      {f.kind === 'answer' && <select id={id} className={inputCls} value={f.value} onChange={e => onChange(e.target.value)}><option value={-1} disabled>— таңдалмаған —</option>{options.map((o, k) => <option key={k} value={k}>{String.fromCharCode(65 + k)}. {o}</option>)}</select>}
-    </div>
-  );
-}
 
 export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; onLogout: () => void }) {
   const isNew = id === 'new';
@@ -232,7 +216,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
                     ))}
                     <button type="button" onClick={() => secs(a => [...a, { h: 'Жаңа бөлім', bullets: ['…'] }], 'Бөлім қосылды.')} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent font-semibold text-accent hover:bg-accent-soft"><Plus size={18} aria-hidden="true" />Бөлім қосу</button>
                   </> : fields.map(row)}</div> : <p className="text-sm text-text-secondary">Бұл бет түрінің өрістерін «Толық құрылым» ішінде өңдеуге болады.</p>}
-                  {page.type === 'canvas' && <Button variant="secondary" onClick={() => setCanvasOpen(true)}><LayoutTemplate size={16} aria-hidden="true" />Слайд редакторын ашу</Button>}
+                  {<Button variant="secondary" onClick={() => setCanvasOpen(true)}><LayoutTemplate size={16} aria-hidden="true" />Слайд редакторын ашу</Button>}
                   {page.type === 'code' && <p className="text-sm text-text-secondary">Код тесттері (input / out) «Толық құрылым» ішінде өңделеді.</p>}
                 </section>
               )}
@@ -286,7 +270,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           <p role="status" className="text-sm text-text-secondary">{msg}</p>
         </aside>
       </main>
-      {canvasOpen && page?.type === 'canvas' && <CanvasEditor pages={pages!} cur={cur} schoolId={me.school_id} title={title} status={status} saved={savedAt} previewHref={isNew ? undefined : '#preview/' + id} onTitle={setTitle} onAdd={() => setPicking(true)} onReorder={(f, t) => { reorder(f, t); setSel(cur === f ? t : cur < f && cur >= t ? cur + 1 : cur > f && cur <= t ? cur - 1 : cur); }} onSave={() => save(!isNew)} onChange={setSlide} onSelect={setSel} onClose={ch => { setCanvasOpen(false); if (ch) setMsg('Слайд өзгерді. «Сақтау» батырмасын бас.'); }} />}
+      {canvasOpen && page && <CanvasEditor pages={pages!} cur={cur} schoolId={me.school_id} title={title} status={status} saved={savedAt} previewHref={isNew ? undefined : '#preview/' + id} onTitle={setTitle} onAdd={() => setPicking(true)} onReorder={(f, t) => { reorder(f, t); setSel(cur === f ? t : cur < f && cur >= t ? cur + 1 : cur > f && cur <= t ? cur - 1 : cur); }} onSave={() => save(!isNew)} onChange={setSlide} onSelect={setSel} onClose={ch => { setCanvasOpen(false); if (ch) setMsg('Слайд өзгерді. «Сақтау» батырмасын бас.'); }} />}
       {picking && <PagePicker onCancel={() => setPicking(false)} onCreate={create} />}
     </div>
   );

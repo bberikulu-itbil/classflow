@@ -108,3 +108,11 @@ export const LAYOUTS: { id: string; label: string; make: (title: string) => CBlo
   { id: 'practice', label: 'Практика', make: t => [T(t || 'Практика', 60, 40, 840, 70, 40, { bold: true }), T('Тапсырма шарты', 60, 130, 840, 110, 26), norm({ kind: 'code', id: newId(), code: '', lang: 'cpp', x: 60, y: 260, w: 840, h: 230, size: 22 })!] },
 ];
 export const canvasPage = (title: string, layout?: string) => ({ type: 'canvas', title, bg: '#FFFFFF', blocks: layout ? LAYOUTS.find(l => l.id === layout)!.make(title).map(slim) : [] });
+
+/** Title and content pages can become a canvas page; their text carries over. Anything else keeps its own player. */
+export const canConvert = (s: any) => s?.type === 'title' || s?.type === 'content';
+export function toCanvas(s: any) {
+  const bl = LAYOUTS.find(l => l.id === (s.type === 'title' ? 'title' : 'explain'))!.make(s.title || '').map(slim);
+  bl[1] = { ...bl[1], text: s.type === 'title' ? s.subtitle || '' : (Array.isArray(s.bullets) ? s.bullets : []).map((b: string) => '• ' + b).join('\n') };
+  return { type: 'canvas', title: s.title || '', bg: '#FFFFFF', blocks: bl, pageType: 'slide', templateId: 'canvas-blank', ...(s.notes ? { notes: s.notes } : {}) };
+}
