@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Binary, Dice5, Maximize, Minimize, Pencil, Timer as TimerIcon, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Binary, Dice5, Languages, Maximize, Minimize, Pencil, Timer as TimerIcon, Trophy } from 'lucide-react';
 import { sb } from '../config';
+import { tr, useLang } from '../lessons/lang';
 import { renderSlide, spaced, fmt, lbTable, clock } from './Widgets';
 import qrcode from 'qrcode-generator';
 import { DockBtn, Win, usePersist, useWide } from '../board/Win';
@@ -24,6 +25,7 @@ export function BoardView({ sid }: { sid: string }) {
   const [draw, setDraw] = useState(false), [strokes, setStrokes] = useState<Stroke[]>([]);
   const [wins, setWins] = useState<string[]>([]), [full, setFull] = useState(!!document.fullscreenElement);
   const timer = useTimer(), wide = useWide();
+  const [lang, flipLang] = useLang();
 
   const refresh = async () => {
     try {
@@ -122,7 +124,7 @@ export function BoardView({ sid }: { sid: string }) {
       ) : (
         <>
           <main className="flex min-h-screen items-center justify-center pb-32 pt-16" style={{ paddingLeft: 32 + (qr.side === 'left' ? reserve : 0), paddingRight: 32 + (qr.side === 'right' ? reserve : 0) }}>
-            {renderSlide(currentSlide?.slide || {}, { mode: 'board', lb: () => lbTable(leaderboard) })}
+            {renderSlide(tr(currentSlide?.slide || {}, lang), { mode: 'board', lb: () => lbTable(leaderboard) })}
           </main>
           {session.slide_count > 0 && <p className="fixed left-4 top-16 z-20 rounded-full sm:top-4 bg-surface-2 px-3 py-1 text-sm text-text-secondary">Слайд {(session.current_slide || 0) + 1} / {session.slide_count}</p>}
           {task && (
@@ -144,6 +146,7 @@ export function BoardView({ sid }: { sid: string }) {
                 <DockBtn label="Кездейсоқ" pressed={wins.includes('rand')} onClick={() => toggle('rand')}><Dice5 size={22} /></DockBtn>
                 <DockBtn label="Сан жүйесі" pressed={wins.includes('conv')} onClick={() => toggle('conv')}><Binary size={22} /></DockBtn>
                 <DockBtn label="Ұпай" pressed={wins.includes('score')} onClick={() => toggle('score')}><Trophy size={22} /></DockBtn>
+                <DockBtn label={lang === 'ru' ? 'Язык: РУС' : 'Тіл: ҚАЗ'} onClick={flipLang}><Languages size={22} /></DockBtn>
                 <DockBtn label={full ? 'Терезеге' : 'Толық экран'} onClick={fullscreen}>{full ? <Minimize size={22} /> : <Maximize size={22} />}</DockBtn>
                 <DockBtn label="Алға" strong disabled={!next} onClick={() => next?.()}><ArrowRight size={22} /></DockBtn>
               </>

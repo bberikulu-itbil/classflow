@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sb } from '../config';
 import { BTN, BTN_P, INP, renderSlide, CodeIDE, lbTable } from './Widgets';
+import { tr, useLang } from '../lessons/lang';
 
 export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
+  const [lang, flipLang] = useLang();
   const [session, setSession] = useState<any>(null);
   const [currentSlideData, setCurrentSlideData] = useState<any>(null);
   const [task, setTask] = useState<any>(null);
@@ -151,7 +153,9 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
   }
 
-  const slide = currentSlideData.slide || {};
+  const slide = tr(currentSlideData.slide || {}, lang);
+  // quiz buttons come from the task row (Kazakh); use the slide's own options when it has a Russian set of the same size
+  const opts: string[] = task && Array.isArray(slide.options) && slide.options.length === (task.options || []).length && task.slide_index === currentSlideData.index ? slide.options : (task?.options || []);
   const isTask = ['quiz', 'task', 'code'].includes(slide.type);
   const mineRow = leaderboard.find(r => r.student_id === me.id);
   const locked = (mePart && mePart.locked) || (session && session.locked);
@@ -169,6 +173,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         <b>{session.title}</b>
         <div className="flex items-center gap-2">
           <span className="text-amber-400 font-bold">⭐ {mineRow ? mineRow.points : 0}</span>
+          <button className={BTN} aria-label={lang === 'ru' ? 'Язык: русский. Переключить на казахский' : 'Тіл: қазақша. Орысшаға ауыстыру'} onClick={flipLang}>{lang === 'ru' ? 'РУС' : 'ҚАЗ'}</button>
           <button
             className={BTN + ' !bg-amber-700 !text-white'}
             onClick={async () => {
@@ -248,7 +253,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
               <div className="mt-2 p-2 rounded-xl bg-emerald-950 text-sm">
                 {(() => {
                   const a = task.reveal.answer ?? task.reveal.correct;
-                  const txt = typeof a === 'number' && task.options ? task.options[a] : Array.isArray(a) ? a.join(' / ') : a;
+                  const txt = typeof a === 'number' && opts.length ? opts[a] : Array.isArray(a) ? a.join(' / ') : a;
                   return (
                     <>
                       {txt != null && <div>✔ Дұрыс жауап: <b>{String(txt)}</b></div>}
@@ -263,7 +268,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           <div className="p-4 rounded-2xl bg-slate-900 text-red-400 font-bold">⏹ Уақыт бітті</div>
         ) : task.kind === 'quiz' ? (
           <div className="grid gap-2">
-            {(task.options || []).map((o: string, i: number) => (
+            {opts.map((o: string, i: number) => (
               <button
                 key={i}
                 className="p-4 rounded-2xl bg-slate-800 hover:bg-blue-700 text-left text-lg border border-slate-600 cursor-pointer"

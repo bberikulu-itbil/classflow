@@ -457,6 +457,18 @@ export function renderSlide(s: any, ctx: any = {}) {
         imgBlock(s, big),
         s.starter && <pre className={`p-3 bg-[#0F172A] rounded-xl text-[#E2E8F5] font-mono ${big ? 'text-xl' : 'text-sm'}`}>{s.starter}</pre>
       );
+    case 'solution':
+      return wrap(
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-2 text-white`}>{s.title}</h2>,
+        ...(s.sections || []).map((sec: any, i: number) => (
+          <section key={i} className="mt-6 border-t border-slate-700 pt-4">
+            {sec.h && <h3 className={`${big ? 'text-3xl' : 'text-xl'} mb-2 font-bold text-blue-400`}>{sec.h}</h3>}
+            {sec.text && <p className={`${big ? 'text-2xl' : 'text-lg'} whitespace-pre-wrap text-slate-200`}>{sec.text}</p>}
+            {Array.isArray(sec.bullets) && <ul className={`${big ? 'text-2xl space-y-2' : 'text-lg space-y-1'} list-disc pl-6 text-slate-200`}>{sec.bullets.map((b: string, k: number) => <li key={k}>{b}</li>)}</ul>}
+            {codeBlock({ code: sec.code, lang: sec.lang }, big)}
+          </section>
+        ))
+      );
     case 'flashcards':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,

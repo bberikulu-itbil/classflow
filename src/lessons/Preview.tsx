@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Languages, Pencil } from 'lucide-react';
 import { sb } from '../config';
 import { EmptyState, ErrorBox, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { renderSlide } from '../components/Widgets';
+import { tr, useLang } from './lang';
 
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
 const label = (s: any, i: number) => `${i + 1}. ${s.title || s.prompt || s.type}`.slice(0, 70);
@@ -22,6 +23,7 @@ export function LessonPreview({ id }: { id: string }) {
     return data as Row | null;
   }, [id]);
   const [i, setI] = useState(0);
+  const [lang, flip] = useLang();
   const lesson = q.data, slides = lesson?.slides || [], last = slides.length - 1;
   const go = (n: number) => setI(Math.max(0, Math.min(last, n)));
   useEffect(() => {
@@ -36,13 +38,16 @@ export function LessonPreview({ id }: { id: string }) {
   if (q.loading && !lesson) return <main className="mx-auto max-w-5xl space-y-4 p-4">{back}<Skeleton /></main>;
   if (q.error) return <main className="mx-auto max-w-5xl space-y-4 p-4">{back}<ErrorBox message={q.error} onRetry={q.reload} /></main>;
   if (!lesson) return <main className="mx-auto max-w-5xl space-y-4 p-4">{back}<EmptyState text="Дәріс табылмады. Ол өшірілген немесе сіздікі емес болуы мүмкін." /></main>;
-  const s = slides[Math.min(i, last)], notes = s ? hint(s) : [];
+  const s = tr(slides[Math.min(i, last)], lang), notes = s ? hint(s) : [];
   return (
     <main className="mx-auto max-w-5xl space-y-3 p-4">
       {back}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0"><h1 className="text-2xl font-bold break-words">{lesson.title}</h1><p className="text-text-secondary">{lesson.subject || 'Пәнсіз'} · {slides.length} слайд</p></div>
-        <LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
+        <div className="flex flex-wrap items-center gap-2">
+          {slides.some((x: any) => x.ru) && <button type="button" onClick={flip} aria-label={lang === 'ru' ? 'Язык слайдов: русский. Переключить на казахский' : 'Слайд тілі: қазақша. Орысшаға ауыстыру'} className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'РУС' : 'ҚАЗ'}</button>}
+          <LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
+        </div>
       </div>
       {!s ? <EmptyState text="Бұл дәрісте слайд жоқ." /> : (
         <>

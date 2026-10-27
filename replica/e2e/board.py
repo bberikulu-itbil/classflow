@@ -145,6 +145,11 @@ with sync_playwright() as p:
     N.keyboard.press('Escape'); S['sess']['current_slide']=4; N.wait_for_selector('text=Слайд 5 / 5',timeout=14000); ok('B17 on the last slide Алға is off, on the first Артқа is off', N.locator(dk+' button:has-text("Алға")').is_disabled())
     S['sess']['current_slide']=0; N.wait_for_selector('text=Слайд 1 / 5',timeout=14000); ok('B17 first slide: Артқа is off', N.locator(dk+' button:has-text("Артқа")').is_disabled())
     N.click(dk+' button:has-text("Алға")'); N.wait_for_selector('text=Слайд 2 / 5'); axe(N,'board with Артқа / Алға')
+    # language switch on the board
+    SL[1]['ru']={'title':'Что такое цикл?','bullets':['Повтор действия','Цикл со счётчиком']}; S['sess']['current_slide']=1; N.wait_for_selector('text=Слайд 2 / 5',timeout=14000); N.wait_for_selector('h2:text-is("Цикл дегеніміз не?")')
+    N.click(dk+' button:has-text("Тіл: ҚАЗ")'); N.wait_for_selector('h2:text-is("Что такое цикл?")')
+    ok('B18 board: the language button swaps the slide to Russian and labels itself', N.locator(dk+' button:has-text("Язык: РУС")').count()==1)
+    N.click(dk+' button:has-text("Язык: РУС")'); N.wait_for_selector('h2:text-is("Цикл дегеніміз не?")'); ok('B18 …and back to Kazakh', N.locator(dk+' button:has-text("Тіл: ҚАЗ")').count()==1)
     # a new slide wipes the annotations of the old one
     A.click('button:has-text("Сызу")'); A.mouse.move(700,600); A.mouse.down(); A.mouse.move(900,650,steps=5); A.mouse.up(); n=ink(); S['sess']['current_slide']=2
     A.wait_for_function("document.querySelector('canvas').getContext('2d').getImageData(0,0,50,50) && true"); A.wait_for_selector('text=Қорытынды',timeout=14000); A.wait_for_timeout(200)
