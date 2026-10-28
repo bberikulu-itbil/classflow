@@ -407,10 +407,50 @@ const imgBlock = (s: any, big: boolean) => typeof s.img === 'string' && /^(https
     </figure>
   : null;
 
+const tableBlock = (table: any, big: boolean) => Array.isArray(table?.headers) && Array.isArray(table?.rows)
+  ? <div className="my-4 overflow-x-auto rounded-xl border border-slate-600 bg-slate-950/40">
+      <table className={`w-full border-collapse ${big ? 'text-2xl' : 'text-base'}`}>
+        <thead className="bg-blue-950/70 text-blue-100">
+          <tr>{table.headers.map((h: any, i: number) => <th key={i} className="border-b border-slate-600 px-3 py-2 text-left font-bold">{String(h)}</th>)}</tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row: any[], i: number) => <tr key={i} className="border-b border-slate-700 last:border-b-0">
+            {(Array.isArray(row) ? row : [row]).map((cell: any, j: number) => <td key={j} className="px-3 py-2 font-mono text-slate-200">{String(cell)}</td>)}
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  : null;
+
 export function renderSlide(s: any, ctx: any = {}) {
   const sp = ctx.sp, R = (t: string) => rich(t, sp);
   const big = ctx.mode === 'board';
   const wrap = (...k: any[]) => <div className="cf-slide w-full max-w-5xl mx-auto p-4">{k}</div>;
+
+  if (s.pageType === 'scroll') {
+    return wrap(
+      <article className="max-w-3xl mx-auto overflow-hidden rounded-2xl bg-slate-900 border border-slate-700">
+        <header className="bg-emerald-950/60 px-6 py-8 md:px-10">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Оқу беті</p>
+          <h1 className={`${big ? 'text-6xl' : 'text-4xl'} mt-3 font-black text-white`}>{s.title || 'Ұзын бет'}</h1>
+          {s.subtitle && <p className="mt-3 text-lg text-slate-300">{s.subtitle}</p>}
+        </header>
+        <div className="space-y-8 px-6 py-8 md:px-10 md:py-10">
+          {s.type === 'content' && (
+            <section>
+              <ul className={`${big ? 'text-3xl space-y-4' : 'text-xl space-y-3'} list-disc pl-6 text-slate-200`}>
+                {(s.bullets || []).map((b: string, i: number) => <li key={i}>{b}</li>)}
+              </ul>
+            </section>
+          )}
+          {s.prompt && <section className="border-l-4 border-emerald-500 pl-4"><p className={`${big ? 'text-3xl' : 'text-xl'} whitespace-pre-wrap text-slate-200`}>{s.prompt}</p></section>}
+          {s.starter && <section><h2 className="mb-3 text-lg font-bold text-white">Код мысалы</h2><pre className={`${big ? 'text-xl' : 'text-sm'} overflow-auto rounded-xl bg-[#0F172A] p-4 text-[#E2E8F5] font-mono`}>{s.starter}</pre></section>}
+          {s.notes && <section className="rounded-xl bg-amber-950/50 p-4 text-amber-200"><b>Ескертпе:</b> {s.notes}</section>}
+          {!s.bullets?.length && !s.prompt && !s.starter && !s.notes && <p className="text-slate-400">Бұл бетке мазмұн қосылмаған.</p>}
+        </div>
+      </article>
+    );
+  }
 
   switch (s.type) {
     case 'title':
@@ -466,13 +506,14 @@ export function renderSlide(s: any, ctx: any = {}) {
         ...(s.sections || []).map((sec: any, i: number) => {
           const idx = sec.hide && sp ? sp.n++ : -1, closed = idx >= 0 && !sp.shown.has(idx), inner = sec.hide ? (t: string) => rich(t) : R;
           return (
-            <section key={i} className="mt-6 border-t border-slate-700 pt-4">
+            <section key={i} className={sec.variant === 'statement' ? 'mt-6 rounded-2xl border-2 border-blue-500/60 bg-slate-800/70 p-4' : 'mt-6 border-t border-slate-700 pt-4'}>
               {sec.h && <h3 className={`${big ? 'text-3xl' : 'text-xl'} mb-2 font-bold text-blue-400`}>{sec.h}</h3>}
               {closed ? (
                 <button type="button" onClick={() => sp.show(idx)} aria-label={`${sec.h || ''}: көрсету`} className={`${big ? 'text-2xl' : 'text-lg'} w-full cursor-pointer rounded-xl border border-dashed border-slate-500 bg-slate-800 px-4 py-3 text-left text-slate-200 hover:bg-slate-700`}>Көрсету</button>
               ) : (<>
                 {sec.text && <p className={`${big ? 'text-2xl' : 'text-lg'} whitespace-pre-wrap text-slate-200`}>{inner(sec.text)}</p>}
                 {Array.isArray(sec.bullets) && <ul className={`${big ? 'text-2xl space-y-2' : 'text-lg space-y-1'} list-disc pl-6 text-slate-200`}>{sec.bullets.map((b: string, k: number) => <li key={k}>{inner(b)}</li>)}</ul>}
+                {tableBlock(sec.table, big)}
                 {imgBlock(sec, big)}
                 {codeBlock({ code: sec.code, lang: sec.lang }, big)}
               </>)}
