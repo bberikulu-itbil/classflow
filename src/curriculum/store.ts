@@ -7,7 +7,7 @@ export type Kind = 'lesson' | 'course';
 /** kind 'lesson' = school-lesson module (may belong to one quarter); 'course' = course module (no quarter). grade empty = the course's grade. */
 export interface Mod { id: string; course_id: string; title: string; position: number; kind: Kind; quarter: number | null; grade: number | null }
 export interface Place { lesson_id: string; module_id: string; position: number }
-export interface Les { id: string; title: string; subject: string | null }
+export interface Les { id: string; title: string; title_kk?: string; title_ru?: string; subject: string | null }
 export interface Curr { courses: Course[]; modules: Mod[]; places: Place[]; lessons: Les[]; local: boolean; kindCol?: boolean }
 export interface Me { id: string; school_id: string }
 
@@ -39,9 +39,25 @@ const fail = (e: { message: string } | null) => { if (e) throw new Error(e.messa
 const order = <T extends { position: number }>(a: T[]) => [...a].sort((x, y) => x.position - y.position);
 
 export async function loadLessons(meId: string): Promise<Les[]> {
-  if (DEMO) return (await loadLessonData(meId)).lessons.map(l => ({ id: l.id, title: l.title, subject: l.subject }));
-  const { data, error } = await sb.from('cf_lessons').select('id,title,subject').order('updated_at', { ascending: false });
-  fail(error); return (data || []) as Les[];
+  if (DEMO) {
+    const base = (await loadLessonData(meId)).lessons.map(l => ({ id: l.id, title: l.title, title_kk: l.title, title_ru: l.title, subject: l.subject }));
+    try {
+      const extra = JSON.parse(localStorage.getItem('cf_demo_created_lessons') || '[]') as Array<{ id: string; title: string; subject?: string | null }>;
+      return [...base, ...extra.filter(x => !base.some(l => l.id === x.id)).map(x => ({ id: x.id, title: x.title, title_kk: x.title, title_ru: x.title, subject: x.subject || null }))];
+    } catch { return base; }
+  }
+  const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides').order('updated_at', { ascending: false });
+  fail(error);
+  return (data || []).map((row: any) => {
+    const first = Array.isArray(row.slides) ? row.slides[0] : null;
+    return {
+      id: row.id,
+      title: row.title,
+      title_kk: first?.title || row.title,
+      title_ru: first?.ru?.title || row.title,
+      subject: row.subject,
+    };
+  });
 }
 
 export async function loadCurr(me: Me): Promise<Curr> {

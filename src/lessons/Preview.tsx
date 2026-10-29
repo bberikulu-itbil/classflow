@@ -7,7 +7,7 @@ import { tr, useLang } from './lang';
 import { spCtx, useSpoilers } from './spoil';
 
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
-const label = (s: any, i: number) => `${i + 1}. ${s.title || s.prompt || s.type}`.slice(0, 70);
+const label = (s: any, i: number, lang: 'kk' | 'ru') => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
 /** Teacher-only hint under a slide: the right answer and the lecture notes. Nothing here reaches students. */
 const hint = (s: any): string[] => [
   s.type === 'quiz' && Number.isInteger(s.answer) ? `Дұрыс жауап: ${String.fromCharCode(65 + s.answer)}. ${(s.options || [])[s.answer] ?? ''}` : '',
@@ -35,7 +35,8 @@ export function LessonPreview({ id }: { id: string }) {
     };
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   });
-  useEffect(() => { document.title = lesson ? `${lesson.title} · ClassFlow` : document.title; }, [lesson?.title]);
+  const title = (tr(slides[0], lang)?.title || lesson?.title) as string;
+  useEffect(() => { document.title = title ? `${title} · ClassFlow` : document.title; }, [title]);
   const back = <a href="#lessons/modules" className="inline-flex min-h-[44px] items-center gap-1 text-sm text-accent underline"><ArrowLeft size={16} aria-hidden="true" />Модульдер мен дәрістер</a>;
   if (q.loading && !lesson) return <main className="mx-auto max-w-5xl space-y-4 p-4">{back}<Skeleton /></main>;
   if (q.error) return <main className="mx-auto max-w-5xl space-y-4 p-4">{back}<ErrorBox message={q.error} onRetry={q.reload} /></main>;
@@ -45,7 +46,7 @@ export function LessonPreview({ id }: { id: string }) {
     <main className="mx-auto max-w-5xl space-y-3 p-4">
       {back}
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0"><h1 className="text-2xl font-bold break-words">{lesson.title}</h1><p className="text-text-secondary">{lesson.subject || 'Пәнсіз'} · {slides.length} слайд</p></div>
+        <div className="min-w-0"><h1 className="text-2xl font-bold break-words">{title}</h1><p className="text-text-secondary">{lesson.subject || 'Пәнсіз'} · {slides.length} слайд</p></div>
         <div className="flex flex-wrap items-center gap-2">
           {slides.some((x: any) => x.ru) && <button type="button" onClick={flip} aria-label={lang === 'ru' ? 'Язык слайдов: русский. Переключить на казахский' : 'Слайд тілі: қазақша. Орысшаға ауыстыру'} className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'РУС' : 'ҚАЗ'}</button>}
           <LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
@@ -58,7 +59,7 @@ export function LessonPreview({ id }: { id: string }) {
             <button type="button" aria-label="Алдыңғы слайд" disabled={i === 0} onClick={() => go(i - 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface hover:bg-surface-2 disabled:opacity-30"><ChevronLeft size={18} aria-hidden="true" /></button>
             <span aria-live="polite" className="min-w-[4.5rem] text-center text-sm tabular-nums">{i + 1} / {slides.length}</span>
             <button type="button" aria-label="Келесі слайд" disabled={i === last} onClick={() => go(i + 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface hover:bg-surface-2 disabled:opacity-30"><ChevronRight size={18} aria-hidden="true" /></button>
-            <select aria-label="Слайдқа өту" className={inputCls + ' !w-auto min-w-[12rem] flex-1'} value={i} onChange={e => go(+e.target.value)}>{slides.map((x, k) => <option key={k} value={k}>{label(x, k)}</option>)}</select>
+            <select aria-label="Слайдқа өту" className={inputCls + ' !w-auto min-w-[12rem] flex-1'} value={i} onChange={e => go(+e.target.value)}>{slides.map((x, k) => <option key={k} value={k}>{label(x, k, lang)}</option>)}</select>
           </div>
           {notes.length > 0 && <div role="note" className="space-y-1 rounded-lg bg-surface-2 p-3 text-sm text-text-secondary"><p className="font-semibold text-text">Мұғалімге</p>{notes.map((n, k) => <p key={k} className="whitespace-pre-wrap">{n}</p>)}</div>}
         </>
