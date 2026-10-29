@@ -1,277 +1,425 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, FileText, Lightbulb, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
 import { sb, DEMO } from '../config';
+import { Button, Card, ErrorBox, Field, inputCls } from '../ui';
 import { TopBar } from './TopBar';
-import { INP } from './Widgets';
-import { AiPanel } from './AiPanel';
-import { ImagePanel } from './ImagePanel';
-import { ArrowDown, ArrowUp, Copy, GripVertical, LayoutTemplate, Plus, Trash2, Undo2 } from 'lucide-react';
-import { Button, LinkButton, inputCls } from '../ui';
-import { checkPages, fieldsOf, type Field } from '../lessons/blocks';
-import { PagePicker } from '../lessons/PagePicker';
-import { FieldRow } from '../lessons/FieldRow';
-import { CanvasEditor } from '../lessons/CanvasEditor';
-import { newPage, pageOf, PAGE_TYPES, TEMPLATES, tplLabel, typeLabel, type PageType } from '../lessons/pages';
+import { ai } from './AiPanel';
+import * as curriculum from '../curriculum/store';
+import { alignPresentationVariants, importPdf, importPptx, isPdf, isPptx, type PresentationSlide, type PresentationVariant } from '../lessons/presentationImport';
+import { uploadPresentationSlideImage, uploadPresentationSource } from '../lessons/media';
 
-const SAMPLE = [
-  { type: 'title', title: 'Алгоритм', subtitle: '7-сынып · Информатика' },
-  { type: 'content', title: 'Алгоритм деген не?', bullets: ['Әрекеттердің ретті тізбегі', 'Орындаушыға түсінікті болуы керек', 'Соңы бар (ақырлы)'], notes: 'Тұрмыстық мысал: шай қайнату' },
-  { type: 'quiz', title: 'Тест', prompt: 'Қайсысы алгоритм қасиеті?', options: ['Дискреттілік', 'Түс', 'Салмақ'], answer: 0, points: 2, time: 20, speed: true, explanation: 'Алгоритм қадамдарға бөлінеді.' },
-  { type: 'task', title: 'Қысқа жауап', prompt: 'Бағдарлама қай тілде жазылады: Python, ____ ? (бір сөз: C++)', accept: ['c++'], points: 3 },
-  { type: 'code', title: 'Қосынды', prompt: 'Екі бүтін санды оқып (әрқайсысы жеке жолда), олардың қосындысын шығар.', starter: 'a = int(input())\nb = int(input())\n', hints: ['input() жол қайтарады, int() арқылы санға айналдыр', 'print(a + b)'], tests: [{ input: '3\n4', out: '7', label: 'Мысал 1' }, { input: '-5\n5', out: '0' }, { input: '100\n250', out: '350', hidden: true }], points: 5 },
-  { type: 'logic', title: 'Логикалық вентиль', prompt: 'A және B-ні басып көр', gate: 'AND' },
-  { type: 'matching', title: 'Сәйкестендір', pairs: [{ l: 'print', r: 'шығару' }, { l: 'input', r: 'енгізу' }, { l: 'len', r: 'ұзындық' }] },
-  { type: 'flashcards', title: 'Терминдер', cards: [{ front: 'Алгоритм', back: 'Қадамдар тізбегі' }, { front: 'Айнымалы', back: 'Атауы бар жад ұясы' }] },
-  { type: 'leaderboard', title: '🏆 Нәтиже' },
+type Mode = 'manual' | 'ai';
+type PageType = 'slide' | 'scroll' | 'interactive' | 'presentation';
+type Slide = Record<string, any> & { pageType?: PageType; templateId?: string };
+type Term = { term: string; definition: string };
+
+const SAMPLE: Slide[] = [
+  { type: 'title', pageType: 'slide', templateId: 'title', title: 'Жаңа дәріс', subtitle: '7-сынып · Информатика олимпиадасы' },
+  { type: 'content', pageType: 'scroll', templateId: 'theory', title: 'Негізгі түсінік', bullets: ['Анықтаманы түсіндір', 'Қарапайым мысал келтір'], notes: '' },
+  { type: 'code', pageType: 'slide', templateId: 'code-example', title: 'Код мысалы', prompt: 'Есептің шартын осында жазыңыз.', starter: '', hints: [], tests: [] },
+  { type: 'task', pageType: 'interactive', templateId: 'code-task', title: 'Практика', prompt: 'Оқушы орындайтын тапсырма.', accept: [], points: 5 },
 ];
 
-const DK = 'cf_demo_lessons'; // demo mode has no database: lectures live in this browser only
-const demoAll = (): Record<string, any> => { try { return JSON.parse(localStorage.getItem(DK) || '{}'); } catch { return {}; } };
-const STATUS = ['Нобай', 'Тексеруде', 'Жарияланған'];
-const GRADES = ['5', '6', '7', '8', '9', '10', '11'];
-const WARN = 'Бет типін өзгерту кейбір орналасу параметрлерін өзгертуі мүмкін (мәтін мен код сақталады). Өзгерту алдында нобай сақталады — «Қайтару» батырмасымен алуға болады. Жалғастырасың ба?';
-const TYPE_CHIP: Record<PageType, string> = { slide: 'Слайд', scroll: 'Ұзын бет', interactive: 'Интерактив' };
-const card = 'space-y-3 rounded-2xl border border-border bg-surface p-4';
-const iconBtn = 'flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-border disabled:opacity-30';
+const TYPES = ['title', 'content', 'code', 'quiz', 'task', 'matching', 'flashcards', 'presentation'];
+const typeLabel: Record<string, string> = {
+  title: 'Кіріспе', content: 'Түсіндірме', code: 'Код', quiz: 'Тест', task: 'Тапсырма', matching: 'Сәйкестендіру', flashcards: 'Карточкалар', presentation: 'PowerPoint слайды',
+};
+
+const PAGE_TYPES: Array<{ id: PageType; label: string; description: string }> = [
+  { id: 'slide', label: 'Слайд беті', description: '16:9 кадр, презентацияға арналған' },
+  { id: 'scroll', label: 'Ұзын бет', description: 'Төмен сырғитын оқу беті' },
+  { id: 'interactive', label: 'Интерактивті бет', description: 'Жауап, тапсырма және нәтиже' },
+  { id: 'presentation', label: 'PowerPoint слайды', description: 'Түпнұсқа PPTX/PDF көрінісін сақтау' },
+];
+
+const PAGE_TEMPLATES: Record<PageType, Array<{ id: string; label: string; description: string; blockType: string }>> = {
+  slide: [
+    { id: 'title', label: 'Титул', description: 'Тақырып және кіріспе', blockType: 'title' },
+    { id: 'explanation', label: 'Түсіндіру', description: 'Негізгі ұғымды қысқа беру', blockType: 'content' },
+    { id: 'code-example', label: 'Код мысалы', description: 'Код және қысқа түсіндірме', blockType: 'code' },
+    { id: 'comparison', label: 'Салыстыру', description: 'Екі ұғымды қатар көрсету', blockType: 'content' },
+  ],
+  scroll: [
+    { id: 'theory', label: 'Теориялық түсіндіру', description: 'Мәтін, код және шағын бөлімдер', blockType: 'content' },
+    { id: 'worked-example', label: 'Қадамдық мысал', description: 'Есепті шешу жолын көрсету', blockType: 'content' },
+    { id: 'code-guide', label: 'Код + түсіндірме', description: 'Кодты секциялармен ашу', blockType: 'code' },
+    { id: 'summary', label: 'Қорытынды', description: 'Негізгі ойлар мен келесі қадам', blockType: 'content' },
+  ],
+  interactive: [
+    { id: 'single-choice', label: 'Бір жауап', description: 'Бір дұрыс нұсқаны таңдау', blockType: 'quiz' },
+    { id: 'short-answer', label: 'Қысқа жауап', description: 'Оқушы жауапты өзі енгізеді', blockType: 'task' },
+    { id: 'code-task', label: 'Код тапсырмасы', description: 'Кодты орындау және тексеру', blockType: 'code' },
+    { id: 'reflection', label: 'Рефлексия', description: 'Сабақ соңындағы өзіндік бағалау', blockType: 'task' },
+  ],
+  presentation: [
+    { id: 'presentation', label: 'PowerPoint импорт слайды', description: 'Түпнұсқа слайд пен тілдік нұсқаларды сақтау', blockType: 'presentation' },
+  ],
+};
+
+function inferPageType(slide: Slide): PageType {
+  if (slide.type === 'presentation' || slide.pageType === 'presentation') return 'presentation';
+  if (slide.pageType === 'scroll' || slide.pageType === 'interactive' || slide.pageType === 'slide') return slide.pageType;
+  if (['quiz', 'task', 'matching', 'flashcards'].includes(slide.type)) return 'interactive';
+  return 'slide';
+}
+
+function inferTemplateId(slide: Slide, pageType: PageType): string {
+  const templates = PAGE_TEMPLATES[pageType];
+  if (slide.templateId && templates.some(template => template.id === slide.templateId)) return slide.templateId;
+  if (pageType === 'slide' && slide.type === 'title') return 'title';
+  if (pageType === 'slide' && slide.type === 'code') return 'code-example';
+  if (pageType === 'interactive' && slide.type === 'code') return 'code-task';
+  if (pageType === 'interactive' && slide.type === 'quiz') return 'single-choice';
+  if (pageType === 'interactive' && slide.type === 'task') return 'short-answer';
+  if (pageType === 'presentation' && slide.type === 'presentation') return 'presentation';
+  return templates[0].id;
+}
+
+function normalizePage(slide: Slide): Slide {
+  const pageType = inferPageType(slide);
+  return { ...slide, pageType, templateId: inferTemplateId(slide, pageType) };
+}
+
+function pageFromTemplate(pageType: PageType, templateId: string): Slide {
+  const template = PAGE_TEMPLATES[pageType].find(item => item.id === templateId) || PAGE_TEMPLATES[pageType][0];
+  const base: Slide = { type: template.blockType, pageType, templateId: template.id, title: template.label };
+  if (template.blockType === 'title') return { ...base, subtitle: '' };
+  if (template.blockType === 'content') return { ...base, bullets: [], notes: '' };
+  if (template.blockType === 'code') return { ...base, prompt: '', starter: '', hints: [], tests: [] };
+  if (template.blockType === 'quiz') return { ...base, prompt: '', options: [], answer: 0, points: 1 };
+  if (template.blockType === 'presentation') return { ...base, sourceFormat: 'pptx', html: '', css: '' };
+  return { ...base, prompt: '', accept: [], points: 1 };
+}
+
+function decodeRouteId(id: string) {
+  const [lessonId, query] = id.split('?');
+  const params = new URLSearchParams(query || '');
+  return { lessonId, moduleId: params.get('module') || '' };
+}
+
+function parseSlides(value: unknown): Slide[] {
+  return Array.isArray(value) ? value.filter(x => x && typeof x === 'object').map(x => normalizePage(x as Slide)) : [];
+}
+
+function parseTerms(value: unknown): Term[] {
+  return Array.isArray(value) ? value.filter(x => x && typeof x.term === 'string').map(x => ({ term: String(x.term), definition: String(x.definition || '') })) : [];
+}
+
+function displaySlideText(slide: Slide) {
+  const text = slide.sourceName ? `${slide.sourceName} · ${slide.title || `Слайд ${slide.slideNumber || ''}`}` : slide.prompt || slide.notes || (Array.isArray(slide.bullets) ? slide.bullets.join(' · ') : '') || slide.subtitle || '';
+  return String(text).replace(/\s+/g, ' ').trim();
+}
 
 export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; onLogout: () => void }) {
-  const isNew = id === 'new';
+  const route = decodeRouteId(id);
+  const isNew = route.lessonId === 'new';
+  const [mode, setMode] = useState<Mode>('manual');
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('Информатика');
-  const [grade, setGrade] = useState(''), [duration, setDuration] = useState(''), [summary, setSummary] = useState(''), [status, setStatus] = useState(STATUS[0]), [planRaw, setPlanRaw] = useState<any>({});
-  const [loadErr, setLoadErr] = useState(''), [savedAt, setSavedAt] = useState('');
-  const [canvasOpen, setCanvasOpen] = useState(false), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
-  const [slidesJson, setSlidesJson] = useState('');
-  const [termsJson, setTermsJson] = useState('');
-  const [tab, setTab] = useState<'manual' | 'ai'>('manual'), [sel, setSel] = useState(0), [picking, setPicking] = useState(false), [chg, setChg] = useState(false);
-  const [msg, setMsg] = useState(''), [canUndo, setCanUndo] = useState(false), undo = React.useRef<string | null>(null);
+  const [subject, setSubject] = useState('Информатика олимпиадасы');
+  const [grade, setGrade] = useState('7');
+  const [duration, setDuration] = useState('90 минут');
+  const [summary, setSummary] = useState('');
+  const [objectives, setObjectives] = useState('');
+  const [slides, setSlides] = useState<Slide[]>(SAMPLE);
+  const slidesRef = useRef<Slide[]>(SAMPLE);
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [rawSlides, setRawSlides] = useState('');
+  const [rawTerms, setRawTerms] = useState('');
+  const [rawOpen, setRawOpen] = useState(false);
+  const [pagePickerOpen, setPagePickerOpen] = useState(false);
+  const [newPageType, setNewPageType] = useState<PageType>('slide');
+  const [newPageTemplate, setNewPageTemplate] = useState('title');
+  const [loading, setLoading] = useState(!isNew);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiObjective, setAiObjective] = useState('');
+  const [aiInstruction, setAiInstruction] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [presentationBusy, setPresentationBusy] = useState(false);
+  const [presentationVariant, setPresentationVariant] = useState<PresentationVariant>('kk');
+  const presentationFile = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { slidesRef.current = slides; }, [slides]);
 
   useEffect(() => {
-    setLoadErr('');
-    const apply = (data: any) => {
-      setTitle(data.title || ''); setSubject(data.subject || '');
-      const pl = data.plan && typeof data.plan === 'object' && !Array.isArray(data.plan) ? data.plan : {}, m = pl.meta || {};
-      setPlanRaw(pl); setGrade(String(m.grade || '')); setDuration(String(m.duration || '')); setSummary(String(m.summary || '')); setStatus(STATUS.includes(m.status) ? m.status : STATUS[0]);
-      setSlidesJson(JSON.stringify(data.slides || [], null, 1)); setTermsJson(JSON.stringify(data.terms || [], null, 1)); setSel(0);
-    };
-    const sample = { slides: SAMPLE, terms: [{ term: 'Алгоритм', definition: 'Есепті шешу қадамдарының тізбегі' }] };
-    if (isNew) apply({ subject: 'Информатика', ...sample });
-    else if (DEMO) apply(demoAll()[id] || { title: 'Демо дәріс', subject: 'Информатика', ...sample });
-    else {
-      let live = true;
-      sb.from('cf_lessons').select('*').eq('id', id).maybeSingle().then(({ data, error }) => {
-        if (!live) return;
-        if (error || !data) setLoadErr(error?.message || 'Дәріс табылмады'); else apply(data);
-      });
-      return () => { live = false; };
-    }
-  }, [id, isNew]);
-
-  let pages: any[] | null = null;
-  try { const v = JSON.parse(slidesJson || '[]'); if (Array.isArray(v)) pages = v; } catch { /* the folded JSON box shows the problem */ }
-  const cur = pages && pages.length ? Math.min(sel, pages.length - 1) : -1, page = cur >= 0 ? pages![cur] : null;
-  const fields = page ? fieldsOf(page) : [];
-  const put = (next: any[], note: string, snap = true) => { if (snap) { undo.current = slidesJson; setCanUndo(true); } setSlidesJson(JSON.stringify(next, null, 1)); setMsg(note ? note + ' «Сақтау» батырмасын бас.' : ''); };
-  const edit = (f: Field, v: any) => put(pages!.map((s, k) => (k === cur ? f.set(v) : s)), '', false);
-  const move = (i: number, d: number) => { const n = [...pages!]; [n[i], n[i + d]] = [n[i + d], n[i]]; put(n, 'Бет жылжытылды.'); setSel(i + d); };
-  const dup = (i: number) => { const n = [...pages!]; n.splice(i + 1, 0, JSON.parse(JSON.stringify(n[i]))); put(n, 'Бет көшірілді.'); setSel(i + 1); };
-  const del = (i: number) => { if (confirm(`«${pages![i].title || 'Бет ' + (i + 1)}» бетін өшіру керек пе?`)) { put(pages!.filter((_, k) => k !== i), 'Бет өшірілді.'); setSel(Math.max(0, i - 1)); } };
-  const secs = (fn: (a: any[]) => any[], note: string) => put(pages!.map((s, k) => (k === cur ? { ...s, sections: fn([...(s.sections || [])]) } : s)), note);
-  const create = (t: PageType, tpl: string, name: string) => { const p = newPage(t, tpl, name || TEMPLATES[t].find(x => x.id === tpl)!.label); put([...pages!, p], 'Бет қосылды.'); setSel(pages!.length); setPicking(false); setTab('manual'); if (p.type === 'canvas') setCanvasOpen(true); };
-  const reorder = (from: number, to: number) => { setDragFrom(null); setDragOver(null); if (from === to) return; const n = [...pages!]; n.splice(to, 0, n.splice(from, 1)[0]); put(n, 'Бет жылжытылды.'); setSel(to); };
-  const setSlide = (sl: any) => setSlidesJson(prev => { try { const a = JSON.parse(prev); a[cur] = sl; return JSON.stringify(a, null, 1); } catch { return prev; } });
-  const setType = (t: PageType) => { if (!page || t === pageOf(page).pageType || !confirm(WARN)) return; put(pages!.map((s, k) => (k === cur ? { ...s, pageType: t, templateId: '' } : s)), 'Бет типі өзгертілді.'); };
-  const setTpl = (tid: string) => put(pages!.map((s, k) => (k === cur ? { ...s, pageType: pageOf(s).pageType, templateId: tid } : s)), 'Үлгі белгісі өзгертілді.');
-  const row = (f: Field) => <FieldRow key={cur + f.id} uid={'f' + cur} f={f} options={page.options || []} onChange={v => edit(f, v)} />;
-  const issues = pages ? checkPages(pages) : [];
-  const nInter = pages ? pages.filter(s => pageOf(s).pageType === 'interactive').length : 0;
-  const nBlocks = pages ? pages.reduce((a, s) => a + fieldsOf(s).length, 0) : 0;
-
-  const save = async (stay = false) => {
-    if (loadErr) return;
-    let slides, terms;
-    try {
-      slides = JSON.parse(slidesJson);
-      terms = JSON.parse(termsJson || '[]');
-      if (!Array.isArray(slides)) throw 0;
-    } catch {
-      alert('JSON қате');
-      return;
-    }
-    if (!title.trim()) {
-      alert('Тақырып жаз');
-      return;
-    }
-    const meta = { grade, duration: duration ? +duration : '', summary: summary.trim(), status };
-    const row = { title: title.trim(), subject, slides, terms, plan: { ...planRaw, meta } };
-    if (DEMO) {
-      const all = demoAll(), key = isNew ? 'demo-' + Date.now().toString(36) : id;
-      all[key] = row;
-      try { localStorage.setItem(DK, JSON.stringify(all)); } catch { alert('Браузер сақтауға рұқсат бермеді'); return; }
-      if (stay) { setSavedAt(new Date().toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' })); return; }
-      alert('Демо режимінде сақталды (тек осы браузерде)'); window.location.hash = ''; return;
-    }
     if (isNew) {
-      const { error } = await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id });
-      if (error) { alert('Сақталмады: ' + error.message); return; }
-    } else {
-      const { error } = await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id);
-      if (error) { alert('Сақталмады: ' + error.message); return; }
+      setTitle('');
+      setSubject('Информатика олимпиадасы');
+      setGrade('7');
+      setDuration('90 минут');
+      setSummary('');
+      setObjectives('');
+      setSlides(SAMPLE);
+      setTerms([]);
+      setLoading(false);
+      return;
     }
-    if (stay) { setSavedAt(new Date().toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' })); return; }
-    alert('Сақталды');
-    window.location.hash = '';
+    setLoading(true);
+    sb.from('cf_lessons').select('*').eq('id', route.lessonId).single().then(({ data, error: readError }) => {
+      if (readError) setError(readError.message);
+      if (data) {
+        setTitle(data.title || '');
+        setSubject(data.subject || '');
+        setSlides(parseSlides(data.slides));
+        setTerms(parseTerms(data.terms));
+        setSummary(data.plan?.summary || '');
+        setObjectives(Array.isArray(data.plan?.objectives) ? data.plan.objectives.join('\n') : '');
+        setGrade(String(data.plan?.grade || '7'));
+        setDuration(data.plan?.duration || '90 минут');
+      }
+      setLoading(false);
+    });
+  }, [isNew, route.lessonId]);
+
+  const updateSlide = (index: number, patch: Slide) => setSlides(items => items.map((item, i) => i === index ? normalizePage({ ...item, ...patch }) : item));
+  const changePageType = (index: number, pageType: PageType) => {
+    const template = PAGE_TEMPLATES[pageType][0];
+    setSlides(items => items.map((item, i) => i === index ? { ...item, pageType, templateId: template.id, type: template.blockType } : item));
   };
-  const sel2 = 'min-h-[44px] w-full rounded-md border border-border-input bg-surface px-2 text-sm text-text';
+  const changeTemplate = (index: number, templateId: string) => {
+    const page = slides[index];
+    const template = PAGE_TEMPLATES[inferPageType(page)].find(item => item.id === templateId);
+    setSlides(items => items.map((item, i) => i === index ? { ...item, templateId, type: template?.blockType || item.type } : item));
+  };
+  const moveSlide = (index: number, direction: -1 | 1) => setSlides(items => {
+    const next = index + direction;
+    if (next < 0 || next >= items.length) return items;
+    const copy = [...items];
+    [copy[index], copy[next]] = [copy[next], copy[index]];
+    return copy;
+  });
+  const openPagePicker = () => {
+    setNewPageType('slide');
+    setNewPageTemplate(PAGE_TEMPLATES.slide[0].id);
+    setPagePickerOpen(true);
+  };
+  const createPage = () => {
+    setSlides(items => [...items, pageFromTemplate(newPageType, newPageTemplate)]);
+    setPagePickerOpen(false);
+  };
+
+  const importSource = async (file: File | undefined) => {
+    if (!file) return;
+    if (!isPptx(file) && !isPdf(file)) return setError('Тек .pptx немесе .pdf файлын импорттауға болады.');
+    setError(''); setMessage(''); setPresentationBusy(true);
+    try {
+      const imported = isPptx(file) ? await importPptx(file, presentationVariant) : await importPdf(file, presentationVariant);
+      if (!imported.length) throw new Error('Файлдан слайд табылмады.');
+      let rendered = imported;
+      if (!DEMO && me?.school_id) {
+        rendered = [];
+        for (const slide of imported) {
+          if (!slide.img?.startsWith('data:')) {
+            rendered.push(slide);
+            continue;
+          }
+          const img = await uploadPresentationSlideImage(slide.img, me.school_id);
+          rendered.push({ ...slide, img });
+        }
+      }
+      let sourceUrl = '';
+      let sourceWarning = '';
+      if (!DEMO && me?.school_id) {
+        try {
+          sourceUrl = await uploadPresentationSource(file, me.school_id);
+        } catch (e) {
+          // The slide representation is the lesson content. Keep the import usable
+          // when the optional source-archive bucket is not configured yet.
+          sourceWarning = e instanceof Error ? e.message : 'түпнұсқа файл архиві сақталмады';
+        }
+      }
+      const withSource = rendered.map((slide: PresentationSlide) => ({ ...slide, ...(sourceUrl ? { sourceUrl } : {}) }));
+      if (presentationVariant === 'kk') {
+        setSlides(items => [...items, ...withSource]);
+        setTitle(prev => prev.trim() || file.name.replace(/\.(pptx|pdf)$/i, ''));
+        setSummary(prev => prev || 'Түпнұсқа презентация слайдтары дәріс форматына импортталды.');
+      } else {
+        const currentBase = slidesRef.current.filter(item => inferPageType(item) === 'presentation') as unknown as PresentationSlide[];
+        if (!currentBase.length) throw new Error('Орысша нұсқаны қосу үшін алдымен қазақша PPTX/PDF слайдтарын импорттаңыз.');
+        const aligned = alignPresentationVariants(currentBase, withSource);
+        setSlides(items => {
+          let baseIndex = 0;
+          return items.map(slide => {
+            if (inferPageType(slide) !== 'presentation') return slide;
+            const variant = aligned[baseIndex++];
+            if (!variant) return slide;
+            const { type: _type, pageType: _pageType, templateId: _templateId, ...langSlide } = variant as any;
+            return { ...slide, ru: langSlide };
+          });
+        });
+        const matched = aligned.filter(Boolean).length;
+        const missing = currentBase.length - matched;
+        setMessage(`${imported.length} слайд орысша нұсқа ретінде қосылды${missing > 0 ? `; ${missing} қазақша слайдқа сәйкес бет табылмады` : ''}.`);
+        return;
+      }
+      setMessage(`${imported.length} слайд дәріске импортталды.${sourceWarning ? ' Түпнұсқа файл архиві сақталмады, бірақ слайдтар сақталады.' : ''}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Презентацияны импорттау мүмкін болмады.');
+    } finally {
+      setPresentationBusy(false);
+    }
+  };
+
+  const generateWithAi = async () => {
+    if (!aiTopic.trim()) return setError('ЖИ арқылы жасау үшін дәріс тақырыбын жазыңыз.');
+    setError(''); setMessage(''); setAiBusy(true);
+    try {
+      const result = await ai('slides', {
+        topic: aiTopic.trim(),
+        grade,
+        count: 10,
+        subject,
+        duration,
+        objective: aiObjective.trim(),
+        extra: aiInstruction.trim(),
+        language: 'kk',
+      });
+      if (!result || !Array.isArray(result.slides)) throw new Error('ЖИ бос немесе жарамсыз нәтиже қайтарды.');
+      setTitle(prev => prev.trim() || aiTopic.trim());
+      setSummary(prev => prev || `${aiTopic.trim()} тақырыбы бойынша ${grade}-сыныпқа арналған дәріс.`);
+      setSlides(parseSlides(result.slides));
+      setTerms(parseTerms(result.terms));
+      setMode('manual');
+      setMessage('ЖИ нобайы дайын. Енді мазмұнды тексеріп, қолмен түзете аласыз.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ЖИ нобайын жасау мүмкін болмады.');
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const save = async () => {
+    if (!title.trim()) return setError('Дәрістің атауын жазыңыз.');
+    setError(''); setMessage(''); setSaving(true);
+    const plan = { summary: summary.trim(), objectives: objectives.split('\n').map(x => x.trim()).filter(Boolean), grade: +grade || 7, duration };
+    const row = { title: title.trim(), subject: subject.trim() || null, slides, terms, plan };
+    try {
+      let lessonId = route.lessonId;
+      if (DEMO) {
+        lessonId = lessonId === 'new' ? `demo-${Date.now()}` : lessonId;
+        const key = 'cf_demo_created_lessons';
+        const current = JSON.parse(localStorage.getItem(key) || '[]');
+        const next = [...current.filter((x: any) => x.id !== lessonId), { id: lessonId, ...row }];
+        localStorage.setItem(key, JSON.stringify(next));
+      } else if (isNew) {
+        const result = await sb.from('cf_lessons').insert({ ...row, owner_id: me.id, school_id: me.school_id }).select('id').single();
+        if (result.error) throw new Error(result.error.message);
+        lessonId = result.data.id;
+      } else {
+        const result = await sb.from('cf_lessons').update({ ...row, updated_at: new Date().toISOString() }).eq('id', route.lessonId);
+        if (result.error) throw new Error(result.error.message);
+      }
+      // Existing module lessons are already placed in the curriculum. Re-loading
+      // the whole curriculum after every edit is unnecessary and can make a
+      // successful lesson save look like a failure when that secondary request
+      // is unavailable. Only place a newly created lesson here.
+      if (route.moduleId && lessonId && isNew) {
+        const current = await curriculum.loadCurr(me);
+        await curriculum.placeLesson(me, lessonId, route.moduleId, curriculum.nextPosition(current.places.filter(p => p.module_id === route.moduleId)));
+      }
+      setMessage('Дәріс сақталды.');
+      setTimeout(() => { window.location.hash = route.moduleId ? 'lessons/modules' : 'lessons/mine'; }, 500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Дәрісті сақтау мүмкін болмады.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-bg text-text grid place-items-center">Дәріс жүктелуде...</div>;
 
   return (
-    <div data-theme="teal" className="min-h-screen bg-bg text-text">
+    <div className="min-h-screen bg-bg text-text">
       <TopBar me={me} onLogout={onLogout} />
-      <div className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-2">
-          <nav aria-label="Орналасу" className="text-sm text-text-secondary"><a className="underline" href="#lessons/modules">Модульдер</a> / <span>Дәріс</span></nav>
-          <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title || 'Жаңа дәріс'}</h1>
-          <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
-          {!isNew && <LinkButton variant="ghost" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
-          <Button disabled={!!loadErr} onClick={() => save()}>Сақтау</Button>
+      <main className="mx-auto max-w-5xl space-y-4 p-4 pb-12">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-sm font-semibold text-accent">ClassFlow · Дәріс конструкторы</p><h1 className="mt-1 text-2xl font-bold">{isNew ? 'Жаңа дәріс' : 'Дәрісті өңдеу'}</h1><p className="mt-1 text-sm text-text-secondary">Негізгі мазмұнды оңай толтырыңыз, толық құрылымды кейін ашыңыз.</p></div>
+          <div className="flex gap-2"><Button variant="secondary" onClick={() => { window.location.hash = route.moduleId ? 'lessons/modules' : 'lessons/mine'; }}>Болдырмау</Button><Button loading={saving} onClick={save}>Сақтау</Button></div>
         </div>
-        <div role="tablist" aria-label="Жасау тәсілі" className="mx-auto flex max-w-7xl gap-1 px-4">
-          {([['manual', 'Қолмен жасау'], ['ai', 'ЖИ арқылы жасау']] as const).map(([k, l]) => (
-            <button key={k} type="button" role="tab" id={'tab-' + k} aria-selected={tab === k} aria-controls="tabpanel" onClick={() => setTab(k)} className={`min-h-[48px] border-b-4 px-4 font-semibold ${tab === k ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text'}`}>{l}</button>
-          ))}
+
+        {(error || message) && (error ? <ErrorBox message={error} /> : <p role="status" className="rounded-lg bg-success-soft p-3 text-sm text-success">{message}</p>)}
+
+        <div className="flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Дәріс жасау режимі">
+          <button type="button" role="tab" aria-selected={mode === 'manual'} onClick={() => setMode('manual')} className={`min-h-[44px] flex-1 rounded-md px-3 text-sm font-semibold ${mode === 'manual' ? 'bg-surface text-text shadow-card' : 'text-text-secondary hover:text-text'}`}><FileText size={16} className="mr-2 inline" aria-hidden="true" />Қолмен жасау</button>
+          <button type="button" role="tab" aria-selected={mode === 'ai'} onClick={() => setMode('ai')} className={`min-h-[44px] flex-1 rounded-md px-3 text-sm font-semibold ${mode === 'ai' ? 'bg-surface text-text shadow-card' : 'text-text-secondary hover:text-text'}`}><Sparkles size={16} className="mr-2 inline" aria-hidden="true" />ЖИ арқылы жасау</button>
         </div>
-      </div>
-      <main id="tabpanel" role="tabpanel" aria-labelledby={'tab-' + tab} className="mx-auto grid max-w-7xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0 space-y-4">
-          {loadErr && <p role="alert" className="rounded-xl border-2 border-danger bg-danger-soft p-3 text-danger">Дәріс жүктелмеді: {loadErr}. Бос мәтінді қателесіп сақтап жібермеу үшін «Сақтау» өшірілген.</p>}
-          {tab === 'ai' && (
-            <AiPanel
-              mode="slides"
-              countLabel="Слайд саны"
-              countDef={10}
-              onResult={r => {
-                setSlidesJson(JSON.stringify(r.slides || [], null, 1));
-                setTermsJson(JSON.stringify(r.terms || [], null, 1));
-                setSel(0); setTab('manual');
-                alert('Слайдтар дайын. Тест жауаптары мен код-тесттерді тексеріп шық! ЖИ нәтижесі нобай болып қалады — әр бетті қарап шық.');
-              }}
-              onParams={v => {
-                if (!title.trim()) setTitle(v.topic);
-              }}
-            />
-          )}
-          {tab === 'manual' && (
-            <>
-              <div><h2 className="text-3xl font-bold">Дәріс конструкторы</h2><p className="text-text-secondary">Негізгі ақпаратты толтырып, дәрісті беттерге бөліп құрастырыңыз.</p></div>
-              <section aria-label="Негізгі ақпарат" className={card}>
-                <h3 className="text-xl font-bold">Негізгі ақпарат</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm text-text-secondary sm:col-span-2">Дәріс атауы<input className={`${inputCls} mt-1 text-text`} value={title} onChange={e => setTitle(e.target.value)} placeholder="Сабақ тақырыбы" /></label>
-                  <label className="block text-sm text-text-secondary">Пән<input className={`${inputCls} mt-1 text-text`} value={subject} onChange={e => setSubject(e.target.value)} placeholder="Пән" /></label>
-                  <label className="block text-sm text-text-secondary">Сынып<select className={`${inputCls} mt-1 text-text`} value={grade} onChange={e => setGrade(e.target.value)}><option value="">— таңдалмаған</option>{GRADES.map(g => <option key={g} value={g}>{g}-сынып</option>)}</select></label>
-                  <label className="block text-sm text-text-secondary">Ұзақтығы, минут<input type="number" min={5} max={240} className={`${inputCls} mt-1 text-text`} value={duration} onChange={e => setDuration(e.target.value)} placeholder="45" /></label>
-                  <label className="block text-sm text-text-secondary">Күйі<select className={`${inputCls} mt-1 text-text`} value={status} onChange={e => setStatus(e.target.value)}>{STATUS.map(x => <option key={x}>{x}</option>)}</select></label>
-                  <label className="block text-sm text-text-secondary sm:col-span-2">Қысқаша сипаттама<textarea rows={2} maxLength={400} className={`${inputCls} mt-1 py-2 text-text`} value={summary} onChange={e => setSummary(e.target.value)} placeholder="Дәрістің мақсаты немесе мазмұны" /></label>
-                </div>
-              </section>
-              <section aria-label="Беттер" className={card}>
-                <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-xl font-bold">Дәріс беттері {pages ? `(${pages.length})` : ''}</h3><p className="text-sm text-text-secondary">Бет типі көріністі анықтайды, ал блоктар бет ішіндегі мазмұнды құрайды.</p></div></div>
-                {!pages ? <p role="alert" className="text-sm text-danger">Алдымен төмендегі «Толық құрылым» ішіндегі JSON қатесін түзет.</p> : (
-                  <ol aria-label="Дәріс беттері" className="space-y-2">{pages.map((s, i) => {
-                    const p = pageOf(s), t = s.title || s.prompt || `Бет ${i + 1}`;
-                    return (
-                      <li key={i} draggable onDragStart={e => { setDragFrom(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }} onDragEnd={() => { setDragFrom(null); setDragOver(null); }} onDragOver={e => { if (dragFrom !== null) { e.preventDefault(); setDragOver(i); } }} onDrop={e => { e.preventDefault(); if (dragFrom !== null) reorder(dragFrom, i); }}
-                        className={`flex flex-wrap items-center gap-1 rounded-xl border-2 p-1 ${dragOver === i && dragFrom !== null && dragFrom !== i ? 'border-dashed border-accent' : i === cur ? 'border-accent bg-accent-soft' : 'border-border'} ${dragFrom === i ? 'opacity-50' : ''}`}>
-                        <span aria-hidden="true" title="Сүйреп ауыстыру" className="flex h-11 w-6 shrink-0 cursor-grab items-center justify-center text-text-muted"><GripVertical size={18} /></span>
-                        <button type="button" aria-current={i === cur ? 'true' : undefined} onClick={() => setSel(i)} className="flex min-h-[56px] min-w-[10rem] flex-1 items-center gap-3 rounded-lg px-2 text-left">
-                          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 font-bold tabular-nums">{i + 1}</span>
-                          <span className="min-w-0 flex-1"><b className="block break-words">{t}</b><span className="text-sm text-text-secondary">{tplLabel(p.pageType, p.templateId) || typeLabel(p.pageType)} · {fieldsOf(s).length} блок</span></span>
-                          <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold">{TYPE_CHIP[p.pageType]}</span>
-                        </button>
-                        <span className="flex">
-                          <button type="button" aria-label={`${i + 1}-бетті жоғары жылжыту`} disabled={i === 0} onClick={() => move(i, -1)} className={iconBtn}><ArrowUp size={18} aria-hidden="true" /></button>
-                          <button type="button" aria-label={`${i + 1}-бетті төмен жылжыту`} disabled={i === pages!.length - 1} onClick={() => move(i, 1)} className={iconBtn}><ArrowDown size={18} aria-hidden="true" /></button>
-                          <button type="button" aria-label={`${i + 1}-бетті көшіру`} onClick={() => dup(i)} className={iconBtn}><Copy size={18} aria-hidden="true" /></button>
-                          <button type="button" aria-label={`${i + 1}-бетті өшіру`} onClick={() => del(i)} className={iconBtn + ' !text-danger'}><Trash2 size={18} aria-hidden="true" /></button>
-                        </span>
-                      </li>
-                    );
-                  })}</ol>
-                )}
-                <button type="button" disabled={!pages} onClick={() => setPicking(true)} className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent font-semibold text-accent hover:bg-accent-soft disabled:opacity-40"><Plus size={18} aria-hidden="true" />Жаңа бет: алдымен типін, кейін үлгісін таңдаңыз</button>
-              </section>
-              {page && (
-                <section aria-label="Таңдалған бет ішіндегі блоктар" className={card}>
-                  <h3 className="text-xl font-bold">Таңдалған бет ішіндегі блоктар <span className="text-base font-normal text-text-secondary">· {cur + 1}-бет</span></h3>
-                  {fields.length ? <div className="space-y-2">{page.type === 'solution' ? <>
-                    {fields.filter(f => !/^[hbtcx]\d+$/.test(f.id)).map(row)}
-                    {(page.sections || []).map((_: any, i: number, all: any[]) => (
-                      <div key={i} role="group" aria-label={`${i + 1}-бөлім`} className="space-y-2 rounded-xl border-2 border-border p-2">
-                        <div className="flex items-center justify-between"><b>{i + 1}-бөлім</b><span className="flex">
-                          <button type="button" aria-label={`${i + 1}-бөлімді жоғары жылжыту`} disabled={i === 0} className={iconBtn} onClick={() => secs(a => { [a[i - 1], a[i]] = [a[i], a[i - 1]]; return a; }, 'Бөлім жылжытылды.')}><ArrowUp size={18} aria-hidden="true" /></button>
-                          <button type="button" aria-label={`${i + 1}-бөлімді төмен жылжыту`} disabled={i === all.length - 1} className={iconBtn} onClick={() => secs(a => { [a[i + 1], a[i]] = [a[i], a[i + 1]]; return a; }, 'Бөлім жылжытылды.')}><ArrowDown size={18} aria-hidden="true" /></button>
-                          <button type="button" aria-label={`${i + 1}-бөлімді өшіру`} className={iconBtn + ' !text-danger'} onClick={() => { if (confirm(`${i + 1}-бөлімді өшіру керек пе?`)) secs(a => a.filter((_, k) => k !== i), 'Бөлім өшірілді.'); }}><Trash2 size={18} aria-hidden="true" /></button>
-                        </span></div>
-                        {fields.filter(f => new RegExp(`^[hbtcx]${i}$`).test(f.id)).map(row)}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => secs(a => [...a, { h: 'Жаңа бөлім', bullets: ['…'] }], 'Бөлім қосылды.')} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent font-semibold text-accent hover:bg-accent-soft"><Plus size={18} aria-hidden="true" />Бөлім қосу</button>
-                  </> : fields.map(row)}</div> : <p className="text-sm text-text-secondary">Бұл бет түрінің өрістерін «Толық құрылым» ішінде өңдеуге болады.</p>}
-                  {<Button variant="secondary" onClick={() => setCanvasOpen(true)}><LayoutTemplate size={16} aria-hidden="true" />Слайд редакторын ашу</Button>}
-                  {page.type === 'code' && <p className="text-sm text-text-secondary">Код тесттері (input / out) «Толық құрылым» ішінде өңделеді.</p>}
-                </section>
-              )}
-              <ImagePanel json={slidesJson} setJson={setSlidesJson} schoolId={me.school_id} />
-              <details className="rounded-2xl border border-border bg-surface p-4">
-                <summary className="cursor-pointer text-lg font-bold">Толық құрылым және техникалық өрістер (JSON)</summary>
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs text-text-secondary">
-                    Слайдтар (JSON). pageType (slide | scroll | interactive) және templateId — беттер тізімінен қойылады. Түрлері: title, content, quiz, task, code, logic, matching, flashcards, solution, leaderboard. solution: sections = [&#123;h, text | bullets, code?, hide?, img?&#125;] — төмен қарай тізілген бөлімдер, hide:true — «Көрсету» басқанша жасырын. Мәтін ішінде ||жасырын|| — нүктелер болып тұрады, басқанда немесе тақтадағы Алға/Көрсету басқанда ашылады. ru: &#123;title, bullets, …&#125; — орысша өрістер (ҚАЗ/РУС ауыстырғышы). img + alt = сурет (title, content, quiz, task, code; төмендегі «Сурет қосу» арқылы); quiz: answer = дұрыс нұсқа нөмірі (0-ден); task: accept = қабылданатын жауаптар; time = секунд, speed:true = жылдамдыққа бонус; code: tests = [&#123;input, out, hidden?&#125;], hints = [...].
-                  </p>
-                  <textarea aria-label="Слайдтар JSON" className={`${INP} h-96 font-mono`} value={slidesJson} onChange={e => setSlidesJson(e.target.value)} />
-                  <p className="text-xs text-text-secondary">Терминдер (JSON): [&#123;term, definition&#125;]</p>
-                  <textarea aria-label="Терминдер JSON" className={`${INP} h-28 font-mono`} value={termsJson} onChange={e => setTermsJson(e.target.value)} />
-                </div>
-              </details>
-            </>
-          )}
-        </div>
-        <aside aria-label="Құрастыру көмегі" className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary">Құрастыру көмегі</h2>
-          {page && (
-            <section aria-label="Белсенді бет" className="space-y-2 rounded-2xl border-2 border-accent bg-accent-soft p-4">
-              <h3 className="text-lg font-bold">Белсенді бет</h3>
-              <p className="text-sm text-text-secondary">{typeLabel(pageOf(page).pageType)} · «{tplLabel(pageOf(page).pageType, pageOf(page).templateId) || 'үлгісіз'}» үлгісі</p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" aria-expanded={chg} onClick={() => setChg(c => !c)}>Бет түрін өзгерту</Button>
-                {canUndo && <Button variant="secondary" onClick={() => { setSlidesJson(undo.current!); undo.current = null; setCanUndo(false); setMsg('Соңғы өзгеріс қайтарылды.'); }}><Undo2 size={16} aria-hidden="true" />Қайтару</Button>}
+
+        {mode === 'ai' && (
+          <Card className="space-y-4 border-accent/30">
+            <div><h2 className="font-semibold">ЖИ-ге тапсырма беріңіз</h2><p className="mt-1 text-sm text-text-secondary">ЖИ алдымен дәріс нобайын жасайды. Ол автоматты түрде жарияланбайды.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Дәріс тақырыбы">{inputId => <input id={inputId} className={inputCls} value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="Мысалы: prefix sum" />}</Field>
+              <Field label="Сынып">{inputId => <select id={inputId} className={inputCls} value={grade} onChange={e => setGrade(e.target.value)}><option value="7">7-сынып</option><option value="8">8-сынып</option><option value="9">9-сынып</option></select>}</Field>
+              <Field label="Ұзақтығы">{inputId => <select id={inputId} className={inputCls} value={duration} onChange={e => setDuration(e.target.value)}><option>45 минут</option><option>90 минут</option><option>120 минут</option></select>}</Field>
+              <Field label="Пән">{inputId => <input id={inputId} className={inputCls} value={subject} onChange={e => setSubject(e.target.value)} />}</Field>
+              <Field label="Негізгі оқу мақсаты">{inputId => <textarea id={inputId} className={inputCls + ' min-h-[88px] py-2'} value={aiObjective} onChange={e => setAiObjective(e.target.value)} placeholder="Оқушы дәріс соңында нені білуі керек?" />}</Field>
+              <Field label="Мұғалімнің арнайы нұсқауы">{inputId => <textarea id={inputId} className={inputCls + ' min-h-[88px] py-2'} value={aiInstruction} onChange={e => setAiInstruction(e.target.value)} placeholder="Мысалы: C++17, индекстер 0-ден басталсын" />}</Field>
+            </div>
+            <div className="flex flex-wrap items-center gap-3"><Button loading={aiBusy} onClick={generateWithAi}><Sparkles size={16} aria-hidden="true" />ЖИ нобайын жасау</Button><span className="text-xs text-text-secondary">Нәтижені міндетті түрде мұғалім тексереді.</span></div>
+          </Card>
+        )}
+
+        <Card className="space-y-4">
+          <div><h2 className="font-semibold">Негізгі ақпарат</h2><p className="mt-1 text-sm text-text-secondary">Бұл өрістер дәріс картасында және КТП-да көрсетіледі.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Дәріс атауы">{inputId => <input id={inputId} className={inputCls} value={title} onChange={e => setTitle(e.target.value)} placeholder="Мысалы: prefix sum" />}</Field>
+            <Field label="Пән">{inputId => <input id={inputId} className={inputCls} value={subject} onChange={e => setSubject(e.target.value)} />}</Field>
+            <Field label="Сынып">{inputId => <select id={inputId} className={inputCls} value={grade} onChange={e => setGrade(e.target.value)}><option value="7">7-сынып</option><option value="8">8-сынып</option><option value="9">9-сынып</option></select>}</Field>
+            <Field label="Ұзақтығы">{inputId => <select id={inputId} className={inputCls} value={duration} onChange={e => setDuration(e.target.value)}><option>45 минут</option><option>90 минут</option><option>120 минут</option></select>}</Field>
+            <Field label="Қысқаша сипаттама">{inputId => <textarea id={inputId} className={inputCls + ' min-h-[88px] py-2'} value={summary} onChange={e => setSummary(e.target.value)} placeholder="Дәріс соңында оқушы нені меңгереді?" />}</Field>
+            <Field label="Оқу мақсаттары">{inputId => <textarea id={inputId} className={inputCls + ' min-h-[88px] py-2'} value={objectives} onChange={e => setObjectives(e.target.value)} placeholder="Әр мақсатты жаңа жолдан жазыңыз" />}</Field>
+          </div>
+        </Card>
+
+        {pagePickerOpen && (
+          <Card className="space-y-4 border-accent/30">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">Жаңа бет қосу</h2><p className="mt-1 text-sm text-text-secondary">Алдымен бет типін, содан кейін сол типке арналған үлгіні таңдаңыз.</p></div><Button variant="secondary" onClick={() => setPagePickerOpen(false)}>Жабу</Button></div>
+            <div className="grid gap-2 md:grid-cols-3">
+              {PAGE_TYPES.map(pageType => (
+                <button key={pageType.id} type="button" aria-pressed={newPageType === pageType.id} onClick={() => { setNewPageType(pageType.id); setNewPageTemplate(PAGE_TEMPLATES[pageType.id][0].id); }} className={`rounded-lg border p-3 text-left transition ${newPageType === pageType.id ? 'border-accent bg-accent-soft' : 'border-border hover:bg-surface-2'}`}>
+                  <span className="font-semibold">{pageType.label}</span><span className="mt-1 block text-xs text-text-secondary">{pageType.description}</span>
+                </button>
+              ))}
+            </div>
+            <div><h3 className="mb-2 text-sm font-semibold">Бет үлгісі</h3><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {PAGE_TEMPLATES[newPageType].map(template => (
+                <button key={template.id} type="button" aria-pressed={newPageTemplate === template.id} onClick={() => setNewPageTemplate(template.id)} className={`rounded-lg border p-3 text-left transition ${newPageTemplate === template.id ? 'border-accent bg-accent-soft' : 'border-border hover:bg-surface-2'}`}>
+                  <span className="block text-sm font-semibold">{template.label}</span><span className="mt-1 block text-xs text-text-secondary">{template.description}</span>
+                </button>
+              ))}
+            </div></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-2 p-3"><p className="text-sm text-text-secondary">Таңдалғаны: <b className="text-text">{PAGE_TYPES.find(item => item.id === newPageType)?.label}</b> · {PAGE_TEMPLATES[newPageType].find(item => item.id === newPageTemplate)?.label}</p><Button onClick={createPage}><Plus size={16} aria-hidden="true" />Бетті жасау</Button></div>
+          </Card>
+        )}
+
+        <Card className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 className="font-semibold">Дәріс беттері</h2><p className="mt-1 text-sm text-text-secondary">PowerPoint немесе PDF слайды түпнұсқа көрінісімен сақталады. Орысша нұсқа сол нөмірдегі қазақша слайдқа қосылады.</p></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select aria-label="Импорт тілін таңдау" className={inputCls + ' !w-auto'} value={presentationVariant} onChange={e => setPresentationVariant(e.target.value as PresentationVariant)}>
+                <option value="kk">Қазақша слайдтар</option><option value="ru">Орысша нұсқа</option>
+              </select>
+              <Button variant="secondary" loading={presentationBusy} onClick={() => presentationFile.current?.click()}><Upload size={16} aria-hidden="true" />PowerPoint/PDF импорттау</Button>
+              <input ref={presentationFile} type="file" className="sr-only" accept=".pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf" onChange={e => { importSource(e.target.files?.[0]); e.target.value = ''; }} />
+              <Button variant="secondary" onClick={openPagePicker}><Plus size={16} aria-hidden="true" />Бет қосу</Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {slides.map((slide, index) => (
+              <div key={index} className="rounded-lg border border-border p-3">
+                <div className="flex flex-wrap items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent-soft text-sm font-bold text-accent">{index + 1}</span><select aria-label={`Бет ${index + 1}: типі`} className={inputCls + ' !w-auto min-w-[9rem]'} value={inferPageType(slide)} onChange={e => changePageType(index, e.target.value as PageType)}>{PAGE_TYPES.map(pageType => <option key={pageType.id} value={pageType.id}>{pageType.label}</option>)}</select><select aria-label={`Бет ${index + 1}: үлгісі`} className={inputCls + ' !w-auto min-w-[10rem]'} value={inferTemplateId(slide, inferPageType(slide))} onChange={e => changeTemplate(index, e.target.value)}>{PAGE_TEMPLATES[inferPageType(slide)].map(template => <option key={template.id} value={template.id}>{template.label}</option>)}</select><select aria-label={`Блок ${index + 1}: түрі`} className={inputCls + ' !w-auto min-w-[9rem]'} value={slide.type || 'content'} onChange={e => updateSlide(index, { type: e.target.value })}>{TYPES.map(type => <option key={type} value={type}>{typeLabel[type]}</option>)}</select><input aria-label={`Бет ${index + 1}: атауы`} className={inputCls + ' min-w-[12rem] flex-1'} value={slide.title || ''} onChange={e => updateSlide(index, { title: e.target.value })} placeholder="Бет атауы" /><button type="button" className="rounded-md p-2 text-text-secondary hover:bg-surface-2 disabled:opacity-30" disabled={index === 0} onClick={() => moveSlide(index, -1)} aria-label="Жоғары жылжыту"><ArrowUp size={16} aria-hidden="true" /></button><button type="button" className="rounded-md p-2 text-text-secondary hover:bg-surface-2 disabled:opacity-30" disabled={index === slides.length - 1} onClick={() => moveSlide(index, 1)} aria-label="Төмен жылжыту"><ArrowDown size={16} aria-hidden="true" /></button><button type="button" className="rounded-md p-2 text-danger hover:bg-danger-soft" onClick={() => setSlides(items => items.filter((_, i) => i !== index))} aria-label="Бетті өшіру"><Trash2 size={16} aria-hidden="true" /></button></div>
+                <p className="mt-2 pl-10 text-xs text-text-secondary"><span className="font-semibold text-text">{PAGE_TYPES.find(item => item.id === inferPageType(slide))?.label}</span> · {PAGE_TEMPLATES[inferPageType(slide)].find(item => item.id === inferTemplateId(slide, inferPageType(slide)))?.label} · {displaySlideText(slide) || 'Бет мазмұны толық құрылымда толтырылады.'}</p>
               </div>
-              {chg && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold">Бет типі<select aria-label={`${cur + 1}-бет: типі`} className={sel2} value={pageOf(page).pageType} onChange={e => setType(e.target.value as PageType)}>{PAGE_TYPES.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select></label>
-                  <label className="block text-sm font-semibold">Үлгі<select aria-label={`${cur + 1}-бет: үлгісі`} className={sel2} value={pageOf(page).templateId} onChange={e => setTpl(e.target.value)}>
-                    {!TEMPLATES[pageOf(page).pageType].some(x => x.id === pageOf(page).templateId) && <option value={pageOf(page).templateId}>{pageOf(page).templateId || '— үлгісіз'}</option>}
-                    {TEMPLATES[pageOf(page).pageType].map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
-                  </select></label>
-                </div>
-              )}
-            </section>
-          )}
-          <section aria-label="Келесі қадам" className="space-y-2 rounded-2xl border border-border bg-surface p-4">
-            <h3 className="text-lg font-bold">Келесі қадам</h3>
-            <p className="text-sm text-text-secondary">Беттерді реттеңіз немесе бетке жаңа элемент қосыңыз.</p>
-            {!isNew && <LinkButton variant="secondary" href={'#preview/' + id}>Алдын ала қарау</LinkButton>}
-          </section>
-          <section aria-label="Тексеру" className="space-y-2 rounded-2xl border border-border bg-surface p-4">
-            <h3 className="text-lg font-bold">Тексеру</h3>
-            <p className="text-sm text-text-secondary">{pages ? `${pages.length} бет · ${nBlocks} блок · ${nInter} интерактивті бет` : 'JSON қатесі бар'}</p>
-            {issues.length > 0 ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{issues.map((x, k) => <li key={k}>{x}</li>)}</ul> : pages && <p className="text-sm text-success">Ескертулер жоқ.</p>}
-            <Button disabled={!!loadErr} onClick={() => save()}>Сақтау</Button>
-          </section>
-          <p role="status" className="text-sm text-text-secondary">{msg}</p>
-        </aside>
+            ))}
+          </div>
+          <button type="button" className="flex w-full items-center justify-between rounded-md border border-border px-3 py-3 text-left text-sm font-semibold text-text-secondary hover:bg-surface-2" onClick={() => setRawOpen(v => !v)} aria-expanded={rawOpen}><span><Lightbulb size={16} className="mr-2 inline text-warning" aria-hidden="true" />Толық құрылым және техникалық өрістер</span><ChevronDown size={16} className={rawOpen ? 'rotate-180' : ''} aria-hidden="true" /></button>
+          {rawOpen && <div className="grid gap-3 sm:grid-cols-2"><Field label="Беттер мен блоктар JSON">{inputId => <textarea id={inputId} className={inputCls + ' min-h-[260px] py-2 font-mono text-xs'} value={rawSlides || JSON.stringify(slides, null, 2)} onChange={e => setRawSlides(e.target.value)} onBlur={() => { try { setSlides(parseSlides(JSON.parse(rawSlides))); setError(''); } catch { setError('Беттер JSON форматы дұрыс емес.'); } }} />}</Field><Field label="Терминдер JSON">{inputId => <textarea id={inputId} className={inputCls + ' min-h-[260px] py-2 font-mono text-xs'} value={rawTerms || JSON.stringify(terms, null, 2)} onChange={e => setRawTerms(e.target.value)} onBlur={() => { try { setTerms(parseTerms(JSON.parse(rawTerms))); setError(''); } catch { setError('Терминдер JSON форматы дұрыс емес.'); } }} />}</Field></div>}
+        </Card>
+
+        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-text-secondary">Нобай сақталады. Жарияламас бұрын код, тест жауаптары және тапсырмалар тексеріледі.</p><Button loading={saving} onClick={save}>Сақтау және шығу</Button></div>
       </main>
-      {canvasOpen && page && <CanvasEditor pages={pages!} cur={cur} schoolId={me.school_id} title={title} status={status} saved={savedAt} previewHref={isNew ? undefined : '#preview/' + id} onTitle={setTitle} onAdd={() => setPicking(true)} onReorder={(f, t) => { reorder(f, t); setSel(cur === f ? t : cur < f && cur >= t ? cur + 1 : cur > f && cur <= t ? cur - 1 : cur); }} onSave={() => save(!isNew)} onChange={setSlide} onSelect={setSel} onClose={ch => { setCanvasOpen(false); if (ch) setMsg('Слайд өзгерді. «Сақтау» батырмасын бас.'); }} />}
-      {picking && <PagePicker onCancel={() => setPicking(false)} onCreate={create} />}
     </div>
   );
 }

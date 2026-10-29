@@ -125,7 +125,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
   const slide = priv[cur] || {};
   const next = priv[cur + 1];
-  const isTask = ['quiz', 'task', 'code'].includes(slide.type);
+  const isTask = slide.pageType !== 'scroll' && ['quiz', 'task', 'code'].includes(slide.type);
   const open = task && task.status === 'open';
   const onlineCount = parts.filter(p => p.presence === 'online').length;
   const hands = parts.filter(p => p.hand);

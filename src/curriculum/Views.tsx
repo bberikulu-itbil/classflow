@@ -104,7 +104,7 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
   const { data, error, loading, reload, msg, act } = useCurr(me);
   const [lang, flipLang] = useLang();
   const [cid, setCid] = useState(courseId || st.selectedCourse());
-  const [show, setShow] = useState<Show>('now'), [grade, setGrade] = useState('');
+  const [show, setShow] = useState<Show>('lessons'), [grade, setGrade] = useState('');
   const [form, setForm] = useState(false), [fe, setFe] = useState('');
   const [nf, setNf] = useState<{ title: string; kind: Kind; quarter: string; grade: string; course: string }>({ title: '', kind: 'lesson', quarter: String(currentQuarter()), grade: '', course: '' });
   const [ask, setAsk] = useState<Mod | null>(null);

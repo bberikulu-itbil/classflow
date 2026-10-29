@@ -422,6 +422,19 @@ const tableBlock = (table: any, big: boolean) => Array.isArray(table?.headers) &
     </div>
   : null;
 
+const presentationBlock = (s: any, big: boolean) => {
+  const html = typeof s.html === 'string' ? s.html : '';
+  const css = typeof s.css === 'string' ? s.css : '';
+  if (!html && typeof s.img === 'string') {
+    return <figure key="presentation-image" className="my-2 flex justify-center overflow-hidden rounded-xl bg-white"><img src={s.img} alt={s.alt || ''} className={`${big ? 'max-h-[78vh]' : 'max-h-[62vh]'} max-w-full object-contain`} /></figure>;
+  }
+  if (!html) return <p className="rounded-xl border border-dashed border-slate-600 p-6 text-slate-400">Бұл презентация слайды әлі импортталмаған.</p>;
+  return <figure key="presentation" className="my-2 overflow-auto rounded-xl bg-white text-black">
+    <style dangerouslySetInnerHTML={{ __html: css }} />
+    <div className="min-w-[640px]" dangerouslySetInnerHTML={{ __html: html }} />
+  </figure>;
+};
+
 /** Visual language for the standard ACMP solution sections. The content stays
  * accessible text, while the card, icon and colour make the thinking path
  * visible at a glance. */
@@ -521,6 +534,11 @@ export function renderSlide(s: any, ctx: any = {}) {
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         imgBlock(s, big),
         s.starter && <pre className={`p-3 bg-[#0F172A] rounded-xl text-[#E2E8F5] font-mono ${big ? 'text-xl' : 'text-sm'}`}>{s.starter}</pre>
+      );
+    case 'presentation':
+      return wrap(
+        <div className="mb-2 flex items-center justify-between gap-2 text-sm text-slate-400"><span>{s.sourceName || 'Импортталған презентация'}</span><span>{s.slideNumber ? `${s.slideNumber}-слайд` : ''}</span></div>,
+        presentationBlock(s, big)
       );
     case 'solution':
       return wrap(

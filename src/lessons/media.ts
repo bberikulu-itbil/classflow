@@ -27,5 +27,34 @@ export async function uploadSlideImage(file: File, schoolId: string): Promise<st
   return sb.storage.from('cf-media').getPublicUrl(path).data.publicUrl;
 }
 
+/** Stores a rendered presentation page outside the lesson JSON and returns its URL. */
+export async function uploadPresentationSlideImage(dataUrl: string, schoolId: string): Promise<string> {
+  const match = dataUrl.match(/^data:([^;,]+);base64,(.+)$/);
+  if (!match) throw new Error('Слайд суретінің форматы танылмады');
+  const [, contentType, encoded] = match;
+  const bytes = Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
+  const blob = new Blob([bytes], { type: contentType || 'image/webp' });
+  if (blob.size > 2 * 1024 * 1024) throw new Error('Импорт слайды тым ауыр (2 МБ-тан асады)');
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/jpeg' ? 'jpg' : 'webp';
+  const path = `${schoolId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await sb.storage.from('cf-media').upload(path, blob, {
+    contentType: contentType || 'image/webp',
+    cacheControl: '31536000',
+  });
+  if (error) throw new Error(error.message);
+  return sb.storage.from('cf-media').getPublicUrl(path).data.publicUrl;
+}
+
+/** Keeps the original PPTX/PDF beside its imported slide representation. */
+export async function uploadPresentationSource(file: File, schoolId: string): Promise<string> {
+  if (!/\.(pptx|pdf)$/i.test(file.name)) throw new Error('Тек PPTX немесе PDF бастапқы файлы болады');
+  if (file.size > 50 * 1024 * 1024) throw new Error('Презентация файлы 50 МБ-тан аспауы керек');
+  const ext = file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'pptx';
+  const path = `${schoolId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await sb.storage.from('cf-presentations').upload(path, file, { contentType: file.type || (ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation'), cacheControl: '31536000' });
+  if (error) throw new Error(error.message);
+  return sb.storage.from('cf-presentations').getPublicUrl(path).data.publicUrl;
+}
+
 /** Slide kinds that draw `img` (keep in step with renderSlide). */
 export const IMG_TYPES = ['title', 'content', 'quiz', 'task', 'code'];

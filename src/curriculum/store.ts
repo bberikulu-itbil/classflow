@@ -19,13 +19,20 @@ const missing = (e: { code?: string }) => e.code === 'PGRST205' || e.code === '4
 const key = (me: Me) => 'cf_curriculum_' + me.id;
 type Store = Pick<Curr, 'courses' | 'modules' | 'places'>;
 const demoSeed = (): Store => ({
-  courses: [{ id: 'k1', title: 'Информатика 7', subject: 'Информатика', grade: 7 }],
+  courses: [
+    { id: 'k1', title: 'Информатика 7', subject: 'Информатика', grade: 7 },
+    { id: 'k2', title: 'Робототехника', subject: 'Робототехника', grade: null },
+  ],
   modules: [
     { id: 'm1', course_id: 'k1', title: 'Алгоритмдер', position: 0, kind: 'lesson', quarter: currentQuarter(), grade: 7 },
     { id: 'm2', course_id: 'k1', title: 'Бағдарламалау негіздері', position: 1, kind: 'lesson', quarter: null, grade: 7 },
-    { id: 'm3', course_id: 'k1', title: 'Робототехника үйірмесі', position: 2, kind: 'course', quarter: null, grade: 8 },
+    { id: 'm3', course_id: 'k2', title: 'Робототехника', position: 0, kind: 'course', quarter: null, grade: null },
   ],
-  places: [{ lesson_id: 'l1', module_id: 'm1', position: 0 }, { lesson_id: 'l2', module_id: 'm1', position: 1 }],
+  places: [
+    { lesson_id: 'l1', module_id: 'm1', position: 0 },
+    { lesson_id: 'l2', module_id: 'm1', position: 1 },
+    ...['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7'].map((lesson_id, position) => ({ lesson_id, module_id: 'm3', position })),
+  ],
 });
 function readLocal(me: Me): Store {
   try {
@@ -46,18 +53,19 @@ export async function loadLessons(meId: string): Promise<Les[]> {
       return [...base, ...extra.filter(x => !base.some(l => l.id === x.id)).map(x => ({ id: x.id, title: x.title, title_kk: x.title, title_ru: x.title, subject: x.subject || null }))];
     } catch { return base; }
   }
-  const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides').order('updated_at', { ascending: false });
+  // The curriculum screen only needs lecture labels. Do not fetch the full
+  // `slides` JSON here: imported PowerPoint/PDF lectures can contain dozens
+  // of rendered pages, and loading that payload used to hide/slow the whole
+  // course tree before it could be displayed.
+  const { data, error } = await sb.from('cf_lessons').select('id,title,subject').order('updated_at', { ascending: false });
   fail(error);
-  return (data || []).map((row: any) => {
-    const first = Array.isArray(row.slides) ? row.slides[0] : null;
-    return {
-      id: row.id,
-      title: row.title,
-      title_kk: first?.title || row.title,
-      title_ru: first?.ru?.title || row.title,
-      subject: row.subject,
-    };
-  });
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    title: row.title,
+    title_kk: row.title,
+    title_ru: row.title,
+    subject: row.subject,
+  }));
 }
 
 export async function loadCurr(me: Me): Promise<Curr> {

@@ -15,6 +15,13 @@ function demo(): LessonData & { parts: Part[]; scores: Score[] } {
     { id: 'l2', title: 'Айнымалылар', subject: 'Информатика', class_id: null },
     { id: 'l3', title: 'Шартты оператор', subject: 'Информатика', class_id: null },
     { id: 'l4', title: 'Жай бөлшектер', subject: 'Математика', class_id: 'c7a' },
+    { id: 'r1', title: 'USTEM Foundation', subject: 'Робототехника', class_id: null },
+    { id: 'r2', title: 'FIRST және алдыңғы маусымдар', subject: 'Робототехника', class_id: null },
+    { id: 'r3', title: 'Canopy маусымы', subject: 'Робототехника', class_id: null },
+    { id: 'r4', title: 'FLL', subject: 'Робототехника', class_id: null },
+    { id: 'r5', title: 'FLL future edition', subject: 'Робототехника', class_id: null },
+    { id: 'r6', title: 'FTC', subject: 'Робототехника', class_id: null },
+    { id: 'r7', title: 'Social Media Challenge & Stemshop', subject: 'Робототехника', class_id: null },
   ];
   const mk = (id: string, l: Lesson, cls: string, at: string, status = 'ended'): Sess => ({ id, title: l.title, lesson_id: l.id, class_id: cls, status, started_at: at, ended_at: at, created_at: at });
   const sessions = [

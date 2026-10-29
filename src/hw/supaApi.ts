@@ -41,7 +41,7 @@ export function makeSupaApi(me: Me): HwApi {
       fail(error);
       return (data || []).flatMap((l: any) => (Array.isArray(l.slides) ? l.slides : [])
         .map((slide: any, index: number) => ({ lessonId: l.id, lessonTitle: l.title, index, slide }))
-        .filter((x: any) => x.slide && x.slide.type === 'code'));
+        .filter((x: any) => x.slide && x.slide.type === 'code' && (!x.slide.pageType || x.slide.pageType === 'interactive')));
     },
     async listClasses() { const { data, error } = await sb.from('classes').select('id,name').order('name'); fail(error); return data || []; },
     async assign(i) {

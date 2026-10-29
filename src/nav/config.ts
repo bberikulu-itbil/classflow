@@ -19,18 +19,15 @@ export const ROLE_NAMES: Record<string, string> = {
 
 export const TEACHER: Section[] = [
   { key: 'home', label: 'Басты бет', icon: House, routes: [''], subs: [] },
-  { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'course', 'preview', 'edit', 'plans', 'plan'], subs: [
-    { key: 'modules', label: 'Сабақтар', to: 'lessons/modules', also: ['preview'] },
-    { key: 'courses', label: 'Курстар', to: 'lessons/courses', also: ['course'] },
-    { key: 'mine', label: 'Менің сабақтарым', to: 'lessons/mine', also: ['lesson'] },
-    { key: 'schedule', label: 'КТП (кесте)', to: 'lessons/schedule' },
-    { key: 'editor', label: 'Сабақ редакторы', to: 'edit/new' },
-    { key: 'plans', label: 'Жоспарлар', to: 'plans' },
-    { key: 'gallery', label: 'Ортақ галерея', items: ['Дайын сабақтар', 'Әріптестердің сабақтары'] },
+  { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'edit', 'plans', 'plan'], subs: [
+    { key: 'modules', label: 'Модульдер', to: 'lessons/modules' },
+    { key: 'courses', label: 'Курстар', to: 'lessons/courses' },
+    { key: 'schedule', label: 'КТП', to: 'lessons/schedule' },
+    { key: 'gallery', label: 'Ортақ кітапхана', icon: Library, items: ['Дайын дәрістер', 'Әріптестердің материалдары'] },
   ] },
   { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'assign', 'review'], to: 'assign', subs: [
     { key: 'assigned', label: 'Күнделікті тапсырмалар', icon: Send, to: 'assign' },
-    { key: 'projects', label: 'Жобалар', icon: FolderKanban, to: 'tasks/projects' },
+    { key: 'projects', label: 'Жобалар', icon: FolderKanban, items: ['Ұзақмерзімді жұмыстарды бақылау'] },
     { key: 'jeopardy', label: 'Jeopardy', icon: Gamepad2, to: 'tasks/jeopardy' },
     { key: 'bank', label: 'Тапсырмалар банкі', icon: Library, items: ['Түрі, сыныбы, оқу мақсаты бойынша іздеу'] },
     { key: 'builder', label: 'Конструктор', icon: PencilRuler, items: ['Жеке, жұптық және топтық тапсырмалар'] },

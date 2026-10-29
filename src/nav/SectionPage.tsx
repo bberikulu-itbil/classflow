@@ -5,7 +5,6 @@ import type { Role, Section } from './config';
 import { Jeopardy } from '../views/Jeopardy';
 import { ClassesView } from '../views/ClassesView';
 import { ReviewQueue } from '../views/ReviewQueue';
-import { Projects } from '../views/Projects';
 import { PastSessions } from '../views/lessons';
 import { LessonsGallery } from '../lessons/LessonsGallery';
 import { Gradebook } from '../journal/Gradebook';
@@ -18,13 +17,13 @@ import { ProfileCard } from '../components/ProfileView';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
   return (
-    <nav aria-label={`${section.label} бөлімдері`} className="border-b border-border overflow-x-auto overscroll-x-contain">
-      <ul className="flex gap-1 min-w-max pb-1">
+    <nav aria-label={`${section.label} бөлімдері`} className="border-b border-border overflow-x-auto">
+      <ul className="flex gap-1 min-w-max">
         {section.subs.map(s => (
           <li key={s.key}>
             <a href={'#' + (s.to ?? `${section.key}/${s.key}`)} aria-current={s.key === active ? 'page' : undefined}
-              className={`flex items-center gap-2 min-h-[44px] px-3 text-sm whitespace-nowrap border-b-2 ${s.key === active ? 'border-accent text-on-accent-soft bg-accent-soft font-semibold rounded-t-lg' : 'border-transparent text-text-secondary hover:text-text hover:bg-surface-2 rounded-t-lg'}`}>
-              {s.icon && <s.icon size={18} aria-hidden="true" className="shrink-0" />}{s.label}{!s.to && <SoonChip />}
+              className={`flex items-center gap-2 min-h-[44px] px-3 text-sm whitespace-nowrap border-b-2 ${s.key === active ? 'border-accent text-text font-semibold' : 'border-transparent text-text-secondary hover:text-text'}`}>
+              {s.icon && <s.icon size={18} aria-hidden="true" className="shrink-0" />}{s.label}{!s.to && <SoonChip iconOnly={s.key === 'gallery'} />}
             </a>
           </li>
         ))}
@@ -54,7 +53,6 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:lessons:mine': c => <LessonsGallery me={c.me} />,
   'teacher:journal:lessons': c => <PastSessions meId={c.me.id} />,
   'teacher:tasks:queue': () => <ReviewQueue />,
-  'teacher:tasks:projects': c => <Projects me={c.me} />,
   'teacher:tasks:jeopardy': c => <Jeopardy me={c.me} />,
   'teacher:lessons:courses': c => <CoursesView me={c.me} />,
   'teacher:lessons:modules': c => <ModulesView me={c.me} />,

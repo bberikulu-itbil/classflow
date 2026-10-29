@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flag, Loader2 } from 'lucide-react';
+import { Clock3, Flag, Loader2 } from 'lucide-react';
 import type { Status } from '../hw/types';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -87,8 +87,10 @@ export function useLoad<T>(fn: () => Promise<T>, deps: React.DependencyList) {
   return { ...state, reload: run };
 }
 
-export function SoonChip() {
-  return <span className="inline-block rounded-full bg-surface-2 text-text-secondary text-xs font-medium px-2 py-0.5 whitespace-nowrap">Жақында</span>;
+export function SoonChip({ iconOnly = false }: { iconOnly?: boolean }) {
+  return iconOnly
+    ? <span title="Жақында" aria-label="Жақында" className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-text-secondary"><Clock3 size={14} aria-hidden="true" /></span>
+    : <span className="inline-block rounded-full bg-surface-2 text-text-secondary text-xs font-medium px-2 py-0.5 whitespace-nowrap">Жақында</span>;
 }
 
 /** A planned screen: says what it will hold, never shows invented numbers. */
