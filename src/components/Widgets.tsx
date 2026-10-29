@@ -422,6 +422,34 @@ const tableBlock = (table: any, big: boolean) => Array.isArray(table?.headers) &
     </div>
   : null;
 
+/** Visual language for the standard ACMP solution sections. The content stays
+ * accessible text, while the card, icon and colour make the thinking path
+ * visible at a glance. */
+const solutionVisual = (h: unknown, hidden = false) => {
+  const label = String(h || '').toLowerCase();
+  if (hidden || /шешімі|решение|код/.test(label)) return { icon: '💻', bg: 'bg-slate-950/60', border: 'border-slate-600', iconBg: 'bg-slate-700', accent: 'text-slate-200' };
+  if (/берілуі|условие|шарты/.test(label)) return { icon: '📌', bg: 'bg-blue-950/35', border: 'border-blue-500/50', iconBg: 'bg-blue-600/30', accent: 'text-blue-300' };
+  if (/түсіндірілуі|объяснение|талдау/.test(label)) return { icon: '💡', bg: 'bg-amber-950/30', border: 'border-amber-500/50', iconBg: 'bg-amber-500/20', accent: 'text-amber-300' };
+  if (/алгоритмі|алгоритм|қадам/.test(label)) return { icon: '⚙️', bg: 'bg-emerald-950/30', border: 'border-emerald-500/50', iconBg: 'bg-emerald-500/20', accent: 'text-emerald-300' };
+  if (/деректер|структура/.test(label)) return { icon: '🧩', bg: 'bg-violet-950/30', border: 'border-violet-500/50', iconBg: 'bg-violet-500/20', accent: 'text-violet-300' };
+  if (/псевдокод/.test(label)) return { icon: '🗺️', bg: 'bg-cyan-950/30', border: 'border-cyan-500/50', iconBg: 'bg-cyan-500/20', accent: 'text-cyan-300' };
+  return { icon: '✨', bg: 'bg-slate-800/60', border: 'border-slate-600', iconBg: 'bg-slate-700', accent: 'text-blue-300' };
+};
+
+const bulletIcon = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+
+const visualBullets = (items: any[], big: boolean, inner: (t: string) => React.ReactNode, tone = 'blue') => {
+  const toneClass = tone === 'green' ? 'border-emerald-500/30 bg-emerald-950/20' : tone === 'amber' ? 'border-amber-500/30 bg-amber-950/20' : 'border-slate-600 bg-slate-800/70';
+  return <div className={`grid gap-2 ${items.length > 3 ? 'md:grid-cols-2' : ''}`}>
+    {(items || []).map((b: string, i: number) => (
+      <div key={i} className={`flex gap-3 rounded-xl border p-3 ${toneClass}`}>
+        <span aria-hidden="true" className="mt-0.5 shrink-0 text-lg font-black text-amber-300">{bulletIcon[i] || '•'}</span>
+        <p className={`${big ? 'text-2xl' : 'text-base'} whitespace-pre-wrap leading-relaxed text-slate-200`}>{inner(b)}</p>
+      </div>
+    ))}
+  </div>;
+};
+
 export function renderSlide(s: any, ctx: any = {}) {
   const sp = ctx.sp, R = (t: string) => rich(t, sp);
   const big = ctx.mode === 'board';
@@ -431,21 +459,19 @@ export function renderSlide(s: any, ctx: any = {}) {
     return wrap(
       <article className="max-w-3xl mx-auto overflow-hidden rounded-2xl bg-slate-900 border border-slate-700">
         <header className="bg-emerald-950/60 px-6 py-8 md:px-10">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Оқу беті</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">🧠 Оқу картасы</p>
           <h1 className={`${big ? 'text-6xl' : 'text-4xl'} mt-3 font-black text-white`}>{s.title || 'Ұзын бет'}</h1>
           {s.subtitle && <p className="mt-3 text-lg text-slate-300">{s.subtitle}</p>}
         </header>
         <div className="space-y-8 px-6 py-8 md:px-10 md:py-10">
           {s.type === 'content' && (
             <section>
-              <ul className={`${big ? 'text-3xl space-y-4' : 'text-xl space-y-3'} list-disc pl-6 text-slate-200`}>
-                {(s.bullets || []).map((b: string, i: number) => <li key={i}>{b}</li>)}
-              </ul>
+              {visualBullets(s.bullets || [], big, R, 'green')}
             </section>
           )}
-          {s.prompt && <section className="border-l-4 border-emerald-500 pl-4"><p className={`${big ? 'text-3xl' : 'text-xl'} whitespace-pre-wrap text-slate-200`}>{s.prompt}</p></section>}
-          {s.starter && <section><h2 className="mb-3 text-lg font-bold text-white">Код мысалы</h2><pre className={`${big ? 'text-xl' : 'text-sm'} overflow-auto rounded-xl bg-[#0F172A] p-4 text-[#E2E8F5] font-mono`}>{s.starter}</pre></section>}
-          {s.notes && <section className="rounded-xl bg-amber-950/50 p-4 text-amber-200"><b>Ескертпе:</b> {s.notes}</section>}
+          {s.prompt && <section className="rounded-2xl border border-blue-500/40 bg-blue-950/30 p-4"><div className="mb-2 text-2xl">💬</div><p className={`${big ? 'text-3xl' : 'text-xl'} whitespace-pre-wrap text-slate-200`}>{s.prompt}</p></section>}
+          {s.starter && <section><h2 className="mb-3 text-lg font-bold text-white">💻 Код мысалы</h2><pre className={`${big ? 'text-xl' : 'text-sm'} overflow-auto rounded-xl bg-[#0F172A] p-4 text-[#E2E8F5] font-mono`}>{s.starter}</pre></section>}
+          {s.notes && <section className="rounded-xl border border-amber-500/40 bg-amber-950/50 p-4 text-amber-200"><b>⚠️ Ескертпе:</b> {s.notes}</section>}
           {!s.bullets?.length && !s.prompt && !s.starter && !s.notes && <p className="text-slate-400">Бұл бетке мазмұн қосылмаған.</p>}
         </div>
       </article>
@@ -463,12 +489,8 @@ export function renderSlide(s: any, ctx: any = {}) {
       );
     case 'content':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
-        <ul className={`${big ? 'text-3xl space-y-4' : 'text-xl space-y-2'} list-disc pl-6 text-slate-200`}>
-          {(s.bullets || []).map((b: string, i: number) => (
-            <li key={i}>{R(b)}</li>
-          ))}
-        </ul>,
+        s.title && <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600/25 text-2xl">📚</span><h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black text-white`}>{s.title}</h2></div>,
+        visualBullets(s.bullets || [], big, R),
         codeBlock(s, big),
         imgBlock(s, big)
       );
@@ -505,14 +527,15 @@ export function renderSlide(s: any, ctx: any = {}) {
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-2 text-white`}>{s.title}</h2>,
         ...(s.sections || []).map((sec: any, i: number) => {
           const idx = sec.hide && sp ? sp.n++ : -1, closed = idx >= 0 && !sp.shown.has(idx), inner = sec.hide ? (t: string) => rich(t) : R;
+          const visual = solutionVisual(sec.h, !!sec.hide);
           return (
-            <section key={i} className={sec.variant === 'statement' ? 'mt-6 rounded-2xl border-2 border-blue-500/60 bg-slate-800/70 p-4' : 'mt-6 border-t border-slate-700 pt-4'}>
-              {sec.h && <h3 className={`${big ? 'text-3xl' : 'text-xl'} mb-2 font-bold text-blue-400`}>{sec.h}</h3>}
+            <section key={i} className={`mt-6 rounded-2xl border p-4 shadow-lg ${sec.variant === 'statement' ? 'border-2 border-blue-500/60 bg-blue-950/30' : `${visual.border} ${visual.bg}`}`}>
+              {sec.h && <div className="mb-3 flex items-center gap-3"><span aria-hidden="true" className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xl ${visual.iconBg}`}>{visual.icon}</span><h3 className={`${big ? 'text-3xl' : 'text-xl'} font-bold ${visual.accent}`}>{sec.h}</h3></div>}
               {closed ? (
                 <button type="button" onClick={() => sp.show(idx)} aria-label={`${sec.h || ''}: көрсету`} className={`${big ? 'text-2xl' : 'text-lg'} w-full cursor-pointer rounded-xl border border-dashed border-slate-500 bg-slate-800 px-4 py-3 text-left text-slate-200 hover:bg-slate-700`}>Көрсету</button>
               ) : (<>
                 {sec.text && <p className={`${big ? 'text-2xl' : 'text-lg'} whitespace-pre-wrap text-slate-200`}>{inner(sec.text)}</p>}
-                {Array.isArray(sec.bullets) && <ul className={`${big ? 'text-2xl space-y-2' : 'text-lg space-y-1'} list-disc pl-6 text-slate-200`}>{sec.bullets.map((b: string, k: number) => <li key={k}>{inner(b)}</li>)}</ul>}
+                {Array.isArray(sec.bullets) && visualBullets(sec.bullets, big, inner, /алгоритм|қадам/i.test(String(sec.h || '')) ? 'green' : 'blue')}
                 {tableBlock(sec.table, big)}
                 {imgBlock(sec, big)}
                 {codeBlock({ code: sec.code, lang: sec.lang }, big)}
