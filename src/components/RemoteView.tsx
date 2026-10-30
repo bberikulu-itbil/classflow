@@ -11,6 +11,76 @@ const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'бет
 const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
 
+interface LessonTarget { id: string; title: string; moduleTitle: string }
+interface RemoteNavigation {
+  moduleTitle: string;
+  lessonPosition: number;
+  lessonCount: number;
+  previousLesson: LessonTarget | null;
+  nextLesson: LessonTarget | null;
+  previousModule: LessonTarget | null;
+  nextModule: LessonTarget | null;
+}
+
+/** Builds navigation from the teacher's course tree without changing the live session snapshot. */
+async function loadRemoteNavigation(lessonId: string): Promise<RemoteNavigation | null> {
+  const placement = await sb.from('cf_curr_lessons').select('lesson_id,module_id,position').eq('lesson_id', lessonId).maybeSingle();
+  if (placement.error) throw new Error(placement.error.message);
+  if (!placement.data) return null;
+
+  const currentModule = await sb.from('cf_curr_modules').select('id,title,course_id,position').eq('id', placement.data.module_id).maybeSingle();
+  if (currentModule.error) throw new Error(currentModule.error.message);
+  if (!currentModule.data) return null;
+  const moduleRow = currentModule.data;
+
+  const [modulesRes, placesRes] = await Promise.all([
+    sb.from('cf_curr_modules').select('id,title,position').eq('course_id', moduleRow.course_id).order('position'),
+    sb.from('cf_curr_lessons').select('lesson_id,module_id,position'),
+  ]);
+  if (modulesRes.error) throw new Error(modulesRes.error.message);
+  if (placesRes.error) throw new Error(placesRes.error.message);
+
+  const places = (placesRes.data || []).filter((p: any) => (modulesRes.data || []).some((m: any) => m.id === p.module_id));
+  const lessonIds = [...new Set(places.map((p: any) => p.lesson_id))];
+  if (!lessonIds.length) return null;
+  const lessonsRes = await sb.from('cf_lessons').select('id,title').in('id', lessonIds);
+  if (lessonsRes.error) throw new Error(lessonsRes.error.message);
+  const lessonById = new Map((lessonsRes.data || []).map((l: any) => [l.id, l.title]));
+  const modules = [...(modulesRes.data || [])].sort((a: any, b: any) => a.position - b.position);
+  const moduleLessons = (moduleId: string): LessonTarget[] => places
+    .filter((p: any) => p.module_id === moduleId && lessonById.has(p.lesson_id))
+    .sort((a: any, b: any) => a.position - b.position)
+    .map((p: any) => ({ id: p.lesson_id, title: lessonById.get(p.lesson_id) || 'Дәріс', moduleTitle: modules.find((m: any) => m.id === moduleId)?.title || 'Модуль' }));
+
+  const moduleIndex = modules.findIndex((m: any) => m.id === moduleRow.id);
+  const currentLessons = moduleLessons(moduleRow.id);
+  const currentIndex = currentLessons.findIndex(x => x.id === lessonId);
+  if (moduleIndex < 0 || currentIndex < 0) return null;
+  const targetModule = (index: number) => {
+    const m = modules[index];
+    return m ? moduleLessons(m.id)[0] || null : null;
+  };
+  return {
+    moduleTitle: moduleRow.title,
+    lessonPosition: currentIndex + 1,
+    lessonCount: currentLessons.length,
+    previousLesson: currentLessons[currentIndex - 1] || null,
+    nextLesson: currentLessons[currentIndex + 1] || null,
+    previousModule: targetModule(moduleIndex - 1),
+    nextModule: targetModule(moduleIndex + 1),
+  };
+}
+
+const lessonNavLink = (target: LessonTarget | null, label: string, icon: React.ReactNode) => target ? (
+  <a href={`#preview/${target.id}`} target="_blank" rel="noreferrer" className="flex min-h-[58px] items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:border-accent hover:bg-surface-2">
+    {icon}<span className="min-w-0"><span className="block text-xs text-text-secondary">{label}</span><span className="block truncate text-sm font-semibold">{target.title}</span></span>
+  </a>
+) : (
+  <span aria-disabled="true" className="flex min-h-[58px] items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-left opacity-40">
+    {icon}<span className="text-xs text-text-secondary">{label}<span className="block">Жоқ</span></span>
+  </span>
+);
+
 /** Remaining (limited) or elapsed time of an open task, ticking every second. */
 function Countdown({ task }: { task: any }) {
   const [now, setNow] = useState(Date.now());
@@ -40,6 +110,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [msgInput, setMsgInput] = useState('');
   const [gradingPoints, setGradingPoints] = useState<{ [subId: string]: string }>({});
   const [attendanceRows, setAttendanceRows] = useState<any[]>([]);
+  const [lessonNav, setLessonNav] = useState<RemoteNavigation | null>(null);
   const [note, setNote] = useState<{ text: string; bad: boolean }>({ text: '', bad: false });
   const [ending, setEnding] = useState(false);
   const autoTRef = useRef<any>(null);
@@ -94,6 +165,17 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     return () => { sb.removeChannel(ch); clearInterval(iv); clearTimeout(autoTRef.current); };
   }, [sid]);
   useEffect(() => { if (tab === 'att') refresh(); }, [tab]);
+
+  useEffect(() => {
+    let alive = true;
+    setLessonNav(null);
+    if (!session?.lesson_id) return () => { alive = false; };
+    loadRemoteNavigation(session.lesson_id).then(value => { if (alive) setLessonNav(value); }).catch(err => {
+      // A live session must still work when the optional course-tree migration is absent.
+      console.warn('Remote lesson navigation unavailable', err);
+    });
+    return () => { alive = false; };
+  }, [session?.lesson_id]);
 
   const total = session?.slide_count || 0, cur = session?.current_slide || 0;
   const goSlide = async (i: number) => {
@@ -173,6 +255,26 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
       <main className="mx-auto grid max-w-6xl gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_29rem] lg:p-4">
         <p role="status" aria-live="polite" className={note.text ? `lg:col-span-2 rounded-lg p-3 text-sm ${note.bad ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success'}` : 'sr-only'}>{note.text}</p>
+
+        {lessonNav && (
+          <section aria-label="Дәрістер мен модульдер бойынша өту" className="lg:col-span-2">
+            <Card className="space-y-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold">Дәрістер бойынша өту</h2>
+                  <p className="text-sm text-text-secondary">{lessonNav.moduleTitle} · {lessonNav.lessonPosition} / {lessonNav.lessonCount} дәріс</p>
+                </div>
+                <span className="text-xs text-text-muted">Жаңа қойындыда ашылады</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {lessonNavLink(lessonNav.previousLesson, 'Алдыңғы дәріс', <ArrowLeft size={18} aria-hidden="true" />)}
+                {lessonNavLink(lessonNav.nextLesson, 'Келесі дәріс', <ArrowRight size={18} aria-hidden="true" />)}
+                {lessonNavLink(lessonNav.previousModule, 'Алдыңғы модуль', <ArrowLeft size={18} aria-hidden="true" />)}
+                {lessonNavLink(lessonNav.nextModule, 'Келесі модуль', <ArrowRight size={18} aria-hidden="true" />)}
+              </div>
+            </Card>
+          </section>
+        )}
 
         <section aria-label="Слайдты басқару" className="space-y-3 min-w-0">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
