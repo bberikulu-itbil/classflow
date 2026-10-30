@@ -1,10 +1,4 @@
-/**
- * Metadata for a presentation that stays in its original PPTX/PDF form.
- *
- * The platform no longer converts a newly uploaded deck into lesson JSON.
- * It stores the source file and keeps one lightweight lesson page that opens
- * the original file in a browser viewer.
- */
+/** Metadata for the untouched source file kept alongside editable pages. */
 
 export type PresentationVariant = 'kk' | 'ru';
 
@@ -16,6 +10,11 @@ export type PresentationSource = {
   sourceType?: string;
   sourceUrl: string;
   slideNumber: number;
+  presentationImportId?: string;
+  presentationWidth?: number;
+  presentationHeight?: number;
+  sourceSlidePath?: string;
+  sourceText?: string;
   html?: string;
   css?: string;
   alt?: string;
