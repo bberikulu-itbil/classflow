@@ -155,7 +155,7 @@ export function BoardView({ sid }: { sid: string }) {
         <>
           <main className="flex min-h-screen items-center justify-center pb-32 pt-24 lg:pt-16" style={{ paddingLeft: 32 + inset, paddingRight: 32 }}>
             <div style={{ zoom: look.size }} className="flex w-full justify-center">
-              {renderSlide(slideTr, { mode: 'board', lb: () => lbTable(leaderboard, ui.hidePts), sp: spCtx(spoil) })}
+              {renderSlide(slideTr, { mode: 'board', lang, lb: () => lbTable(leaderboard, ui.hidePts), sp: spCtx(spoil) })}
             </div>
           </main>
           {session.slide_count > 0 && <p className="fixed left-4 top-4 z-20 rounded-full bg-surface-2 px-3 py-1 text-sm text-text-secondary" style={{ left: 16 + edge }}>Слайд {(session.current_slide || 0) + 1} / {session.slide_count}</p>}

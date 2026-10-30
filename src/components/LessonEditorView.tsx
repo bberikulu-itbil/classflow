@@ -144,7 +144,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [presentationBusy, setPresentationBusy] = useState(false);
   const [presentationMeta, setPresentationMeta] = useState<any>(null);
   const [exportBusy, setExportBusy] = useState(false);
-  const [canvasEditorIndex, setCanvasEditorIndex] = useState<number | null>(null);
+  const [canvasEditorIndex, setCanvasEditorIndex] = useState<number | null>(isNew ? 0 : null);
   const [presentationVariant, setPresentationVariant] = useState<PresentationVariant>('kk');
   const presentationFile = useRef<HTMLInputElement>(null);
 
@@ -171,13 +171,17 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       if (data) {
         setTitle(data.title || '');
         setSubject(data.subject || '');
-        setSlides(parseSlides(data.slides));
         setTerms(parseTerms(data.terms));
         setSummary(data.plan?.summary || '');
         setObjectives(Array.isArray(data.plan?.objectives) ? data.plan.objectives.join('\n') : '');
         setGrade(String(data.plan?.grade || '7'));
         setDuration(data.plan?.duration || '90 минут');
         setPresentationMeta(data.plan?.presentation || null);
+        const loadedSlides = parseSlides(data.slides);
+        const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
+        setSlides(nextSlides);
+        const firstCanvas = nextSlides.findIndex(slide => slide.type === 'canvas' || canConvert(slide));
+        setCanvasEditorIndex(firstCanvas >= 0 ? firstCanvas : 0);
       }
       setLoading(false);
     });
@@ -355,6 +359,36 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   };
 
   if (loading) return <div className="min-h-screen bg-bg text-text grid place-items-center">Дәріс жүктелуде...</div>;
+
+  // Canvas is the primary lecture editing surface. The old constructor stays
+  // available in the source for the technical/raw fallback, but normal lesson
+  // editing never opens it anymore.
+  if (canvasEditorIndex !== null) {
+    const currentIndex = Math.min(canvasEditorIndex, Math.max(0, slides.length - 1));
+    return <CanvasEditor
+      pages={slides}
+      cur={currentIndex}
+      schoolId={me?.school_id || ''}
+      title={title}
+      status={saving ? 'Сақталуда…' : 'Нобай'}
+      saved={message}
+      previewHref={!isNew && route.lessonId ? `#preview/${route.lessonId}` : undefined}
+      onTitle={setTitle}
+      onChange={slide => setSlides(items => items.map((item, index) => index === canvasEditorIndex ? normalizePage(slide) : item))}
+      onSelect={index => setCanvasEditorIndex(index)}
+      onAdd={() => {
+        const index = slides.length;
+        setSlides(items => [...items, normalizePage({ type: 'canvas', pageType: 'slide', templateId: 'canvas-blank', title: `Бет ${index + 1}`, bg: '#FFFFFF', blocks: [] })]);
+        setCanvasEditorIndex(index);
+      }}
+      onReorder={(from, to) => {
+        setSlides(items => { const next = [...items]; const [moved] = next.splice(from, 1); next.splice(to, 0, moved); return next; });
+        setCanvasEditorIndex(index => index === null ? null : index === from ? to : index > from && index <= to ? index - 1 : index < from && index >= to ? index + 1 : index);
+      }}
+      onSave={save}
+      onClose={() => { window.location.hash = route.moduleId ? 'lessons/modules' : 'lessons/mine'; }}
+    />;
+  }
 
   return (
     <div className="min-h-screen bg-bg text-text">

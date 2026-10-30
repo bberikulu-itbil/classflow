@@ -12,6 +12,7 @@ import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS
 type Tab = 'design' | 'content' | 'action';
 type Rail = 'elements' | 'templates' | 'layers' | 'bg';
 const RAIL = [['elements', 'Элементтер', Shapes], ['templates', 'Үлгілер', LayoutTemplate], ['layers', 'Қабаттар', Layers], ['bg', 'Фон', Palette]] as const;
+const TEXT_LANGS = [['kk', 'Қазақша'], ['ru', 'Русский'], ['en', 'English']] as const;
 const KIND_LABEL: Record<string, string> = { text: 'Мәтін', code: 'Код', image: 'Сурет', shape: 'Фигура' };
 const SOON = [['Видео', Video], ['Кесте', Table2], ['Формула', Sigma], ['Интерактив', MousePointerClick]] as const;
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -29,7 +30,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   onTitle: (t: string) => void; onChange: (slide: any) => void; onSelect: (i: number) => void; onAdd: () => void; onReorder: (from: number, to: number) => void; onSave: () => void; onClose: (changed: boolean) => void;
 }) {
   const slide = pages[cur], bg = bgOf(slide), blocks = blocksOf(slide), isCv = slide.type === 'canvas';
-  const [selId, setSel] = useState<string | null>(null), [tab, setTab] = useState<Tab>('design'), [editing, setEditing] = useState<string | null>(null);
+  const [selId, setSel] = useState<string | null>(null), [tab, setTab] = useState<Tab>('design'), [editing, setEditing] = useState<string | null>(null), [canvasLang, setCanvasLang] = useState('kk');
   const [zoom, setZoom] = useState<number | 'fit'>('fit'), [avail, setAvail] = useState(800), [grid, setGrid] = useState(true), [snap, setSnap] = useState(true);
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
   const wide = useWide(), [rail, setRail] = useState<Rail | null>(wide ? 'elements' : null), [propsOpen, setPropsOpen] = useState(wide), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
@@ -55,12 +56,14 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   };
   const setBlocks = (fn: (b: CBlock[]) => CBlock[], key?: string) => commit({ ...latest.current, blocks: fn(blocksOf(latest.current)).map(slim) }, key);
   const patch = (id: string, p: Partial<CBlock>, key?: string) => setBlocks(bs => bs.map(b => (b.id === id ? (norm({ ...b, ...p }) as CBlock) : b)), key);
+  const textFor = (b: CBlock) => b.variants?.[canvasLang] ?? b.text ?? '';
+  const patchText = (b: CBlock, value: string, key?: string) => patch(b.id, { text: canvasLang === 'kk' ? value : b.text, variants: { ...(b.variants || {}), [canvasLang]: value } }, key);
   const undo = () => { const p = hist.current.pop(); if (!p) return; lastKey.current = null; latest.current = p; cb.current(p); setNHist(hist.current.length); setSel(null); setEditing(null); setMsg('Соңғы әрекет қайтарылды.'); };
   const sn = (v: number) => (snap ? Math.round(v / 10) * 10 : Math.round(v));
 
   const add = (kind: CBlock['kind']) => {
     const base: Record<string, any> = {
-      text: { x: 80, y: 200, w: 400, h: 80, text: 'Жаңа мәтін', size: 32 },
+      text: { x: 80, y: 200, w: 400, h: 80, text: 'Жаңа мәтін', variants: { kk: 'Жаңа мәтін' }, size: 32 },
       code: { x: 80, y: 180, w: 520, h: 200, code: '', lang: 'cpp', size: 22 },
       image: { x: 300, y: 110, w: 360, h: 320, src: '', alt: '' },
       shape: { x: 380, y: 170, w: 200, h: 200, shape: 'rect', fill: '#2F6F65' },
@@ -140,7 +143,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   return (
     <div role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : true} aria-labelledby="ce-h" className={embedded ? 'flex min-h-[48rem] flex-col overflow-hidden rounded-2xl border border-border bg-bg text-text shadow-card' : 'fixed inset-0 z-50 flex flex-col bg-bg text-text'}>
       <header className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">
-        <Button variant="ghost" onClick={() => onClose(changed.current)}>{embedded ? '← Беттер тізіміне' : '← Конструкторға қайту'}</Button>
+        <Button variant="ghost" onClick={() => onClose(changed.current)}>{embedded ? '← Беттер тізіміне' : '← Дәрістерге'}</Button>
         <h2 id="ce-h" ref={head} tabIndex={-1} className="sr-only">Слайд редакторы · {cur + 1}-бет</h2>
         <input aria-label="Дәріс атауы" value={title} onChange={e => onTitle(e.target.value)} placeholder="Дәріс атауы" className="min-h-[44px] min-w-[8rem] flex-1 rounded-md border border-transparent bg-transparent px-2 text-lg font-bold text-text hover:border-border focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
         <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
@@ -235,9 +238,9 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
                   <div key={b.id} role="group" tabIndex={0} aria-label={label(b, i)} onPointerDown={e => drag(e, b)} onKeyDown={e => keys(e, b)} onFocus={() => setSel(b.id)} onDoubleClick={() => b.kind === 'text' && setEditing(b.id)}
                     style={{ ...box(b), outline: on ? '2px solid var(--color-accent)' : '1px dashed rgba(100,116,139,.7)', cursor: editing === b.id ? 'text' : 'move', touchAction: 'none', zIndex: on ? 2 : 1 }}>
                     {editing === b.id && b.kind === 'text'
-                      ? <textarea aria-label="Мәтінді өңдеу" autoFocus value={b.text} onChange={e => patch(b.id, { text: e.target.value }, 'type' + b.id)} onBlur={() => setEditing(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLElement).blur(); } }}
+                      ? <textarea aria-label={`${TEXT_LANGS.find(([code]) => code === canvasLang)?.[1] || canvasLang} мәтінін өңдеу`} autoFocus value={textFor(b)} onChange={e => patchText(b, e.target.value, 'type' + b.id)} onBlur={() => setEditing(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLElement).blur(); } }}
                           style={{ width: '100%', height: '100%', background: 'transparent', border: 0, outline: 0, resize: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25 }} />
-                      : <BlockView b={b} bg={bg} R={t => t} />}
+                      : <BlockView b={b.kind === 'text' ? { ...b, text: textFor(b) } : b} bg={bg} R={t => t} />}
                     {b.kind === 'image' && !imgOk(b.src) && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1F2A30', fontSize: fs(22), background: 'rgba(255,255,255,.85)' }}>Сурет таңдалмаған</div>}
                     {b.hide && <span style={{ position: 'absolute', right: 0, top: 0, background: '#475569', color: '#fff', fontSize: fs(16), padding: '0 .6cqw' }}>жасырын</span>}
                     {on && editing !== b.id && HANDLES.map(h => <span key={h} aria-hidden="true" onPointerDown={e => resize(e, b, h)} style={{ position: 'absolute', width: hs, height: hs, background: 'var(--color-accent)', border: '2px solid #fff', borderRadius: 3, touchAction: 'none', ...HPOS(hs)[h] }} />)}
@@ -281,7 +284,13 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
             ) : (
               <section className={side}>
                 <h3 className="font-bold">{KIND_LABEL[sel.kind]} мазмұны</h3>
-                {sel.kind === 'text' && <label className="block text-sm font-semibold">Мәтін<textarea rows={6} className={inputCls + ' mt-1 py-2'} value={sel.text} onChange={e => patch(sel.id, { text: e.target.value }, 'type' + sel.id)} /></label>}
+                {sel.kind === 'text' && <>
+                  <div role="tablist" aria-label="Мәтін тілі" className="flex flex-wrap gap-1 rounded-lg bg-surface-2 p-1">
+                    {TEXT_LANGS.map(([code, name]) => <button key={code} type="button" role="tab" aria-selected={canvasLang === code} onClick={() => setCanvasLang(code)} className={`min-h-[36px] flex-1 rounded-md px-2 text-xs font-semibold ${canvasLang === code ? 'bg-surface text-accent shadow-sm' : 'text-text-secondary hover:text-text'}`}>{name}</button>)}
+                  </div>
+                  <label className="block text-sm font-semibold">{TEXT_LANGS.find(([code]) => code === canvasLang)?.[1] || canvasLang} мәтіні<textarea rows={6} className={inputCls + ' mt-1 py-2'} value={textFor(sel)} onChange={e => patchText(sel, e.target.value, 'type' + sel.id)} /></label>
+                  <p className="text-xs text-text-secondary">Әр тіл бөлек сақталады. Толтырылмаған тіл нұсқасы қазақша негізгі мәтінге ауысады.</p>
+                </>}
                 {sel.kind === 'text' && <p className="text-xs text-text-secondary">||жасырын|| — осылай жазылған бөлік «Алға» басқанша нүктелер болып тұрады.</p>}
                 {sel.kind === 'code' && (<>
                   <label className="block text-sm font-semibold">Код<textarea rows={8} spellCheck={false} className={inputCls + ' mt-1 py-2 font-mono text-sm'} value={sel.code} onChange={e => patch(sel.id, { code: e.target.value }, 'type' + sel.id)} /></label>
@@ -341,7 +350,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
             onDragOver={e => { if (dragFrom !== null) { e.preventDefault(); setDragOver(i); } }} onDrop={e => { e.preventDefault(); if (dragFrom !== null) { onReorder(dragFrom, i); } setDragFrom(null); setDragOver(null); }}
             onClick={() => { if (i !== cur) onSelect(i); }}
             className={`w-36 shrink-0 rounded-lg border-2 p-1 text-left ${dragOver === i && dragFrom !== null && dragFrom !== i ? 'border-dashed border-accent' : i === cur ? 'border-accent' : 'border-border hover:border-text-muted'} ${dragFrom === i ? 'opacity-50' : ''}`}>
-            {p.type === 'canvas' ? <div className="pointer-events-none"><CanvasSlide s={{ ...p, title: '' }} R={t => t} /></div> : <div className="flex aspect-video items-center justify-center rounded bg-surface-2 px-1 text-center text-xs text-text-secondary">{p.title || p.prompt || 'Бет'}</div>}
+            {p.type === 'canvas' ? <div className="pointer-events-none"><CanvasSlide s={{ ...p, title: '' }} R={t => t} lang={canvasLang} /></div> : <div className="flex aspect-video items-center justify-center rounded bg-surface-2 px-1 text-center text-xs text-text-secondary">{p.title || p.prompt || 'Бет'}</div>}
             <span className="mt-1 block truncate text-xs font-semibold">{i + 1}. {p.title || p.prompt || 'Бет'}</span>
           </button>
         ))}

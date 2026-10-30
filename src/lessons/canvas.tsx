@@ -7,9 +7,10 @@ import type { SpCtx } from './spoil';
  * so the same slide fits the board, a phone, the editor at any zoom and a filmstrip thumbnail.
  */
 export type Kind = 'text' | 'code' | 'image' | 'shape';
+export type TextVariants = Record<string, string>;
 export type CBlock = {
   id: string; kind: Kind; x: number; y: number; w: number; h: number;
-  text?: string; size: number; bold?: boolean; align: 'left' | 'center' | 'right'; color?: string;
+  text?: string; variants?: TextVariants; size: number; bold?: boolean; align: 'left' | 'center' | 'right'; color?: string;
   code?: string; lang?: string; src?: string; alt?: string; shape?: 'rect' | 'ellipse'; fill?: string; hide?: boolean;
 };
 export const W = 960, H = 540, MIN = 30;
@@ -40,10 +41,14 @@ export const newId = () => `b${Date.now().toString(36)}${(seq++).toString(36)}${
 export function norm(b: any): CBlock | null {
   if (!b || !KINDS.includes(b.kind)) return null;
   const w = num(b.w, 200, MIN, W), h = num(b.h, 100, MIN, H);
+  const variants = b.kind === 'text' && b.variants && typeof b.variants === 'object'
+    ? Object.fromEntries(Object.entries(b.variants).filter(([, value]) => typeof value === 'string')) as TextVariants
+    : undefined;
+  const text = typeof b.text === 'string' ? b.text : (variants?.kk || Object.values(variants || {})[0] || '');
   return {
     id: typeof b.id === 'string' && b.id ? b.id : newId(), kind: b.kind, w, h,
     x: num(b.x, 0, 0, W - w), y: num(b.y, 0, 0, H - h),
-    text: typeof b.text === 'string' ? b.text : '', size: num(b.size, b.kind === 'code' ? 20 : 32, 8, 160), bold: !!b.bold,
+    text, ...(variants && Object.keys(variants).length ? { variants } : {}), size: num(b.size, b.kind === 'code' ? 20 : 32, 8, 160), bold: !!b.bold,
     align: b.align === 'center' || b.align === 'right' ? b.align : 'left', color: typeof b.color === 'string' && HEX.test(b.color) ? b.color : undefined,
     code: typeof b.code === 'string' ? b.code : '', lang: typeof b.lang === 'string' ? b.lang : 'cpp',
     src: typeof b.src === 'string' ? b.src : '', alt: typeof b.alt === 'string' ? b.alt : '',
@@ -53,7 +58,7 @@ export function norm(b: any): CBlock | null {
 /** What is stored: only the fields that matter for the block kind. */
 export function slim(b: CBlock): Record<string, unknown> {
   const o: Record<string, unknown> = { id: b.id, kind: b.kind, x: b.x, y: b.y, w: b.w, h: b.h };
-  if (b.kind === 'text') Object.assign(o, { text: b.text, size: b.size, align: b.align }, b.bold && { bold: true }, b.color && { color: b.color });
+  if (b.kind === 'text') Object.assign(o, { text: b.text, size: b.size, align: b.align }, b.variants && Object.keys(b.variants).length ? { variants: b.variants } : {}, b.bold && { bold: true }, b.color && { color: b.color });
   if (b.kind === 'code') Object.assign(o, { code: b.code, lang: b.lang, size: b.size });
   if (b.kind === 'image') Object.assign(o, { src: b.src, alt: b.alt });
   if (b.kind === 'shape') Object.assign(o, { shape: b.shape, fill: b.fill });
@@ -79,7 +84,7 @@ export const Stage = React.forwardRef<HTMLDivElement, { bg: string; clip?: boole
 Stage.displayName = 'Stage';
 
 /** Player / board / preview view of a canvas slide. A block with `hide` stays covered until opened (same rule as hidden sections). */
-export function CanvasSlide({ s, R, sp }: { s: any; R: (t: string) => React.ReactNode; sp?: SpCtx }) {
+export function CanvasSlide({ s, R, sp, lang = 'kk' }: { s: any; R: (t: string) => React.ReactNode; sp?: SpCtx; lang?: string }) {
   const bg = bgOf(s);
   return (
     <>
@@ -91,7 +96,7 @@ export function CanvasSlide({ s, R, sp }: { s: any; R: (t: string) => React.Reac
             <div key={b.id} style={box(b)}>
               {closed
                 ? <button type="button" onClick={() => sp!.show(idx)} aria-label="Жасырын элемент, көрсету үшін бас" style={{ width: '100%', height: '100%', background: '#475569', color: '#fff', borderRadius: '1cqw', border: 0, cursor: 'pointer', fontSize: fs(28), letterSpacing: '0.3em' }}>●●●</button>
-                : <BlockView b={b} bg={bg} R={b.hide ? (t => t.replace(/\|\|(.+?)\|\|/g, '$1')) : R} />}
+                : <BlockView b={b.kind === 'text' ? { ...b, text: b.variants?.[lang] ?? b.text } : b} bg={bg} R={b.hide ? (t => t.replace(/\|\|(.+?)\|\|/g, '$1')) : R} />}
             </div>
           );
         })}
@@ -100,7 +105,7 @@ export function CanvasSlide({ s, R, sp }: { s: any; R: (t: string) => React.Reac
   );
 }
 
-const T = (text: string, x: number, y: number, w: number, h: number, size: number, extra: Partial<CBlock> = {}) => norm({ kind: 'text', id: newId(), text, x, y, w, h, size, ...extra })!;
+const T = (text: string, x: number, y: number, w: number, h: number, size: number, extra: Partial<CBlock> = {}) => norm({ kind: 'text', id: newId(), text, variants: { kk: text }, x, y, w, h, size, ...extra })!;
 export const LAYOUTS: { id: string; label: string; make: (title: string) => CBlock[] }[] = [
   { id: 'title', label: 'Титул беті', make: t => [T(t || 'Тақырып', 80, 170, 800, 110, 56, { bold: true, align: 'center' }), T('Ішкі тақырып', 80, 300, 800, 60, 28, { align: 'center', color: '#4F5E66' })] },
   { id: 'explain', label: 'Түсіндіру', make: t => [T(t || 'Тақырып', 60, 40, 840, 70, 40, { bold: true }), T('• Негізгі ой\n• Мысал\n• Қорытынды', 60, 140, 840, 340, 28)] },

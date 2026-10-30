@@ -594,7 +594,7 @@ export function renderSlide(s: any, ctx: any = {}) {
         })
       );
     case 'canvas':
-      return <div className="cf-slide w-full max-w-5xl mx-auto p-4"><CanvasSlide s={s} R={R} sp={sp} /></div>;
+      return <div className="cf-slide w-full max-w-5xl mx-auto p-4"><CanvasSlide s={s} R={R} sp={sp} lang={ctx.lang} /></div>;
     case 'flashcards':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,

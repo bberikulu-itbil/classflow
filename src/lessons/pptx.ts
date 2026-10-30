@@ -254,9 +254,9 @@ export function pptxSlideToCanvas(slide: PptxSlide, options: PptxCanvasOptions) 
   const blocks = slide.blocks.map(block => {
     const box = canvasBox(block, slide.width, slide.height);
     if (block.kind === 'image') return slim(norm({ id: newId(), kind: 'image', ...box, src: options.imageSources ? options.imageSources[block.name] || '' : block.dataUrl, alt: block.name })!);
-    return slim(norm({ id: newId(), kind: 'text', ...box, text: block.text, size: block.size, bold: block.bold, color: block.color, align: block.align })!);
+    return slim(norm({ id: newId(), kind: 'text', ...box, text: block.text, variants: { kk: block.text }, size: block.size, bold: block.bold, color: block.color, align: block.align })!);
   });
-  if (!blocks.length) blocks.push(slim(norm({ id: newId(), kind: 'text', x: 70, y: 220, w: 820, h: 90, text: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.', size: 28 })!));
+  if (!blocks.length) blocks.push(slim(norm({ id: newId(), kind: 'text', x: 70, y: 220, w: 820, h: 90, text: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.', variants: { kk: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.' }, size: 28 })!));
   return {
     type: 'canvas', pageType: 'slide', templateId: 'canvas-blank', title: slide.title, bg: slide.background,
     blocks, sourceFormat: 'pptx', sourceName: options.sourceName, sourceUrl: options.sourceUrl,
