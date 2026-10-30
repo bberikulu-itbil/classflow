@@ -5,7 +5,7 @@ import { Button, inputCls } from '../ui';
 import { newPage, PAGE_TYPES, TEMPLATES, type PageType } from './pages';
 
 const ICON: Record<PageType, React.ReactNode> = { slide: <Presentation size={22} />, scroll: <ScrollText size={22} />, interactive: <MousePointerClick size={22} />, presentation: <Presentation size={22} /> };
-const SUB: Record<PageType, string> = { slide: '16:9 кадр. Презентацияға ыңғайлы.', scroll: 'Төмен сырғитын оқу беті. Мәтін, код және тапсырма бір ағынға біріктіріледі.', interactive: 'Сұрақ, жауап, таңдау және нәтиже жинауға арналған.', presentation: 'PPTX/PDF слайдының түпнұсқа көрінісін және тілдік қабатын сақтайды.' };
+const SUB: Record<PageType, string> = { slide: '16:9 кадр. Презентацияға ыңғайлы.', scroll: 'Төмен сырғитын оқу беті. Мәтін, код және тапсырма бір ағынға біріктіріледі.', interactive: 'Сұрақ, жауап, таңдау және нәтиже жинауға арналған.', presentation: 'PPTX/PDF файлын өзгертпей ашуға арналған.' };
 
 /** Full-screen «Бет жасау»: type on the left, template + live preview on the right. */
 export function PagePicker({ onCancel, onCreate }: { onCancel: () => void; onCreate: (type: PageType, tpl: string, name: string) => void }) {

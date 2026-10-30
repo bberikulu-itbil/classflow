@@ -5,8 +5,8 @@ import { Button, Card, ErrorBox, Field, inputCls } from '../ui';
 import { TopBar } from './TopBar';
 import { ai } from './AiPanel';
 import * as curriculum from '../curriculum/store';
-import { alignPresentationVariants, importPdf, importPptx, isPdf, isPptx, type PresentationSlide, type PresentationVariant } from '../lessons/presentationImport';
-import { uploadPresentationSlideImage, uploadPresentationSource } from '../lessons/media';
+import { isPdf, isPptx, presentationSource, type PresentationSlide, type PresentationVariant } from '../lessons/presentationImport';
+import { uploadPresentationSource } from '../lessons/media';
 
 type Mode = 'manual' | 'ai';
 type PageType = 'slide' | 'scroll' | 'interactive' | 'presentation';
@@ -22,14 +22,14 @@ const SAMPLE: Slide[] = [
 
 const TYPES = ['title', 'content', 'code', 'quiz', 'task', 'matching', 'flashcards', 'presentation'];
 const typeLabel: Record<string, string> = {
-  title: 'Кіріспе', content: 'Түсіндірме', code: 'Код', quiz: 'Тест', task: 'Тапсырма', matching: 'Сәйкестендіру', flashcards: 'Карточкалар', presentation: 'PowerPoint слайды',
+  title: 'Кіріспе', content: 'Түсіндірме', code: 'Код', quiz: 'Тест', task: 'Тапсырма', matching: 'Сәйкестендіру', flashcards: 'Карточкалар', presentation: 'Түпнұсқа презентация',
 };
 
 const PAGE_TYPES: Array<{ id: PageType; label: string; description: string }> = [
   { id: 'slide', label: 'Слайд беті', description: '16:9 кадр, презентацияға арналған' },
   { id: 'scroll', label: 'Ұзын бет', description: 'Төмен сырғитын оқу беті' },
   { id: 'interactive', label: 'Интерактивті бет', description: 'Жауап, тапсырма және нәтиже' },
-  { id: 'presentation', label: 'PowerPoint слайды', description: 'Түпнұсқа PPTX/PDF көрінісін сақтау' },
+  { id: 'presentation', label: 'Түпнұсқа презентация', description: 'PPTX/PDF файлын өзгертпей ашу' },
 ];
 
 const PAGE_TEMPLATES: Record<PageType, Array<{ id: string; label: string; description: string; blockType: string }>> = {
@@ -52,7 +52,7 @@ const PAGE_TEMPLATES: Record<PageType, Array<{ id: string; label: string; descri
     { id: 'reflection', label: 'Рефлексия', description: 'Сабақ соңындағы өзіндік бағалау', blockType: 'task' },
   ],
   presentation: [
-    { id: 'presentation', label: 'PowerPoint импорт слайды', description: 'Түпнұсқа слайд пен тілдік нұсқаларды сақтау', blockType: 'presentation' },
+    { id: 'presentation', label: 'Түпнұсқа файл', description: 'Презентацияны бастапқы күйінде ашу', blockType: 'presentation' },
   ],
 };
 
@@ -205,56 +205,30 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
     if (!isPptx(file) && !isPdf(file)) return setError('Тек .pptx немесе .pdf файлын импорттауға болады.');
     setError(''); setMessage(''); setPresentationBusy(true);
     try {
-      const imported = isPptx(file) ? await importPptx(file, presentationVariant) : await importPdf(file, presentationVariant);
-      if (!imported.length) throw new Error('Файлдан слайд табылмады.');
-      let rendered = imported;
-      if (!DEMO && me?.school_id) {
-        rendered = [];
-        for (const slide of imported) {
-          if (!slide.img?.startsWith('data:')) {
-            rendered.push(slide);
-            continue;
-          }
-          const img = await uploadPresentationSlideImage(slide.img, me.school_id);
-          rendered.push({ ...slide, img });
-        }
-      }
-      let sourceUrl = '';
-      let sourceWarning = '';
-      if (!DEMO && me?.school_id) {
-        try {
-          sourceUrl = await uploadPresentationSource(file, me.school_id);
-        } catch (e) {
-          // The slide representation is the lesson content. Keep the import usable
-          // when the optional source-archive bucket is not configured yet.
-          sourceWarning = e instanceof Error ? e.message : 'түпнұсқа файл архиві сақталмады';
-        }
-      }
-      const withSource = rendered.map((slide: PresentationSlide) => ({ ...slide, ...(sourceUrl ? { sourceUrl } : {}) }));
+      const sourceUrl = DEMO
+        ? URL.createObjectURL(file)
+        : await uploadPresentationSource(file, me?.school_id || '');
+      const source = presentationSource(file, sourceUrl);
       if (presentationVariant === 'kk') {
-        setSlides(items => [...items, ...withSource]);
+        setSlides(items => {
+          const emptySeed = isNew && slidesRef.current === SAMPLE;
+          return [...(emptySeed ? [] : items), source];
+        });
         setTitle(prev => prev.trim() || file.name.replace(/\.(pptx|pdf)$/i, ''));
-        setSummary(prev => prev || 'Түпнұсқа презентация слайдтары дәріс форматына импортталды.');
+        setSummary(prev => prev || 'Түпнұсқа презентация файл ретінде сақталды.');
+        setMessage('Түпнұсқа презентация сайтқа қосылды. Файл өзгертілмеді.');
       } else {
         const currentBase = slidesRef.current.filter(item => inferPageType(item) === 'presentation') as unknown as PresentationSlide[];
         if (!currentBase.length) throw new Error('Орысша нұсқаны қосу үшін алдымен қазақша PPTX/PDF слайдтарын импорттаңыз.');
-        const aligned = alignPresentationVariants(currentBase, withSource);
+        const { type: _type, pageType: _pageType, templateId: _templateId, ...languageSource } = source;
+        const target = currentBase[currentBase.length - 1];
         setSlides(items => {
-          let baseIndex = 0;
           return items.map(slide => {
-            if (inferPageType(slide) !== 'presentation') return slide;
-            const variant = aligned[baseIndex++];
-            if (!variant) return slide;
-            const { type: _type, pageType: _pageType, templateId: _templateId, ...langSlide } = variant as any;
-            return { ...slide, ru: langSlide };
+            return slide === target ? { ...slide, ru: languageSource } : slide;
           });
         });
-        const matched = aligned.filter(Boolean).length;
-        const missing = currentBase.length - matched;
-        setMessage(`${imported.length} слайд орысша нұсқа ретінде қосылды${missing > 0 ? `; ${missing} қазақша слайдқа сәйкес бет табылмады` : ''}.`);
-        return;
+        setMessage('Түпнұсқа орысша презентация тілдік нұсқа ретінде қосылды. Файл өзгертілмеді.');
       }
-      setMessage(`${imported.length} слайд дәріске импортталды.${sourceWarning ? ' Түпнұсқа файл архиві сақталмады, бірақ слайдтар сақталады.' : ''}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Презентацияны импорттау мүмкін болмады.');
     } finally {
@@ -396,12 +370,12 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
 
         <Card className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 className="font-semibold">Дәріс беттері</h2><p className="mt-1 text-sm text-text-secondary">PowerPoint немесе PDF слайды түпнұсқа көрінісімен сақталады. Орысша нұсқа сол нөмірдегі қазақша слайдқа қосылады.</p></div>
+            <div><h2 className="font-semibold">Дәріс беттері</h2><p className="mt-1 text-sm text-text-secondary">PPTX/PDF файлы слайдтарға бөлінбейді: түпнұсқа файл сайтта ашылады. Орысша файл қазақша презентацияға тілдік нұсқа ретінде қосылады.</p></div>
             <div className="flex flex-wrap items-center gap-2">
               <select aria-label="Импорт тілін таңдау" className={inputCls + ' !w-auto'} value={presentationVariant} onChange={e => setPresentationVariant(e.target.value as PresentationVariant)}>
                 <option value="kk">Қазақша слайдтар</option><option value="ru">Орысша нұсқа</option>
               </select>
-              <Button variant="secondary" loading={presentationBusy} onClick={() => presentationFile.current?.click()}><Upload size={16} aria-hidden="true" />PowerPoint/PDF импорттау</Button>
+              <Button variant="secondary" loading={presentationBusy} onClick={() => presentationFile.current?.click()}><Upload size={16} aria-hidden="true" />Түпнұсқа PPTX/PDF қосу</Button>
               <input ref={presentationFile} type="file" className="sr-only" accept=".pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf" onChange={e => { importSource(e.target.files?.[0]); e.target.value = ''; }} />
               <Button variant="secondary" onClick={openPagePicker}><Plus size={16} aria-hidden="true" />Бет қосу</Button>
             </div>

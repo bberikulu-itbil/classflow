@@ -45,7 +45,7 @@ export async function uploadPresentationSlideImage(dataUrl: string, schoolId: st
   return sb.storage.from('cf-media').getPublicUrl(path).data.publicUrl;
 }
 
-/** Keeps the original PPTX/PDF beside its imported slide representation. */
+/** Keeps the original PPTX/PDF unchanged so the platform can open it directly. */
 export async function uploadPresentationSource(file: File, schoolId: string): Promise<string> {
   if (!/\.(pptx|pdf)$/i.test(file.name)) throw new Error('Тек PPTX немесе PDF бастапқы файлы болады');
   if (file.size > 50 * 1024 * 1024) throw new Error('Презентация файлы 50 МБ-тан аспауы керек');

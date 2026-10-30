@@ -6,7 +6,7 @@ export const PAGE_TYPES: { id: PageType; label: string; hint: string }[] = [
   { id: 'slide', label: 'Слайд беті', hint: 'Презентацияға арналған кадр' },
   { id: 'scroll', label: 'Ұзын бет', hint: 'Төмен қарай тізілген оқу беті' },
   { id: 'interactive', label: 'Интерактивті бет', hint: 'Оқушыдан жауап алады' },
-  { id: 'presentation', label: 'PowerPoint слайды', hint: 'Түпнұсқа PPTX/PDF көрінісін сақтайды' },
+  { id: 'presentation', label: 'Түпнұсқа презентация', hint: 'PPTX/PDF файлын өзгертпей ашу' },
 ];
 
 type Tpl = { id: string; label: string; hint: string; make: (title: string) => any };
@@ -42,7 +42,7 @@ export const TEMPLATES: Record<PageType, Tpl[]> = {
     { id: 'matching', label: 'Сәйкестендіру', hint: 'Екі бағанды сәйкестендіру', make: t => ({ type: 'matching', title: t, pairs: [{ l: 'A', r: '1' }, { l: 'B', r: '2' }] }) },
   ],
   presentation: [
-    { id: 'presentation', label: 'PowerPoint импорт слайды', hint: 'Слайдтың түпнұсқа көрінісі және тілдік нұсқалары', make: t => ({ type: 'presentation', title: t, sourceFormat: 'pptx', html: '', css: '' }) },
+    { id: 'presentation', label: 'Түпнұсқа файл', hint: 'Бастапқы PPTX/PDF файлын ашу', make: t => ({ type: 'presentation', title: t, sourceFormat: 'pptx', html: '', css: '' }) },
   ],
 };
 

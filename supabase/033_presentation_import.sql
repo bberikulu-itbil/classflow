@@ -1,6 +1,6 @@
--- Original presentation files are kept next to the imported slide JSON.
--- The lesson stores a safe rendered representation; this bucket keeps the
--- source .pptx/.pdf available for future re-imports and audit.
+-- Original presentation files are stored without conversion.
+-- The lesson keeps the source URL so the web app can open the original
+-- .pptx/.pdf in a browser viewer and offer the file itself as a fallback.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'cf-presentations',

@@ -425,11 +425,42 @@ const tableBlock = (table: any, big: boolean) => Array.isArray(table?.headers) &
 const presentationBlock = (s: any, big: boolean) => {
   const html = typeof s.html === 'string' ? s.html : '';
   const css = typeof s.css === 'string' ? s.css : '';
+  const sourceUrl = typeof s.sourceUrl === 'string' ? s.sourceUrl : '';
+  const remoteSource = /^https?:\/\//i.test(sourceUrl);
+  const viewerUrl = remoteSource && s.sourceFormat === 'pptx'
+    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(sourceUrl)}`
+    : sourceUrl;
+  const openSource = sourceUrl && (
+    <div className="flex flex-wrap items-center gap-2">
+      <a href={viewerUrl} target="_blank" rel="noreferrer" className={BTN_P}>
+        {s.sourceFormat === 'pptx' && remoteSource ? 'PowerPoint Online-да ашу' : 'Презентацияны ашу'}
+      </a>
+      <a href={sourceUrl} target="_blank" rel="noreferrer" className={BTN}>
+        Бастапқы файл
+      </a>
+    </div>
+  );
+  if (sourceUrl && !html && typeof s.img !== 'string') {
+    return <div key="presentation-source" className="my-2 overflow-hidden rounded-xl border border-slate-600 bg-slate-900 text-white">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div>
+          <p className="font-bold">Түпнұсқа презентация</p>
+          <p className="mt-1 text-sm text-slate-300">Файл слайдтарға бөлінбеді және бастапқы күйінде сақталды: {s.sourceName || 'презентация'}</p>
+        </div>
+        {openSource}
+      </div>
+      {remoteSource && <iframe src={viewerUrl} title={s.sourceName || 'Түпнұсқа презентация'} className={`w-full border-t border-slate-700 bg-white ${big ? 'min-h-[72vh]' : 'min-h-[42rem]'}`} />}
+    </div>;
+  }
   if (!html && typeof s.img === 'string') {
-    return <figure key="presentation-image" className="my-2 flex justify-center overflow-hidden rounded-xl bg-white"><img src={s.img} alt={s.alt || ''} className={`${big ? 'max-h-[78vh]' : 'max-h-[62vh]'} max-w-full object-contain`} /></figure>;
+    return <div key="presentation-image-wrap">
+      {openSource && <div className="mb-2 flex justify-end">{openSource}</div>}
+      <figure className="my-2 flex justify-center overflow-hidden rounded-xl bg-white"><img src={s.img} alt={s.alt || ''} className={`${big ? 'max-h-[78vh]' : 'max-h-[62vh]'} max-w-full object-contain`} /></figure>
+    </div>;
   }
   if (!html) return <p className="rounded-xl border border-dashed border-slate-600 p-6 text-slate-400">Бұл презентация слайды әлі импортталмаған.</p>;
   return <figure key="presentation" className="my-2 overflow-auto rounded-xl bg-white text-black">
+    {openSource && <div className="flex justify-end bg-slate-900 p-2">{openSource}</div>}
     <style dangerouslySetInnerHTML={{ __html: css }} />
     <div className="min-w-[640px]" dangerouslySetInnerHTML={{ __html: html }} />
   </figure>;
