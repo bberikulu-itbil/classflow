@@ -23,8 +23,9 @@ const tb = 'flex h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:
 const label = (b: CBlock, i: number) => `${i + 1}. ${KIND_LABEL[b.kind]}${b.kind === 'text' && b.text ? ': ' + b.text.replace(/\s+/g, ' ').slice(0, 24) : b.kind === 'code' && b.code ? ': ' + b.code.replace(/\s+/g, ' ').slice(0, 20) : ''}`;
 
 /** Full-screen editor of one «кенеп» page: palette, 16:9 stage, properties, layers and the page strip. */
-export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previewHref, onTitle, onChange, onSelect, onAdd, onReorder, onSave, onClose }: {
+export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previewHref, embedded = false, onTitle, onChange, onSelect, onAdd, onReorder, onSave, onClose }: {
   pages: any[]; cur: number; schoolId: string; title: string; status: string; saved: string; previewHref?: string;
+  embedded?: boolean;
   onTitle: (t: string) => void; onChange: (slide: any) => void; onSelect: (i: number) => void; onAdd: () => void; onReorder: (from: number, to: number) => void; onSave: () => void; onClose: (changed: boolean) => void;
 }) {
   const slide = pages[cur], bg = bgOf(slide), blocks = blocksOf(slide), isCv = slide.type === 'canvas';
@@ -137,9 +138,9 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   const txt = sel && (sel.kind === 'text' || sel.kind === 'code');
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="ce-h" className="fixed inset-0 z-50 flex flex-col bg-bg text-text">
+    <div role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : true} aria-labelledby="ce-h" className={embedded ? 'flex min-h-[48rem] flex-col overflow-hidden rounded-2xl border border-border bg-bg text-text shadow-card' : 'fixed inset-0 z-50 flex flex-col bg-bg text-text'}>
       <header className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">
-        <Button variant="ghost" onClick={() => onClose(changed.current)}>← Конструкторға қайту</Button>
+        <Button variant="ghost" onClick={() => onClose(changed.current)}>{embedded ? '← Беттер тізіміне' : '← Конструкторға қайту'}</Button>
         <h2 id="ce-h" ref={head} tabIndex={-1} className="sr-only">Слайд редакторы · {cur + 1}-бет</h2>
         <input aria-label="Дәріс атауы" value={title} onChange={e => onTitle(e.target.value)} placeholder="Дәріс атауы" className="min-h-[44px] min-w-[8rem] flex-1 rounded-md border border-transparent bg-transparent px-2 text-lg font-bold text-text hover:border-border focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
         <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
