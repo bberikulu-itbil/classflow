@@ -10,6 +10,7 @@ import { uploadPresentationSource, uploadSlideImage } from '../lessons/media';
 import { parsePptx, pptxSlideToCanvas } from '../lessons/pptx';
 import { downloadPptx, exportClassFlowPptx } from '../lessons/pptxExport';
 import { CanvasEditor } from '../lessons/CanvasEditor';
+import { canConvert, toCanvas } from '../lessons/canvas';
 
 type Mode = 'manual' | 'ai';
 type PageType = 'slide' | 'scroll' | 'interactive' | 'presentation';
@@ -17,10 +18,7 @@ type Slide = Record<string, any> & { pageType?: PageType; templateId?: string };
 type Term = { term: string; definition: string };
 
 const SAMPLE: Slide[] = [
-  { type: 'title', pageType: 'slide', templateId: 'title', title: 'Жаңа дәріс', subtitle: '7-сынып · Информатика олимпиадасы' },
-  { type: 'content', pageType: 'scroll', templateId: 'theory', title: 'Негізгі түсінік', bullets: ['Анықтаманы түсіндір', 'Қарапайым мысал келтір'], notes: '' },
-  { type: 'code', pageType: 'slide', templateId: 'code-example', title: 'Код мысалы', prompt: 'Есептің шартын осында жазыңыз.', starter: '', hints: [], tests: [] },
-  { type: 'task', pageType: 'interactive', templateId: 'code-task', title: 'Практика', prompt: 'Оқушы орындайтын тапсырма.', accept: [], points: 5 },
+  { type: 'canvas', pageType: 'slide', templateId: 'canvas-blank', title: 'Жаңа дәріс', bg: '#FFFFFF', blocks: [] },
 ];
 
 const TYPES = ['title', 'content', 'code', 'canvas', 'quiz', 'task', 'matching', 'flashcards', 'presentation'];
@@ -163,7 +161,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       setSlides(SAMPLE);
       setTerms([]);
       setPresentationMeta(null);
-      setCanvasEditorIndex(null);
+      setCanvasEditorIndex(0);
       setLoading(false);
       return;
     }
@@ -204,12 +202,20 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   });
   const openPagePicker = () => {
     setNewPageType('slide');
-    setNewPageTemplate(PAGE_TEMPLATES.slide[0].id);
+    setNewPageTemplate('canvas-blank');
     setPagePickerOpen(true);
   };
   const createPage = () => {
     setSlides(items => [...items, pageFromTemplate(newPageType, newPageTemplate)]);
     setPagePickerOpen(false);
+  };
+
+  const openCanvasEditor = (index: number) => {
+    const page = slides[index];
+    if (page && page.type !== 'canvas' && canConvert(page)) {
+      setSlides(items => items.map((item, i) => i === index ? normalizePage(toCanvas(item) as Slide) : item));
+    }
+    setCanvasEditorIndex(index);
   };
 
   const importSource = async (file: File | undefined) => {
@@ -430,7 +436,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           <div className="space-y-2">
             {slides.map((slide, index) => (
               <div key={index} className="rounded-lg border border-border p-3">
-                <div className="flex flex-wrap items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent-soft text-sm font-bold text-accent">{index + 1}</span><select aria-label={`Бет ${index + 1}: типі`} className={inputCls + ' !w-auto min-w-[9rem]'} value={inferPageType(slide)} onChange={e => changePageType(index, e.target.value as PageType)}>{PAGE_TYPES.map(pageType => <option key={pageType.id} value={pageType.id}>{pageType.label}</option>)}</select><select aria-label={`Бет ${index + 1}: үлгісі`} className={inputCls + ' !w-auto min-w-[10rem]'} value={inferTemplateId(slide, inferPageType(slide))} onChange={e => changeTemplate(index, e.target.value)}>{PAGE_TEMPLATES[inferPageType(slide)].map(template => <option key={template.id} value={template.id}>{template.label}</option>)}</select><select aria-label={`Блок ${index + 1}: түрі`} className={inputCls + ' !w-auto min-w-[9rem]'} value={slide.type || 'content'} onChange={e => updateSlide(index, { type: e.target.value })}>{TYPES.map(type => <option key={type} value={type}>{typeLabel[type]}</option>)}</select><input aria-label={`Бет ${index + 1}: атауы`} className={inputCls + ' min-w-[12rem] flex-1'} value={slide.title || ''} onChange={e => updateSlide(index, { title: e.target.value })} placeholder="Бет атауы" />{slide.type === 'canvas' && <button type="button" className="inline-flex items-center gap-1 rounded-md border border-accent px-2 py-1 text-sm font-semibold text-accent hover:bg-accent-soft" onClick={() => setCanvasEditorIndex(index)}><Pencil size={15} aria-hidden="true" />Слайдты өңдеу</button>}<button type="button" className="rounded-md p-2 text-text-secondary hover:bg-surface-2 disabled:opacity-30" disabled={index === 0} onClick={() => moveSlide(index, -1)} aria-label="Жоғары жылжыту"><ArrowUp size={16} aria-hidden="true" /></button><button type="button" className="rounded-md p-2 text-text-secondary hover:bg-surface-2 disabled:opacity-30" disabled={index === slides.length - 1} onClick={() => moveSlide(index, 1)} aria-label="Төмен жылжыту"><ArrowDown size={16} aria-hidden="true" /></button><button type="button" className="rounded-md p-2 text-danger hover:bg-danger-soft" onClick={() => setSlides(items => items.filter((_, i) => i !== index))} aria-label="Бетті өшіру"><Trash2 size={16} aria-hidden="true" /></button></div>
+                <div className="flex flex-wrap items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent-soft text-sm font-bold text-accent">{index + 1}</span><select aria-label={`Бет ${index + 1}: типі`} className={inputCls + ' !w-auto min-w-[9rem]'} value={inferPageType(slide)} onChange={e => changePageType(index, e.target.value as PageType)}>{PAGE_TYPES.map(pageType => <option key={pageType.id} value={pageType.id}>{pageType.label}</option>)}</select><select aria-label={`Бет ${index + 1}: үлгісі`} className={inputCls + ' !w-auto min-w-[10rem]'} value={inferTemplateId(slide, inferPageType(slide))} onChange={e => changeTemplate(index, e.target.value)}>{PAGE_TEMPLATES[inferPageType(slide)].map(template => <option key={template.id} value={template.id}>{template.label}</option>)}</select><select aria-label={`Блок ${index + 1}: түрі`} className={inputCls + ' !w-auto min-w-[9rem]'} value={slide.type || 'content'} onChange={e => updateSlide(index, { type: e.target.value })}>{TYPES.map(type => <option key={type} value={type}>{typeLabel[type]}</option>)}</select><input aria-label={`Бет ${index + 1}: атауы`} className={inputCls + ' min-w-[12rem] flex-1'} value={slide.title || ''} onChange={e => updateSlide(index, { title: e.target.value })} placeholder="Бет атауы" />{(slide.type === 'canvas' || canConvert(slide)) && <button type="button" className="inline-flex items-center gap-1 rounded-md border border-accent px-2 py-1 text-sm font-semibold text-accent hover:bg-accent-soft" onClick={() => openCanvasEditor(index)}><Pencil size={15} aria-hidden="true" />Кенепте өңдеу</button>}<button type="button" className="rounded-md p-2 text-text-secondary hover:bg-surface-2 disabled:opacity-30" disabled={index === 0} onClick={() => moveSlide(index, -1)} aria-label="Жоғары жылжыту"><ArrowUp size={16} aria-hidden="true" /></button><button type="button" className="rounded-md p-2 text-text-secondary hover:bg-surface-2 disabled:opacity-30" disabled={index === slides.length - 1} onClick={() => moveSlide(index, 1)} aria-label="Төмен жылжыту"><ArrowDown size={16} aria-hidden="true" /></button><button type="button" className="rounded-md p-2 text-danger hover:bg-danger-soft" onClick={() => setSlides(items => items.filter((_, i) => i !== index))} aria-label="Бетті өшіру"><Trash2 size={16} aria-hidden="true" /></button></div>
                 <p className="mt-2 pl-10 text-xs text-text-secondary"><span className="font-semibold text-text">{PAGE_TYPES.find(item => item.id === inferPageType(slide))?.label}</span> · {PAGE_TEMPLATES[inferPageType(slide)].find(item => item.id === inferTemplateId(slide, inferPageType(slide)))?.label} · {displaySlideText(slide) || 'Бет мазмұны толық құрылымда толтырылады.'}</p>
               </div>
             ))}

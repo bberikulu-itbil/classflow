@@ -109,10 +109,38 @@ export const LAYOUTS: { id: string; label: string; make: (title: string) => CBlo
 ];
 export const canvasPage = (title: string, layout?: string) => ({ type: 'canvas', title, bg: '#FFFFFF', blocks: layout ? LAYOUTS.find(l => l.id === layout)!.make(title).map(slim) : [] });
 
-/** Title and content pages can become a canvas page; their text carries over. Anything else keeps its own player. */
-export const canConvert = (s: any) => s?.type === 'title' || s?.type === 'content';
+/** Educational pages can become a canvas page; interactive and source-only pages keep their own player. */
+export const canConvert = (s: any) => {
+  if (!s || s.type === 'canvas' || s.type === 'presentation' || s.pageType === 'presentation' || s.pageType === 'interactive') return false;
+  if (['quiz', 'task', 'matching', 'flashcards', 'logic'].includes(s.type)) return false;
+  return ['title', 'content', 'code', 'solution', 'leaderboard'].includes(s.type) || s.pageType === 'slide' || s.pageType === 'scroll';
+};
+
 export function toCanvas(s: any) {
-  const bl = LAYOUTS.find(l => l.id === (s.type === 'title' ? 'title' : 'explain'))!.make(s.title || '').map(slim);
-  bl[1] = { ...bl[1], text: s.type === 'title' ? s.subtitle || '' : (Array.isArray(s.bullets) ? s.bullets : []).map((b: string) => '• ' + b).join('\n') };
-  return { type: 'canvas', title: s.title || '', bg: '#FFFFFF', blocks: bl, pageType: 'slide', templateId: 'canvas-blank', ...(s.notes ? { notes: s.notes } : {}) };
+  const blocks: CBlock[] = [];
+  const addText = (text: unknown, x: number, y: number, w: number, h: number, size: number, extra: Partial<CBlock> = {}) => {
+    if (typeof text === 'string' && text.trim()) blocks.push(T(text, x, y, w, h, size, extra));
+  };
+  const title = String(s.title || '');
+  if (title) addText(title, 60, 35, 840, 70, 40, { bold: true });
+  if (s.type === 'title') addText(s.subtitle || '', 80, 150, 800, 90, 30, { align: 'center', color: '#2457D6' });
+  if (s.type === 'content') addText((Array.isArray(s.bullets) ? s.bullets : []).map((b: string) => '• ' + b).join('\n'), 70, 145, 820, 290, 28);
+  if (s.type === 'code') {
+    addText(s.prompt || '', 70, 130, 820, 110, 26);
+    if (s.starter || s.code) blocks.push(norm({ kind: 'code', id: newId(), code: s.starter || s.code, lang: s.lang || 'cpp', x: 70, y: 255, w: 820, h: 230, size: 20 })!);
+  }
+  if (s.type === 'solution') {
+    let y = 125;
+    (Array.isArray(s.sections) ? s.sections : []).forEach((section: any) => {
+      addText(section.h || '', 70, y, 820, 42, 28, { bold: true, color: '#2F6F65' }); y += 48;
+      const text = section.text || (Array.isArray(section.bullets) ? section.bullets.map((b: string) => '• ' + b).join('\n') : '');
+      addText(text, 70, y, 820, 90, 23); y += 105;
+      if (section.code) { blocks.push(norm({ kind: 'code', id: newId(), code: section.code, lang: section.lang || 'cpp', x: 70, y, w: 820, h: 150, size: 18 })!); y += 165; }
+    });
+  }
+  if (s.prompt && s.type !== 'code') addText(s.prompt, 70, 145, 820, 120, 26);
+  if (s.notes) addText(`Ескертпе: ${s.notes}`, 70, 420, 820, 70, 20, { color: '#B45309' });
+  if (typeof s.img === 'string' && imgOk(s.img)) blocks.push(norm({ kind: 'image', id: newId(), src: s.img, alt: s.alt || title, x: 610, y: 150, w: 280, h: 260 })!);
+  if (!blocks.length) addText(title || 'Жаңа слайд', 70, 210, 820, 100, 32, { align: 'center' });
+  return { type: 'canvas', title, bg: bgOf(s), blocks: blocks.map(slim), pageType: 'slide', templateId: 'canvas-blank', ...(s.notes ? { notes: s.notes } : {}), ...(s.ru ? { ru: s.ru } : {}) };
 }
