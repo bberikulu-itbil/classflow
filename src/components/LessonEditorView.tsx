@@ -102,19 +102,77 @@ function parseTerms(value: unknown): Term[] {
   return Array.isArray(value) ? value.filter(x => x && typeof x.term === 'string').map(x => ({ term: String(x.term), definition: String(x.definition || '') })) : [];
 }
 
-/** Adds a translated PPTX's text into the matching imported canvas page. Images and shapes stay from the base language. */
+/** Adds a translated PPTX's text into the matching imported canvas page by spatial overlap. Images and shapes stay from the base language. */
 function mergeCanvasLanguage(base: Slide, translated: Slide, language: PresentationVariant): Slide {
   const baseBlocks = Array.isArray(base.blocks) ? base.blocks : [];
   const translatedTexts = (Array.isArray(translated.blocks) ? translated.blocks : []).filter((block: any) => block?.kind === 'text');
-  let textIndex = 0;
-  const blocks = baseBlocks.map((block: any) => {
-    if (block?.kind !== 'text') return block;
-    const translatedBlock = translatedTexts[textIndex++];
-    if (!translatedBlock) return block;
-    const text = String(translatedBlock.variants?.[language] ?? translatedBlock.text ?? '');
-    return { ...block, variants: { ...(block.variants || {}), [language]: text } };
+
+  const used = new Set<number>();
+  const matched = new Map<number, any>();
+
+  // Match each base text block to the spatially closest translated block
+  baseBlocks.forEach((b: any, bIdx: number) => {
+    if (b?.kind !== 'text') return;
+    const bcx = (b.x || 0) + (b.w || 0) / 2;
+    const bcy = (b.y || 0) + (b.h || 0) / 2;
+    let bestIdx = -1;
+    let bestScore = Infinity;
+
+    translatedTexts.forEach((t: any, tIdx: number) => {
+      if (used.has(tIdx)) return;
+      const tcx = (t.x || 0) + (t.w || 0) / 2;
+      const tcy = (t.y || 0) + (t.h || 0) / 2;
+      const dx = Math.abs(bcx - tcx);
+      const dy = Math.abs(bcy - tcy);
+      const score = dx * 2 + dy * 4;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIdx = tIdx;
+      }
+    });
+
+    if (bestIdx >= 0 && bestScore < 250) {
+      used.add(bestIdx);
+      matched.set(bIdx, translatedTexts[bestIdx]);
+    }
   });
-  return { ...base, blocks };
+
+  let fallbackIdx = 0;
+  const blocks = baseBlocks.map((block: any, bIdx: number) => {
+    if (block?.kind !== 'text') return block;
+    let trans = matched.get(bIdx);
+    if (!trans) {
+      while (fallbackIdx < translatedTexts.length && used.has(fallbackIdx)) {
+        fallbackIdx++;
+      }
+      if (fallbackIdx < translatedTexts.length) {
+        trans = translatedTexts[fallbackIdx++];
+      }
+    }
+    if (!trans) return block;
+    const text = String(trans.variants?.[language] ?? trans.text ?? '');
+    const localized = block.localized || {};
+    return {
+      ...block,
+      variants: { ...(block.variants || {}), [language]: text },
+      localized: {
+        ...localized,
+        [language]: {
+          size: trans.size,
+          appearance: trans.appearance,
+        }
+      }
+    };
+  });
+
+  const titleBlock = blocks.find((b: any) => b?.kind === 'text' && b?.variants?.[language] && b.size >= 24) || blocks.find((b: any) => b?.kind === 'text' && b?.variants?.[language]);
+  const langTitle = titleBlock?.variants?.[language]?.split('\n')?.[0] || translated.title || base.title;
+
+  return {
+    ...base,
+    blocks,
+    ...(language === 'ru' ? { ru: { title: langTitle } } : {})
+  };
 }
 
 function displaySlideText(slide: Slide) {

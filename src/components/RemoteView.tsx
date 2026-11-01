@@ -4,7 +4,8 @@ import { ArrowLeft, ArrowRight, Bell, Hand, Lock, LockOpen, Monitor, Plus, Squar
 import { sb } from '../config';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
 import { Tabs } from '../ui/Tabs';
-import { spaced, fmt } from './Widgets';
+import { spaced, fmt, renderSlide } from './Widgets';
+import { tr, useLang } from '../lessons/lang';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
@@ -98,6 +99,7 @@ const IconBtn = ({ label, onClick, children, tone = '' }: { label: string; onCli
 );
 
 export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => void }) {
+  const [lang, flipLang] = useLang();
   const [session, setSession] = useState<any>(null);
   const [priv, setPriv] = useState<any[]>([]);
   const [parts, setParts] = useState<any[]>([]);
@@ -205,8 +207,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
   if (!session) return <div className="min-h-screen bg-bg text-text p-4 max-w-6xl mx-auto"><Skeleton /></div>;
 
-  const slide = priv[cur] || {};
-  const next = priv[cur + 1];
+  const slide = tr(priv[cur] || {}, lang);
+  const next = tr(priv[cur + 1], lang);
   const isTask = slide.pageType !== 'scroll' && ['quiz', 'task', 'code'].includes(slide.type);
   const open = task && task.status === 'open';
   const onlineCount = parts.filter(p => p.presence === 'online').length;
@@ -291,11 +293,14 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 {session.locked ? <Lock size={16} aria-hidden="true" /> : <LockOpen size={16} aria-hidden="true" />}{session.locked ? 'Экрандар бұғатталған' : 'Бәрін бұғаттау'}
               </button>
             </div>
-            {/* the preview imitates the projector, so it keeps its own dark colours in every theme */}
-            <div className="min-h-[140px] space-y-2 rounded-xl bg-[#10213F] p-5 text-white">
-              <p className="text-xl font-bold break-words">{slide.title || ''}</p>
-              <p className="line-clamp-5 whitespace-pre-wrap text-sm text-[#C9D5EE] break-words">{slideText(slide)}</p>
+            <div className="flex items-center justify-between"><h2 className="font-semibold">Қазіргі слайд</h2><Button variant="secondary" onClick={flipLang} aria-label="Слайд тілі">{lang === 'kk' ? 'ҚАЗ' : 'РУС'}</Button></div>
+            <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#10213F] text-white">
+              <div className="pointer-events-none" inert>{renderSlide(slide, { mode: 'preview', lang })}</div>
             </div>
+            <h2 className="font-semibold">Келесі слайд{next ? ` · ${cur + 2} / ${total}` : ''}</h2>
+            {next ? <div role="region" aria-label="Келесі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#10213F] text-white">
+              <div className="pointer-events-none" inert>{renderSlide(next, { mode: 'preview', lang })}</div>
+            </div> : <p role="status" className="rounded-xl bg-surface-2 p-5 text-text-secondary">Бұл — дәрістің соңғы слайды.</p>}
             <div role="progressbar" aria-label="Сабақ барысы" aria-valuemin={1} aria-valuemax={total} aria-valuenow={cur + 1} className="h-1.5 rounded bg-surface-2"><div className="h-1.5 rounded bg-accent" style={{ width: pct + '%' }} /></div>
             {slide.notes && <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning"><b>Ескертпе:</b> {slide.notes}</p>}
             {next && <p className="text-sm text-text-secondary">Келесі: <b className="text-text">{next.title || TYPE[next.type]}</b></p>}

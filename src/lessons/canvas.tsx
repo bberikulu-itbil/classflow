@@ -8,10 +8,23 @@ import type { SpCtx } from './spoil';
  */
 export type Kind = 'text' | 'code' | 'image' | 'shape';
 export type TextVariants = Record<string, string>;
+export type CanvasAppearance = {
+  fontFamily?: string; italic?: boolean; weight?: number; lineHeight?: number; letterSpacing?: number;
+  padding?: number[]; valign?: 'top' | 'middle' | 'bottom'; wrap?: boolean;
+  opacity?: number; rotation?: number; radius?: number; gradient?: string;
+  stroke?: string; strokeWidth?: number; path?: string; viewBox?: string;
+  imageViewport?: number[]; fit?: 'fill' | 'contain';
+  tableCell?: boolean;
+  flipH?: boolean; flipV?: boolean;
+  shadow?: string;
+  paragraphs?: { align: 'left' | 'center' | 'right'; offsetX?: number; offsetY?: number; lineHeight?: number; before?: number; after?: number; runs: { text: string; size: number; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; color?: string; fontFamily?: string; letterSpacing?: number }[] }[];
+};
 export type CBlock = {
   id: string; kind: Kind; x: number; y: number; w: number; h: number;
   text?: string; variants?: TextVariants; size: number; bold?: boolean; align: 'left' | 'center' | 'right'; color?: string;
   code?: string; lang?: string; src?: string; alt?: string; shape?: 'rect' | 'ellipse'; fill?: string; hide?: boolean;
+  exact?: boolean; appearance?: CanvasAppearance;
+  localized?: Record<string, { x?: number; y?: number; w?: number; h?: number; size?: number; appearance?: CanvasAppearance }>;
 };
 export const W = 960, H = 540, MIN = 30;
 const KINDS: Kind[] = ['text', 'code', 'image', 'shape'];
@@ -40,24 +53,28 @@ export const newId = () => `b${Date.now().toString(36)}${(seq++).toString(36)}${
 /** Clean copy of one block: unknown kinds are dropped, numbers and colours forced into range. */
 export function norm(b: any): CBlock | null {
   if (!b || !KINDS.includes(b.kind)) return null;
-  const w = num(b.w, 200, MIN, W), h = num(b.h, 100, MIN, H);
+  const exact = b.exact === true;
+  const w = num(b.w, 200, exact ? 0.01 : MIN, exact ? W * 10 : W), h = num(b.h, 100, exact ? 0.01 : MIN, exact ? H * 10 : H);
   const variants = b.kind === 'text' && b.variants && typeof b.variants === 'object'
     ? Object.fromEntries(Object.entries(b.variants).filter(([, value]) => typeof value === 'string')) as TextVariants
     : undefined;
   const text = typeof b.text === 'string' ? b.text : (variants?.kk || Object.values(variants || {})[0] || '');
   return {
     id: typeof b.id === 'string' && b.id ? b.id : newId(), kind: b.kind, w, h,
-    x: num(b.x, 0, 0, W - w), y: num(b.y, 0, 0, H - h),
-    text, ...(variants && Object.keys(variants).length ? { variants } : {}), size: num(b.size, b.kind === 'code' ? 20 : 32, 8, 160), bold: !!b.bold,
+    x: num(b.x, 0, exact ? -W * 10 : 0, exact ? W * 10 : W - w), y: num(b.y, 0, exact ? -H * 10 : 0, exact ? H * 10 : H - h),
+    ...(exact ? { exact: true, appearance: b.appearance && typeof b.appearance === 'object' ? b.appearance : undefined, localized: b.localized && typeof b.localized === 'object' ? b.localized : undefined } : {}),
+    text, ...(variants && Object.keys(variants).length ? { variants } : {}), size: num(b.size, b.kind === 'code' ? 20 : 32, exact ? 0.1 : 8, 320), bold: !!b.bold,
     align: b.align === 'center' || b.align === 'right' ? b.align : 'left', color: typeof b.color === 'string' && HEX.test(b.color) ? b.color : undefined,
     code: typeof b.code === 'string' ? b.code : '', lang: typeof b.lang === 'string' ? b.lang : 'cpp',
     src: typeof b.src === 'string' ? b.src : '', alt: typeof b.alt === 'string' ? b.alt : '',
-    shape: b.shape === 'ellipse' ? 'ellipse' : 'rect', fill: hex(b.fill, '#2F6F65'), hide: !!b.hide,
+    shape: b.shape === 'ellipse' ? 'ellipse' : 'rect', fill: exact && b.fill === 'transparent' ? 'transparent' : hex(b.fill, '#2F6F65'), hide: !!b.hide,
   };
 }
 /** What is stored: only the fields that matter for the block kind. */
 export function slim(b: CBlock): Record<string, unknown> {
   const o: Record<string, unknown> = { id: b.id, kind: b.kind, x: b.x, y: b.y, w: b.w, h: b.h };
+  if (b.exact) Object.assign(o, { exact: true }, b.appearance ? { appearance: b.appearance } : {});
+  if (b.localized) o.localized = b.localized;
   if (b.kind === 'text') Object.assign(o, { text: b.text, size: b.size, align: b.align }, b.variants && Object.keys(b.variants).length ? { variants: b.variants } : {}, b.bold && { bold: true }, b.color && { color: b.color });
   if (b.kind === 'code') Object.assign(o, { code: b.code, lang: b.lang, size: b.size });
   if (b.kind === 'image') Object.assign(o, { src: b.src, alt: b.alt });
@@ -66,11 +83,42 @@ export function slim(b: CBlock): Record<string, unknown> {
   return o;
 }
 export const blocksOf = (s: any): CBlock[] => (Array.isArray(s?.blocks) ? s.blocks : []).map(norm).filter(Boolean) as CBlock[];
+export const blockForLanguage = (b: CBlock, lang: string): CBlock => ({ ...b, ...b.localized?.[lang], text: b.variants?.[lang] ?? b.text });
 
-export const box = (b: CBlock): React.CSSProperties => ({ position: 'absolute', left: `${(b.x / W) * 100}%`, top: `${(b.y / H) * 100}%`, width: `${(b.w / W) * 100}%`, height: `${(b.h / H) * 100}%` });
+export const box = (b: CBlock): React.CSSProperties => {
+  const t: string[] = [];
+  if (b.appearance?.rotation) t.push(`rotate(${b.appearance.rotation}deg)`);
+  if (b.appearance?.flipH) t.push('scaleX(-1)');
+  if (b.appearance?.flipV) t.push('scaleY(-1)');
+  return {
+    position: 'absolute',
+    left: `${(b.x / W) * 100}%`,
+    top: `${(b.y / H) * 100}%`,
+    width: `${(b.w / W) * 100}%`,
+    height: `${(b.h / H) * 100}%`,
+    transform: t.length ? t.join(' ') : undefined,
+    opacity: b.appearance?.opacity,
+    boxShadow: b.appearance?.shadow,
+  };
+};
 export const fs = (n: number) => `${n / 9.6}cqw`;
 
 export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) => React.ReactNode }) {
+  const a = b.appearance || {};
+  if (b.exact && b.kind === 'text') {
+    const rich = a.paragraphs?.map(p => p.runs.map(r => r.text).join('')).join('\n') === b.text ? a.paragraphs : undefined;
+    return <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: a.padding?.map(fs).join(' '), display: 'flex', flexDirection: 'column', justifyContent: a.valign === 'middle' ? 'center' : a.valign === 'bottom' ? 'flex-end' : 'flex-start', fontFamily: a.fontFamily || 'Inter, sans-serif', fontSize: fs(b.size), fontWeight: a.weight || (b.bold ? 700 : 400), fontStyle: a.italic ? 'italic' : undefined, lineHeight: a.lineHeight ? fs(a.lineHeight) : 1.2, textAlign: b.align, color: b.color || ink(bg), letterSpacing: a.letterSpacing ? fs(a.letterSpacing) : undefined, whiteSpace: a.wrap === false ? 'pre' : 'pre-wrap', overflowWrap: 'normal' }}>
+      {rich ? rich.map((p, i) => <div key={i} style={{ position: p.offsetY !== undefined ? 'absolute' : undefined, left: p.offsetX !== undefined ? fs(p.offsetX) : undefined, top: p.offsetY !== undefined ? fs(p.offsetY) : undefined, textAlign: p.align, lineHeight: p.lineHeight ? fs(p.lineHeight) : undefined, marginTop: fs(p.before || 0), marginBottom: fs(p.after || 0) }}>{p.runs.map((r, j) => <span key={j} style={{ fontSize: fs(r.size), fontWeight: r.bold ? 700 : 400, fontStyle: r.italic ? 'italic' : undefined, textDecoration: r.underline && r.strike ? 'underline line-through' : r.underline ? 'underline' : r.strike ? 'line-through' : undefined, color: r.color, fontFamily: r.fontFamily, letterSpacing: r.letterSpacing ? fs(r.letterSpacing) : undefined }}>{R(r.text)}</span>)}</div>) : R(b.text || '')}
+    </div>;
+  }
+  if (b.exact && b.kind === 'image') {
+    const [left, top, width, height] = a.imageViewport || [0, 0, 100, 100];
+    return imgOk(b.src) ? <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative', border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined, borderRadius: fs(a.radius || 0) }}><img src={b.src} alt={b.alt || ''} style={{ position: 'absolute', left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%`, maxWidth: 'none', objectFit: a.fit || 'fill' }} /></div> : null;
+  }
+  if (b.exact && b.kind === 'shape') {
+    if (a.path) return <svg width="100%" height="100%" viewBox={a.viewBox} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}><path d={a.path} fill={b.fill || 'none'} stroke={a.stroke} strokeWidth={a.strokeWidth || 0} vectorEffect="non-scaling-stroke" /></svg>;
+    return <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', background: a.gradient || b.fill, border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined, borderRadius: b.shape === 'ellipse' ? '50%' : fs(a.radius || 0) }} />;
+  }
   if (b.kind === 'text') return <div style={{ fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{R(b.text || '')}</div>;
   if (b.kind === 'code') return <pre style={{ margin: 0, width: '100%', height: '100%', boxSizing: 'border-box', padding: '1.4cqw', background: '#0F172A', color: '#E2E8F5', borderRadius: '1.2cqw', fontSize: fs(b.size), lineHeight: 1.4, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', overflow: 'auto' }}>{b.code}</pre>;
   if (b.kind === 'image') return imgOk(b.src) ? <img src={b.src} alt={b.alt || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : null;
@@ -78,8 +126,8 @@ export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) 
 }
 
 /** The 16:9 paper. `clip` is off in the editor so selection handles may stick out. */
-export const Stage = React.forwardRef<HTMLDivElement, { bg: string; clip?: boolean; className?: string; children?: React.ReactNode }>(({ bg, clip = true, className = '', children }, ref) => (
-  <div ref={ref} className={`relative w-full ${clip ? 'overflow-hidden' : ''} ${className}`} style={{ aspectRatio: '16 / 9', containerType: 'inline-size', background: bg }}>{children}</div>
+export const Stage = React.forwardRef<HTMLDivElement, { bg: string; gradient?: string; clip?: boolean; className?: string; children?: React.ReactNode }>(({ bg, gradient, clip = true, className = '', children }, ref) => (
+  <div ref={ref} className={`relative w-full ${clip ? 'overflow-hidden' : ''} ${className}`} style={{ aspectRatio: '16 / 9', containerType: 'inline-size', background: gradient || bg }}>{children}</div>
 ));
 Stage.displayName = 'Stage';
 
@@ -89,8 +137,9 @@ export function CanvasSlide({ s, R, sp, lang = 'kk' }: { s: any; R: (t: string) 
   return (
     <>
       {s.title && <h2 className="sr-only">{s.title}</h2>}
-      <Stage bg={bg} className="rounded-xl shadow-lg">
-        {blocksOf(s).map(b => {
+      <Stage bg={bg} gradient={s.bgGradient} className="shadow-lg">
+        {blocksOf(s).map(original => {
+          const b = blockForLanguage(original, lang);
           const idx = b.hide && sp ? sp.n++ : -1, closed = idx >= 0 && !sp!.shown.has(idx);
           return (
             <div key={b.id} style={box(b)}>

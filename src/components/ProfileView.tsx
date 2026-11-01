@@ -69,7 +69,7 @@ export function ProfileCard({ me, onLogout }: { me: any; onLogout: () => void })
   }, [me.school_id]);
 
   const changePw = async () => {
-    if (pw.length < 8) return setMsg({ t: 'Құпиясөз кемінде 8 таңба болуы керек', bad: true });
+    if (pw.length < 6) return setMsg({ t: 'Құпиясөз кемінде 6 таңба болуы керек', bad: true });
     if (pw !== pw2) return setMsg({ t: 'Құпиясөздер сәйкес емес', bad: true });
     const { error } = await sb.auth.updateUser({ password: pw });
     if (error) return setMsg({ t: error.message, bad: true });

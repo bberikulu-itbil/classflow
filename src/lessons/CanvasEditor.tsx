@@ -9,6 +9,7 @@ import type { PresentationVariant } from './presentationImport';
 import { track, useWide } from '../board/Win';
 import { uploadSlideImage } from './media';
 import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
+import { blockForLanguage } from './canvas';
 
 type Tab = 'design' | 'content' | 'action';
 type Rail = 'elements' | 'templates' | 'layers' | 'bg';
@@ -31,8 +32,9 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   importBusy?: boolean; importVariant?: PresentationVariant; onImportVariant?: (variant: PresentationVariant) => void; onImport?: (file: File) => void;
   onTitle: (t: string) => void; onChange: (slide: any) => void; onSelect: (i: number) => void; onAdd: () => void; onReorder: (from: number, to: number) => void; onSave: () => void; onClose: (changed: boolean) => void;
 }) {
-  const slide = pages[cur], bg = bgOf(slide), blocks = blocksOf(slide), isCv = slide.type === 'canvas';
+  const slide = pages[cur], bg = bgOf(slide), isCv = slide.type === 'canvas';
   const [selId, setSel] = useState<string | null>(null), [tab, setTab] = useState<Tab>('design'), [editing, setEditing] = useState<string | null>(null), [canvasLang, setCanvasLang] = useState('kk');
+  const blocks = blocksOf(slide).map(b => blockForLanguage(b, canvasLang));
   const [zoom, setZoom] = useState<number | 'fit'>('fit'), [avail, setAvail] = useState(800), [grid, setGrid] = useState(true), [snap, setSnap] = useState(true);
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
   const wide = useWide(), [rail, setRail] = useState<Rail | null>(wide ? 'elements' : null), [propsOpen, setPropsOpen] = useState(wide), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
@@ -57,9 +59,13 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
     lastKey.current = key || null; changed.current = true; latest.current = next; cb.current(next);
   };
   const setBlocks = (fn: (b: CBlock[]) => CBlock[], key?: string) => commit({ ...latest.current, blocks: fn(blocksOf(latest.current)).map(slim) }, key);
-  const patch = (id: string, p: Partial<CBlock>, key?: string) => setBlocks(bs => bs.map(b => (b.id === id ? (norm({ ...b, ...p }) as CBlock) : b)), key);
+  const patch = (id: string, p: Partial<CBlock>, key?: string) => setBlocks(bs => bs.map(b => {
+    if (b.id !== id) return b;
+    if (canvasLang !== 'kk' && b.localized?.[canvasLang] && Object.keys(p).every(k => ['x','y','w','h','size','appearance'].includes(k))) return norm({ ...b, localized: { ...b.localized, [canvasLang]: { ...b.localized[canvasLang], ...p } } })!;
+    return norm({ ...b, ...p })!;
+  }), key);
   const textFor = (b: CBlock) => b.variants?.[canvasLang] ?? b.text ?? '';
-  const patchText = (b: CBlock, value: string, key?: string) => patch(b.id, { text: canvasLang === 'kk' ? value : b.text, variants: { ...(b.variants || {}), [canvasLang]: value } }, key);
+  const patchText = (b: CBlock, value: string, key?: string) => patch(b.id, { ...(canvasLang === 'kk' ? {text:value} : {}), variants: { ...(b.variants || {}), [canvasLang]: value } }, key);
   const undo = () => { const p = hist.current.pop(); if (!p) return; lastKey.current = null; latest.current = p; cb.current(p); setNHist(hist.current.length); setSel(null); setEditing(null); setMsg('Соңғы әрекет қайтарылды.'); };
   const sn = (v: number) => (snap ? Math.round(v / 10) * 10 : Math.round(v));
 
@@ -162,6 +168,11 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
       </header>
 
       <div role="toolbar" aria-label="Элемент құралдары" className="flex min-h-[52px] flex-wrap items-center gap-1 border-b border-border bg-surface px-3 py-1">
+        <label className="mr-2 flex items-center gap-2 text-sm">Бет тілі
+          <select aria-label="Кенеп тілін таңдау" className={inputCls + ' !w-auto'} value={canvasLang} onChange={e => { setEditing(null); setCanvasLang(e.target.value); }}>
+            {TEXT_LANGS.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+          </select>
+        </label>
         {!isCv ? (<>
           <span className="mr-2 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-on-accent-soft">{typeLabel(pageOf(slide).pageType)}</span>
           {canConvert(slide)
@@ -237,13 +248,13 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
 
         <div ref={area} className="relative flex min-h-[18rem] min-w-0 flex-1 overflow-auto bg-surface-2 p-6" onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
           {!isCv ? <div className="m-auto w-full max-w-4xl"><div data-theme="dark" role="region" aria-label="Беттің көрінісі" className="overflow-x-auto rounded-xl bg-slate-950 py-4 text-white">{renderSlide(slide, { mode: 'preview' })}</div></div> : <div className="relative m-auto shrink-0" style={{ width: W * z }} onPointerDown={e => { if (e.target === e.currentTarget) { setSel(null); setEditing(null); } }}>
-            <Stage bg={bg} clip={false} className="shadow-lg">
+            <Stage bg={bg} gradient={slide.bgGradient} clip={false} className="shadow-lg">
               <div aria-hidden="true" onPointerDown={() => { setSel(null); setEditing(null); }} style={{ position: 'absolute', inset: 0, backgroundImage: grid ? 'radial-gradient(rgba(100,116,139,.55) 1px, transparent 1.5px)' : 'none', backgroundSize: `${20 / 9.6}cqw ${20 / 9.6}cqw` }} />
               {blocks.map((b, i) => {
                 const on = b.id === selId;
                 return (
                   <div key={b.id} role="group" tabIndex={0} aria-label={label(b, i)} onPointerDown={e => drag(e, b)} onKeyDown={e => keys(e, b)} onFocus={() => setSel(b.id)} onDoubleClick={() => b.kind === 'text' && setEditing(b.id)}
-                    style={{ ...box(b), outline: on ? '2px solid var(--color-accent)' : '1px dashed rgba(100,116,139,.7)', cursor: editing === b.id ? 'text' : 'move', touchAction: 'none', zIndex: on ? 2 : 1 }}>
+                    style={{ ...box(b), outline: on ? '2px solid var(--color-accent)' : '1px dashed rgba(100,116,139,.7)', cursor: editing === b.id ? 'text' : 'move', touchAction: 'none' }}>
                     {editing === b.id && b.kind === 'text'
                       ? <textarea aria-label={`${TEXT_LANGS.find(([code]) => code === canvasLang)?.[1] || canvasLang} мәтінін өңдеу`} autoFocus value={textFor(b)} onChange={e => patchText(b, e.target.value, 'type' + b.id)} onBlur={() => setEditing(null)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLElement).blur(); } }}
                           style={{ width: '100%', height: '100%', background: 'transparent', border: 0, outline: 0, resize: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25 }} />
