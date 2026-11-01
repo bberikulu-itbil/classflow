@@ -5,15 +5,15 @@ import { Button, Card, ErrorBox, Field, inputCls } from '../ui';
 import { TopBar } from './TopBar';
 import { ai } from './AiPanel';
 import * as curriculum from '../curriculum/store';
-import { isPdf, isPptx, presentationSource, type PresentationSlide, type PresentationVariant } from '../lessons/presentationImport';
-import { uploadPresentationSource, uploadSlideImage } from '../lessons/media';
+import { isPptx, type PresentationVariant } from '../lessons/presentationImport';
+import { uploadSlideImage } from '../lessons/media';
 import { parsePptx, pptxSlideToCanvas } from '../lessons/pptx';
 import { downloadPptx, exportClassFlowPptx } from '../lessons/pptxExport';
 import { CanvasEditor } from '../lessons/CanvasEditor';
 import { canConvert, toCanvas } from '../lessons/canvas';
 
 type Mode = 'manual' | 'ai';
-type PageType = 'slide' | 'scroll' | 'interactive' | 'presentation';
+type PageType = 'slide' | 'scroll' | 'interactive';
 type Slide = Record<string, any> & { pageType?: PageType; templateId?: string };
 type Term = { term: string; definition: string };
 
@@ -21,16 +21,15 @@ const SAMPLE: Slide[] = [
   { type: 'canvas', pageType: 'slide', templateId: 'canvas-blank', title: 'Жаңа дәріс', bg: '#FFFFFF', blocks: [] },
 ];
 
-const TYPES = ['title', 'content', 'code', 'canvas', 'quiz', 'task', 'matching', 'flashcards', 'presentation'];
+const TYPES = ['title', 'content', 'code', 'canvas', 'quiz', 'task', 'matching', 'flashcards'];
 const typeLabel: Record<string, string> = {
-  title: 'Кіріспе', content: 'Түсіндірме', code: 'Код', canvas: 'Өңделетін слайд', quiz: 'Тест', task: 'Тапсырма', matching: 'Сәйкестендіру', flashcards: 'Карточкалар', presentation: 'Түпнұсқа презентация',
+  title: 'Кіріспе', content: 'Түсіндірме', code: 'Код', canvas: 'Өңделетін бет', quiz: 'Тест', task: 'Тапсырма', matching: 'Сәйкестендіру', flashcards: 'Карточкалар',
 };
 
 const PAGE_TYPES: Array<{ id: PageType; label: string; description: string }> = [
   { id: 'slide', label: 'Слайд беті', description: '16:9 кадр, презентацияға арналған' },
   { id: 'scroll', label: 'Ұзын бет', description: 'Төмен сырғитын оқу беті' },
   { id: 'interactive', label: 'Интерактивті бет', description: 'Жауап, тапсырма және нәтиже' },
-  { id: 'presentation', label: 'Түпнұсқа презентация', description: 'PPTX/PDF файлын өзгертпей ашу' },
 ];
 
 const PAGE_TEMPLATES: Record<PageType, Array<{ id: string; label: string; description: string; blockType: string }>> = {
@@ -54,13 +53,9 @@ const PAGE_TEMPLATES: Record<PageType, Array<{ id: string; label: string; descri
     { id: 'code-task', label: 'Код тапсырмасы', description: 'Кодты орындау және тексеру', blockType: 'code' },
     { id: 'reflection', label: 'Рефлексия', description: 'Сабақ соңындағы өзіндік бағалау', blockType: 'task' },
   ],
-  presentation: [
-    { id: 'presentation', label: 'Түпнұсқа файл', description: 'Презентацияны бастапқы күйінде ашу', blockType: 'presentation' },
-  ],
 };
 
 function inferPageType(slide: Slide): PageType {
-  if (slide.type === 'presentation' || slide.pageType === 'presentation') return 'presentation';
   if (slide.pageType === 'scroll' || slide.pageType === 'interactive' || slide.pageType === 'slide') return slide.pageType;
   if (['quiz', 'task', 'matching', 'flashcards'].includes(slide.type)) return 'interactive';
   return 'slide';
@@ -74,7 +69,6 @@ function inferTemplateId(slide: Slide, pageType: PageType): string {
   if (pageType === 'interactive' && slide.type === 'code') return 'code-task';
   if (pageType === 'interactive' && slide.type === 'quiz') return 'single-choice';
   if (pageType === 'interactive' && slide.type === 'task') return 'short-answer';
-  if (pageType === 'presentation' && slide.type === 'presentation') return 'presentation';
   return templates[0].id;
 }
 
@@ -91,7 +85,6 @@ function pageFromTemplate(pageType: PageType, templateId: string): Slide {
   if (template.blockType === 'content') return { ...base, bullets: [], notes: '' };
   if (template.blockType === 'code') return { ...base, prompt: '', starter: '', hints: [], tests: [] };
   if (template.blockType === 'quiz') return { ...base, prompt: '', options: [], answer: 0, points: 1 };
-  if (template.blockType === 'presentation') return { ...base, sourceFormat: 'pptx', html: '', css: '' };
   return { ...base, prompt: '', accept: [], points: 1 };
 }
 
@@ -109,8 +102,23 @@ function parseTerms(value: unknown): Term[] {
   return Array.isArray(value) ? value.filter(x => x && typeof x.term === 'string').map(x => ({ term: String(x.term), definition: String(x.definition || '') })) : [];
 }
 
+/** Adds a translated PPTX's text into the matching imported canvas page. Images and shapes stay from the base language. */
+function mergeCanvasLanguage(base: Slide, translated: Slide, language: PresentationVariant): Slide {
+  const baseBlocks = Array.isArray(base.blocks) ? base.blocks : [];
+  const translatedTexts = (Array.isArray(translated.blocks) ? translated.blocks : []).filter((block: any) => block?.kind === 'text');
+  let textIndex = 0;
+  const blocks = baseBlocks.map((block: any) => {
+    if (block?.kind !== 'text') return block;
+    const translatedBlock = translatedTexts[textIndex++];
+    if (!translatedBlock) return block;
+    const text = String(translatedBlock.variants?.[language] ?? translatedBlock.text ?? '');
+    return { ...block, variants: { ...(block.variants || {}), [language]: text } };
+  });
+  return { ...base, blocks };
+}
+
 function displaySlideText(slide: Slide) {
-  const text = slide.sourceName ? `${slide.sourceName} · ${slide.title || `Слайд ${slide.slideNumber || ''}`}` : slide.prompt || slide.notes || (Array.isArray(slide.bullets) ? slide.bullets.join(' · ') : '') || slide.subtitle || '';
+  const text = slide.title || slide.prompt || slide.notes || (Array.isArray(slide.bullets) ? slide.bullets.join(' · ') : '') || slide.subtitle || '';
   return String(text).replace(/\s+/g, ' ').trim();
 }
 
@@ -141,12 +149,11 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [aiObjective, setAiObjective] = useState('');
   const [aiInstruction, setAiInstruction] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
-  const [presentationBusy, setPresentationBusy] = useState(false);
-  const [presentationMeta, setPresentationMeta] = useState<any>(null);
+  const [importBusy, setImportBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [canvasEditorIndex, setCanvasEditorIndex] = useState<number | null>(isNew ? 0 : null);
-  const [presentationVariant, setPresentationVariant] = useState<PresentationVariant>('kk');
-  const presentationFile = useRef<HTMLInputElement>(null);
+  const [importVariant, setImportVariant] = useState<PresentationVariant>('kk');
+  const importFile = useRef<HTMLInputElement>(null);
 
   useEffect(() => { slidesRef.current = slides; }, [slides]);
 
@@ -160,7 +167,6 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       setObjectives('');
       setSlides(SAMPLE);
       setTerms([]);
-      setPresentationMeta(null);
       setCanvasEditorIndex(0);
       setLoading(false);
       return;
@@ -176,7 +182,6 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
         setObjectives(Array.isArray(data.plan?.objectives) ? data.plan.objectives.join('\n') : '');
         setGrade(String(data.plan?.grade || '7'));
         setDuration(data.plan?.duration || '90 минут');
-        setPresentationMeta(data.plan?.presentation || null);
         const loadedSlides = parseSlides(data.slides);
         const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
         setSlides(nextSlides);
@@ -224,58 +229,54 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
 
   const importSource = async (file: File | undefined) => {
     if (!file) return;
-    if (!isPptx(file) && !isPdf(file)) return setError('Тек .pptx немесе .pdf файлын импорттауға болады.');
-    setError(''); setMessage(''); setPresentationBusy(true);
+    if (!isPptx(file)) return setError('Тек .pptx файлын импорттауға болады.');
+    setError(''); setMessage(''); setImportBusy(true);
     try {
-      const deck = isPptx(file) ? await parsePptx(file) : null;
-      const sourceUrl = DEMO
-        ? URL.createObjectURL(file)
-        : await uploadPresentationSource(file, me?.school_id || '');
-      const importId = crypto.randomUUID();
-      const source = { ...presentationSource(file, sourceUrl), presentationImportId: importId, ...(deck ? { presentationWidth: deck.width, presentationHeight: deck.height } : {}) };
+      const deck = await parsePptx(file);
+      const importBatchId = crypto.randomUUID();
       const imageSources: Record<string, string> = {};
-      if (deck && !DEMO) {
+      let inlineImageFallback = false;
+      if (!DEMO) {
         const images = deck.slides.flatMap(slide => slide.blocks.filter(block => block.kind === 'image'));
         for (const image of images) {
           if (!/^image\/(png|jpeg|webp|gif)$/.test(image.mime) || imageSources[image.name]) continue;
-          imageSources[image.name] = await uploadSlideImage(new File([image.bytes.buffer as ArrayBuffer], image.name, { type: image.mime }), me?.school_id || '');
+          try {
+            imageSources[image.name] = await uploadSlideImage(new File([image.bytes.buffer as ArrayBuffer], image.name, { type: image.mime }), me?.school_id || '');
+          } catch {
+            // If the optional media bucket is not installed yet, keep the image
+            // inside the canvas block instead of aborting the whole PPTX import.
+            imageSources[image.name] = image.dataUrl;
+            inlineImageFallback = true;
+          }
         }
       }
-      if (presentationVariant === 'kk') {
-        const converted: Slide[] = deck ? deck.slides.map(slide => pptxSlideToCanvas(slide, { sourceUrl, sourceName: file.name, importId, imageSources: DEMO ? undefined : imageSources })) as Slide[] : [];
+      if (importVariant === 'kk') {
+        const converted: Slide[] = deck.slides.map(slide => pptxSlideToCanvas(slide, { language: importVariant, importBatchId, imageSources: DEMO ? undefined : imageSources })) as Slide[];
         const emptySeed = isNew && slidesRef.current === SAMPLE;
-        const firstConvertedIndex = (emptySeed ? 0 : slidesRef.current.length) + 1;
+        const firstConvertedIndex = emptySeed ? 0 : slidesRef.current.length;
         setSlides(items => {
-          return [...(emptySeed ? [] : items), source, ...converted];
+          return [...(emptySeed ? [] : items), ...converted];
         });
         if (converted.length) setCanvasEditorIndex(firstConvertedIndex);
         setTitle(prev => prev.trim() || file.name.replace(/\.(pptx|pdf)$/i, ''));
-        setSummary(prev => prev || (deck ? 'PPTX слайдтары ClassFlow элементтеріне айналдырылды және түпнұсқа файл сақталды.' : 'Түпнұсқа презентация файл ретінде сақталды.'));
-        setPresentationMeta((prev: any) => ({ ...(prev || {}), kk: { fileName: file.name, importId, width: deck?.width, height: deck?.height, slideCount: deck?.slides.length || 0, plainText: deck?.plainText || '' } }));
-        setMessage(deck ? `${deck.slides.length} слайд оқылды: мәтін, сурет және өлшемдер ClassFlow-дың өңделетін беттеріне айналды. Түпнұсқа өзгермеді.` : 'PDF түпнұсқа файл ретінде қосылды. PDF-ті ClassFlow элементтеріне бөлу әзірге қолжетімсіз.');
+        setSummary(prev => prev || 'PPTX слайдтары ClassFlow кенеп беттеріне айналдырылды. Бастапқы файл сақталмайды.');
+        setMessage(`${deck.slides.length} бет импортталды: мәтін, сурет, фигура және фон ClassFlow элементтеріне бөлінді.${inlineImageFallback ? ' Медиа қоймасы қолжетімсіз болғандықтан, суреттер кенеп ішінде сақталды.' : ''}`);
       } else {
-        const currentBase = slidesRef.current.filter(item => inferPageType(item) === 'presentation') as unknown as PresentationSlide[];
-        if (!currentBase.length) throw new Error('Орысша нұсқаны қосу үшін алдымен қазақша PPTX/PDF слайдтарын импорттаңыз.');
-        const target = currentBase.find(item => item.presentationImportId) || currentBase[currentBase.length - 1];
-        const baseImportId = target.presentationImportId || importId;
-        const languageSource = { ...source, presentationImportId: baseImportId };
-        const converted: Slide[] = deck ? deck.slides.map(slide => pptxSlideToCanvas(slide, { sourceUrl, sourceName: file.name, importId: baseImportId, imageSources: DEMO ? undefined : imageSources })) as Slide[] : [];
-        const kkPages = slidesRef.current.filter(item => item.type === 'canvas' && item.presentationImportId === baseImportId).sort((a, b) => (a.slideNumber || 0) - (b.slideNumber || 0));
-        setSlides(items => {
-          if (converted.length && converted.length === kkPages.length) return items.map(slide => {
-            if (slide === target) return { ...slide, ru: languageSource };
-            const index = kkPages.indexOf(slide);
-            return index >= 0 ? { ...slide, ru: converted[index] } : slide;
-          });
-          return items.map(slide => slide === target ? { ...slide, ru: languageSource } : slide);
-        });
-        setPresentationMeta((prev: any) => ({ ...(prev || {}), ru: { fileName: file.name, importId: baseImportId, width: deck?.width, height: deck?.height, slideCount: deck?.slides.length || 0, plainText: deck?.plainText || '' } }));
-        setMessage(converted.length && converted.length === kkPages.length ? 'Орысша PPTX түпнұсқа ретінде сақталды және сәйкес ClassFlow беттеріне тілдік нұсқа болып қосылды.' : 'Орысша түпнұсқа тілдік нұсқа ретінде сақталды. Слайд саны сәйкес болмағандықтан, өңделетін тілдік беттер қосылмады.');
+        const allImportedKkPages = slidesRef.current.filter(item => item.type === 'canvas' && item.importedLanguage === 'kk');
+        const targets = allImportedKkPages.slice(-deck.slides.length);
+        if (!targets.length) throw new Error('Орысша нұсқаны қосу үшін алдымен қазақша PPTX слайдтарын импорттаңыз.');
+        const usable = Math.min(targets.length, deck.slides.length);
+        const converted: Slide[] = deck.slides.map(slide => pptxSlideToCanvas(slide, { language: 'ru', importBatchId, imageSources: DEMO ? undefined : imageSources })) as Slide[];
+        setSlides(items => items.map(slide => {
+          const index = targets.indexOf(slide);
+          return index >= 0 && index < usable ? mergeCanvasLanguage(slide, converted[index], 'ru') : slide;
+        }));
+        setMessage(`${usable} бетке орысша мәтін нұсқасы қосылды.`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Презентацияны импорттау мүмкін болмады.');
     } finally {
-      setPresentationBusy(false);
+      setImportBusy(false);
     }
   };
 
@@ -323,7 +324,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const save = async () => {
     if (!title.trim()) return setError('Дәрістің атауын жазыңыз.');
     setError(''); setMessage(''); setSaving(true);
-    const plan = { summary: summary.trim(), objectives: objectives.split('\n').map(x => x.trim()).filter(Boolean), grade: +grade || 7, duration, ...(presentationMeta ? { presentation: presentationMeta } : {}) };
+    const plan = { summary: summary.trim(), objectives: objectives.split('\n').map(x => x.trim()).filter(Boolean), grade: +grade || 7, duration };
     const row = { title: title.trim(), subject: subject.trim() || null, slides, terms, plan };
     try {
       let lessonId = route.lessonId;
@@ -372,6 +373,10 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       title={title}
       status={saving ? 'Сақталуда…' : 'Нобай'}
       saved={message}
+      importBusy={importBusy}
+      importVariant={importVariant}
+      onImportVariant={setImportVariant}
+      onImport={importSource}
       previewHref={!isNew && route.lessonId ? `#preview/${route.lessonId}` : undefined}
       onTitle={setTitle}
       onChange={slide => setSlides(items => items.map((item, index) => index === canvasEditorIndex ? normalizePage(slide) : item))}
@@ -456,14 +461,14 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
 
         <Card className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 className="font-semibold">Дәріс беттері</h2><p className="mt-1 text-sm text-text-secondary">PPTX түпнұсқасы өзгермей сақталады, ал оның мәтіні, суреті және өлшемі өңделетін ClassFlow беттеріне бөлінеді. Орысша PPTX сәйкес беттерге тілдік нұсқа болады.</p></div>
+            <div><h2 className="font-semibold">Дәріс беттері</h2><p className="mt-1 text-sm text-text-secondary">PPTX бірден ClassFlow кенеп беттеріне айналады: мәтін, сурет, фигура және фон жеке өңделетін элементтер болады. Бастапқы файл сақталмайды.</p></div>
             <div className="flex flex-wrap items-center gap-2">
-              <select aria-label="Импорт тілін таңдау" className={inputCls + ' !w-auto'} value={presentationVariant} onChange={e => setPresentationVariant(e.target.value as PresentationVariant)}>
+              <select aria-label="Импорт тілін таңдау" className={inputCls + ' !w-auto'} value={importVariant} onChange={e => setImportVariant(e.target.value as PresentationVariant)}>
                 <option value="kk">Қазақша слайдтар</option><option value="ru">Орысша нұсқа</option>
               </select>
-              <Button variant="secondary" loading={presentationBusy} onClick={() => presentationFile.current?.click()}><Upload size={16} aria-hidden="true" />PPTX/PDF импорттау</Button>
+              <Button variant="secondary" loading={importBusy} onClick={() => importFile.current?.click()}><Upload size={16} aria-hidden="true" />PPTX импорттау</Button>
               <Button variant="secondary" loading={exportBusy} onClick={exportEditedPptx}><Download size={16} aria-hidden="true" />Өңделген PPTX жүктеу</Button>
-              <input ref={presentationFile} type="file" className="sr-only" accept=".pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf" onChange={e => { importSource(e.target.files?.[0]); e.target.value = ''; }} />
+              <input ref={importFile} type="file" className="sr-only" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={e => { importSource(e.target.files?.[0]); e.target.value = ''; }} />
               <Button variant="secondary" onClick={openPagePicker}><Plus size={16} aria-hidden="true" />Бет қосу</Button>
             </div>
           </div>

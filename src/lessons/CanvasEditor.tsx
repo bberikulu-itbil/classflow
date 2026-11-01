@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BringToFront, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Video, Sigma, MousePointerClick } from 'lucide-react';
+import { BringToFront, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Upload, Video, Sigma, MousePointerClick } from 'lucide-react';
 import { Button, LinkButton, inputCls } from '../ui';
 import { renderSlide } from '../components/Widgets';
 import { FieldRow } from './FieldRow';
 import { fieldsOf } from './blocks';
 import { pageOf, typeLabel } from './pages';
+import type { PresentationVariant } from './presentationImport';
 import { track, useWide } from '../board/Win';
 import { uploadSlideImage } from './media';
 import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
@@ -24,9 +25,10 @@ const tb = 'flex h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:
 const label = (b: CBlock, i: number) => `${i + 1}. ${KIND_LABEL[b.kind]}${b.kind === 'text' && b.text ? ': ' + b.text.replace(/\s+/g, ' ').slice(0, 24) : b.kind === 'code' && b.code ? ': ' + b.code.replace(/\s+/g, ' ').slice(0, 20) : ''}`;
 
 /** Full-screen editor of one «кенеп» page: palette, 16:9 stage, properties, layers and the page strip. */
-export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previewHref, embedded = false, onTitle, onChange, onSelect, onAdd, onReorder, onSave, onClose }: {
+export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previewHref, embedded = false, importBusy, importVariant, onImportVariant, onImport, onTitle, onChange, onSelect, onAdd, onReorder, onSave, onClose }: {
   pages: any[]; cur: number; schoolId: string; title: string; status: string; saved: string; previewHref?: string;
   embedded?: boolean;
+  importBusy?: boolean; importVariant?: PresentationVariant; onImportVariant?: (variant: PresentationVariant) => void; onImport?: (file: File) => void;
   onTitle: (t: string) => void; onChange: (slide: any) => void; onSelect: (i: number) => void; onAdd: () => void; onReorder: (from: number, to: number) => void; onSave: () => void; onClose: (changed: boolean) => void;
 }) {
   const slide = pages[cur], bg = bgOf(slide), blocks = blocksOf(slide), isCv = slide.type === 'canvas';
@@ -35,7 +37,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
   const wide = useWide(), [rail, setRail] = useState<Rail | null>(wide ? 'elements' : null), [propsOpen, setPropsOpen] = useState(wide), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
   const latest = useRef(slide), hist = useRef<any[]>([]), lastKey = useRef<string | null>(null), changed = useRef(false);
-  const cb = useRef(onChange), area = useRef<HTMLDivElement>(null), head = useRef<HTMLHeadingElement>(null);
+  const cb = useRef(onChange), area = useRef<HTMLDivElement>(null), head = useRef<HTMLHeadingElement>(null), importFile = useRef<HTMLInputElement>(null);
   latest.current = slide; cb.current = onChange;
   const sel = blocks.find(b => b.id === selId) || null, selIdx = sel ? blocks.indexOf(sel) : -1;
   const z = zoom === 'fit' ? clamp((avail - 48) / W, 0.3, 2) : zoom;
@@ -149,6 +151,11 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
         <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-on-accent-soft">{status}</span>
         <span role="status" aria-live="polite" className="text-sm text-text-secondary">{saved && `Сақталды · ${saved}`}</span>
         <Button variant="secondary" onClick={undo} disabled={!nHist}><Undo2 size={16} aria-hidden="true" />Болдырмау</Button>
+        {onImport && <>
+          {onImportVariant && <select aria-label="PPTX импорт тілін таңдау" className={inputCls + ' !min-h-[44px] !w-auto'} value={importVariant || 'kk'} onChange={e => onImportVariant(e.target.value as PresentationVariant)}><option value="kk">Қазақша</option><option value="ru">Русский</option></select>}
+          <Button variant="secondary" loading={importBusy} onClick={() => importFile.current?.click()}><Upload size={16} aria-hidden="true" />PPTX импорттау</Button>
+          <input ref={importFile} type="file" className="sr-only" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={e => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ''; }} />
+        </>}
         <button type="button" aria-label="Қасиеттер панелі" title="Қасиеттер панелі" aria-pressed={propsOpen} aria-controls="ce-props" className={tb + ' !h-11 !w-11'} onClick={() => setPropsOpen(o => !o)}><PanelRight size={18} aria-hidden="true" /></button>
         {previewHref && <LinkButton variant="ghost" href={previewHref} target="_blank" rel="noopener">Алдын ала қарау</LinkButton>}
         <Button onClick={onSave}>Сақтау</Button>

@@ -32,7 +32,17 @@ export type PptxImageBlock = {
   h: number;
 };
 
-export type PptxBlock = PptxTextBlock | PptxImageBlock;
+export type PptxShapeBlock = {
+  kind: 'shape';
+  shape: 'rect' | 'ellipse';
+  fill: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type PptxBlock = PptxTextBlock | PptxImageBlock | PptxShapeBlock;
 
 export type PptxSlide = {
   number: number;
@@ -128,6 +138,15 @@ function colour(node: Element | undefined) {
   return /^[0-9a-f]{6}$/i.test(value) ? `#${value}` : undefined;
 }
 
+function shapeFill(shape: Element) {
+  return colour(first(first(shape, 'spPr'), 'solidFill'));
+}
+
+function shapeKind(shape: Element): 'rect' | 'ellipse' {
+  const preset = attr(first(first(shape, 'spPr'), 'prstGeom'), 'prst').toLowerCase();
+  return preset.includes('ellipse') || preset.includes('oval') ? 'ellipse' : 'rect';
+}
+
 function style(node: Element | undefined) {
   const run = first(node, 'rPr') || first(node, 'defRPr');
   const size = Number(attr(run, 'sz'));
@@ -168,9 +187,30 @@ function slideBackground(doc: XMLDocument) {
   return colour(fill) || '#FFFFFF';
 }
 
+function slideBackgroundImage(files: Record<string, Uint8Array>, doc: XMLDocument, path: string): PptxImageBlock | null {
+  const bgPr = first(first(doc, 'bg'), 'bgPr');
+  const blip = first(first(bgPr, 'blipFill'), 'blip');
+  const rid = attr(blip, 'r:embed') || attr(blip, 'embed');
+  const imagePath = relTarget(files, path, rid);
+  const bytes = imagePath ? files[imagePath] : undefined;
+  if (!bytes) return null;
+  const mime = imageMime(imagePath);
+  return { kind: 'image', name: `background-${path.split('/').pop() || 'slide'}.${imagePath.split('.').pop() || 'png'}`, mime, bytes, dataUrl: dataUrl(bytes, mime), x: 0, y: 0, w: W, h: H };
+}
+
 function titleType(shape: Element) {
   const type = attr(first(shape, 'ph'), 'type');
   return type === 'title' || type === 'ctrTitle' || type === 'subTitle';
+}
+
+function drawingShapes(node: Element | null | undefined): Element[] {
+  if (!node) return [];
+  const out: Element[] = [];
+  for (const child of Array.from(node.children)) {
+    if (child.localName === 'sp' || child.localName === 'pic') out.push(child);
+    if (child.localName === 'grpSp') out.push(...drawingShapes(child));
+  }
+  return out;
 }
 
 function presentationSize(doc: XMLDocument) {
@@ -200,14 +240,26 @@ function orderedSlidePaths(files: Record<string, Uint8Array>) {
 function parseSlide(files: Record<string, Uint8Array>, path: string, number: number, width: number, height: number): PptxSlide {
   const doc = xml(files[path], path);
   const blocks: PptxBlock[] = [];
+  const backgroundImage = slideBackgroundImage(files, doc, path);
+  if (backgroundImage) blocks.push(backgroundImage);
   const tree = first(doc, 'spTree');
-  const shapes = tree ? Array.from(tree.children) : [];
+  const shapes = drawingShapes(tree);
   for (const shape of shapes) {
     const local = shape.localName;
     if (local === 'sp') {
-      const text = textIn(shape);
-      if (!text) continue;
       const box = rect(shape, width, height);
+      const blip = first(shape, 'blip');
+      const rid = attr(blip, 'r:embed') || attr(blip, 'embed');
+      const imagePath = relTarget(files, path, rid);
+      const imageBytes = imagePath ? files[imagePath] : undefined;
+      if (imageBytes) {
+        const mime = imageMime(imagePath);
+        blocks.push({ kind: 'image', name: imagePath.split('/').pop() || `image-${number}`, mime, bytes: imageBytes, dataUrl: dataUrl(imageBytes, mime), ...box });
+      }
+      const fill = shapeFill(shape);
+      const text = textIn(shape);
+      if (fill) blocks.push({ kind: 'shape', shape: shapeKind(shape), fill, ...box });
+      if (!text) continue;
       const st = style(first(shape, 'txBody'));
       blocks.push({ kind: 'text', text, ...box, ...st, title: titleType(shape) });
     } else if (local === 'pic') {
@@ -238,30 +290,25 @@ export async function parsePptx(file: File): Promise<PptxDeck> {
   return { fileName: file.name, width: size.width, height: size.height, slides, plainText: slides.map(slide => `Слайд ${slide.number}: ${slide.text}`).join('\n\n') };
 }
 
-function canvasBox(block: { x: number; y: number; w: number; h: number }, width: number, height: number) {
-  return { x: (block.x / width) * W, y: (block.y / height) * H, w: (block.w / width) * W, h: (block.h / height) * H };
-}
-
 export type PptxCanvasOptions = {
-  sourceUrl: string;
-  sourceName: string;
-  importId: string;
+  language: 'kk' | 'ru';
+  importBatchId: string;
   imageSources?: Record<string, string>;
 };
 
 /** Maps one parsed slide to the editable ClassFlow canvas model. */
 export function pptxSlideToCanvas(slide: PptxSlide, options: PptxCanvasOptions) {
   const blocks = slide.blocks.map(block => {
-    const box = canvasBox(block, slide.width, slide.height);
-    if (block.kind === 'image') return slim(norm({ id: newId(), kind: 'image', ...box, src: options.imageSources ? options.imageSources[block.name] || '' : block.dataUrl, alt: block.name })!);
-    return slim(norm({ id: newId(), kind: 'text', ...box, text: block.text, variants: { kk: block.text }, size: block.size, bold: block.bold, color: block.color, align: block.align })!);
+    // parseSlide already normalizes OOXML coordinates to the ClassFlow 960×540 canvas.
+    const box = { x: block.x, y: block.y, w: block.w, h: block.h };
+    if (block.kind === 'image') return slim(norm({ id: newId(), kind: 'image', ...box, src: options.imageSources ? options.imageSources[block.name] || block.dataUrl : block.dataUrl, alt: block.name })!);
+    if (block.kind === 'shape') return slim(norm({ id: newId(), kind: 'shape', ...box, shape: block.shape, fill: block.fill })!);
+    return slim(norm({ id: newId(), kind: 'text', ...box, text: block.text, variants: { [options.language]: block.text }, size: block.size, bold: block.bold, color: block.color, align: block.align })!);
   });
-  if (!blocks.length) blocks.push(slim(norm({ id: newId(), kind: 'text', x: 70, y: 220, w: 820, h: 90, text: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.', variants: { kk: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.' }, size: 28 })!));
+  if (!blocks.length) blocks.push(slim(norm({ id: newId(), kind: 'text', x: 70, y: 220, w: 820, h: 90, text: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.', variants: { [options.language]: 'Бұл слайдта мәтіндік немесе суреттік элемент табылмады.' }, size: 28 })!));
   return {
     type: 'canvas', pageType: 'slide', templateId: 'canvas-blank', title: slide.title, bg: slide.background,
-    blocks, sourceFormat: 'pptx', sourceName: options.sourceName, sourceUrl: options.sourceUrl,
-    slideNumber: slide.number, presentationImportId: options.importId, presentationWidth: slide.width, presentationHeight: slide.height,
-    sourceSlidePath: slide.slidePath, sourceText: slide.text,
+    blocks, slideNumber: slide.number, importBatchId: options.importBatchId, importedLanguage: options.language,
   };
 }
 
