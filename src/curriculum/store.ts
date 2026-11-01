@@ -1,6 +1,7 @@
 import { sb, DEMO } from '../config';
 import { loadLessonData } from '../lessons/data';
 import { currentQuarter } from '../lessons/model';
+import { ROBOTICS_LESSONS } from '../lessons/robotics';
 
 export interface Course { id: string; title: string; subject: string | null; grade: number | null }
 export type Kind = 'lesson' | 'course';
@@ -59,13 +60,21 @@ export async function loadLessons(meId: string): Promise<Les[]> {
   // course tree before it could be displayed.
   const { data, error } = await sb.from('cf_lessons').select('id,title,subject').order('updated_at', { ascending: false });
   fail(error);
-  return (data || []).map((row: any) => ({
+  const fromDb: Les[] = (data || []).map((row: any) => ({
     id: row.id,
     title: row.title,
     title_kk: row.title,
     title_ru: row.title,
     subject: row.subject,
   }));
+  const robLessons: Les[] = ROBOTICS_LESSONS.map(r => ({
+    id: r.id,
+    title: r.title,
+    title_kk: r.title_kk,
+    title_ru: r.title_ru,
+    subject: r.subject,
+  }));
+  return [...fromDb, ...robLessons.filter(r => !fromDb.some(d => d.id === r.id))];
 }
 
 export async function loadCurr(me: Me): Promise<Curr> {

@@ -6,6 +6,8 @@ import { renderSlide } from '../components/Widgets';
 import { tr, useLang } from './lang';
 import { spCtx, useSpoilers } from './spoil';
 
+import { isRoboticsLessonId, loadRoboticsLesson } from './robotics';
+
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
 const label = (s: any, i: number, lang: 'kk' | 'ru') => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
 /** Teacher-only hint under a slide: the right answer and the lecture notes. Nothing here reaches students. */
@@ -19,8 +21,22 @@ const hint = (s: any): string[] => [
 /** Read-only walk through a lecture's slides, no class and no live session needed. */
 export function LessonPreview({ id }: { id: string }) {
   const q = useLoad(async () => {
+    if (isRoboticsLessonId(id)) {
+      const rob = await loadRoboticsLesson(id);
+      if (rob) return rob as Row;
+    }
     const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides').eq('id', id).maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (isRoboticsLessonId(id)) {
+        const rob = await loadRoboticsLesson(id);
+        if (rob) return rob as Row;
+      }
+      throw new Error(error.message);
+    }
+    if (!data && isRoboticsLessonId(id)) {
+      const rob = await loadRoboticsLesson(id);
+      if (rob) return rob as Row;
+    }
     return data as Row | null;
   }, [id]);
   const [i, setI] = useState(0);

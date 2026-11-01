@@ -34,7 +34,7 @@ const num = (v: unknown, d: number, lo: number, hi: number) => (typeof v === 'nu
 export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Same rule as the other picture slides: https, a small data: image, or a picture shipped under lec/. */
-export const imgOk = (s: unknown): s is string => typeof s === 'string' && /^(https:\/\/|data:image\/|lec\/[\w-]+\.(svg|png|webp|jpe?g)$)/.test(s);
+export const imgOk = (s: unknown): s is string => typeof s === 'string' && /^(https?:\/\/|\/|data:image\/|lec\/[\w-]+\.(svg|png|webp|jpe?g)$)/.test(s);
 
 export const BG = [['#FFFFFF', 'Ақ'], ['#F4F1E8', 'Қағаз'], ['#E2EFEC', 'Жұмсақ жасыл'], ['#FFF4CC', 'Сары'], ['#0F172A', 'Қою']] as const;
 export const INK = [['#111827', 'Қара'], ['#FFFFFF', 'Ақ'], ['#2F6F65', 'Көгілдір-жасыл'], ['#2457D6', 'Көк'], ['#B42318', 'Қызыл'], ['#B45309', 'Қошқыл сары'], ['#6D28D9', 'Күлгін'], ['#64748B', 'Сұр']] as const;

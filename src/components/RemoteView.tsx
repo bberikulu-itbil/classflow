@@ -295,11 +295,11 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
             </div>
             <div className="flex items-center justify-between"><h2 className="font-semibold">Қазіргі слайд</h2><Button variant="secondary" onClick={flipLang} aria-label="Слайд тілі">{lang === 'kk' ? 'ҚАЗ' : 'РУС'}</Button></div>
             <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#10213F] text-white">
-              <div className="pointer-events-none" inert>{renderSlide(slide, { mode: 'preview', lang })}</div>
+              <div className="pointer-events-none" inert>{renderSlide(tr(slide, lang), { mode: 'preview', lang })}</div>
             </div>
             <h2 className="font-semibold">Келесі слайд{next ? ` · ${cur + 2} / ${total}` : ''}</h2>
             {next ? <div role="region" aria-label="Келесі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#10213F] text-white">
-              <div className="pointer-events-none" inert>{renderSlide(next, { mode: 'preview', lang })}</div>
+              <div className="pointer-events-none" inert>{renderSlide(tr(next, lang), { mode: 'preview', lang })}</div>
             </div> : <p role="status" className="rounded-xl bg-surface-2 p-5 text-text-secondary">Бұл — дәрістің соңғы слайды.</p>}
             <div role="progressbar" aria-label="Сабақ барысы" aria-valuemin={1} aria-valuemax={total} aria-valuenow={cur + 1} className="h-1.5 rounded bg-surface-2"><div className="h-1.5 rounded bg-accent" style={{ width: pct + '%' }} /></div>
             {slide.notes && <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning"><b>Ескертпе:</b> {slide.notes}</p>}

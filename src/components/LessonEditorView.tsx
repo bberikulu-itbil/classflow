@@ -11,6 +11,7 @@ import { parsePptx, pptxSlideToCanvas } from '../lessons/pptx';
 import { downloadPptx, exportClassFlowPptx } from '../lessons/pptxExport';
 import { CanvasEditor } from '../lessons/CanvasEditor';
 import { canConvert, toCanvas } from '../lessons/canvas';
+import { isRoboticsLessonId, loadRoboticsLesson } from '../lessons/robotics';
 
 type Mode = 'manual' | 'ai';
 type PageType = 'slide' | 'scroll' | 'interactive';
@@ -227,6 +228,19 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       setTerms([]);
       setCanvasEditorIndex(0);
       setLoading(false);
+      return;
+    }
+    if (isRoboticsLessonId(route.lessonId)) {
+      setLoading(true);
+      loadRoboticsLesson(route.lessonId).then(rob => {
+        if (rob) {
+          setTitle(rob.title);
+          setSubject(rob.subject);
+          setSlides(rob.slides);
+          setCanvasEditorIndex(0);
+        }
+        setLoading(false);
+      });
       return;
     }
     setLoading(true);
