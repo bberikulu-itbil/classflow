@@ -370,6 +370,13 @@ function appearance(shape: Element, width: number, transform: CoordTransform, th
     const clr = colour(outerShdw, themeColors) || 'rgba(0,0,0,0.25)';
     return `0 ${Math.max(1, dist)}px ${Math.max(2, blur)}px ${clr}`;
   })() : undefined;
+function isCirclePath(d?: string): boolean {
+  if (!d) return false;
+  const cCount = (d.match(/ C /g) || []).length;
+  return cCount === 4 && d.includes('Z');
+}
+
+  const isCircle = isCirclePath(d) || prstName.includes('ellipse') || prstName.includes('oval');
   return {
     fontFamily: font(run), italic: /Italic/.test(attr(first(run, 'latin'), 'typeface')), lineHeight: paragraphs[0]?.lineHeight, letterSpacing: pt(emu(attr(run, 'spc')) / 100),
     padding: [emu(attr(bp, 'tIns'), 45720)*factor*transform.sy, emu(attr(bp, 'rIns'), 91440)*factor*transform.sx, emu(attr(bp, 'bIns'), 45720)*factor*transform.sy, emu(attr(bp, 'lIns'), 91440)*factor*transform.sx],
@@ -380,7 +387,7 @@ function appearance(shape: Element, width: number, transform: CoordTransform, th
     shadow,
     opacity: fillAlpha ? emu(attr(fillAlpha, lname(fillAlpha) === 'alphaModFix' ? 'amt' : 'val'), 100000)/100000 : undefined,
     gradient: gradient(props, themeColors), stroke: colour(child(ln, 'solidFill'), themeColors), strokeWidth: emu(attr(ln, 'w'))*factor*transform.sx,
-    radius: prstName === 'roundRect' ? 8 : 0,
+    radius: isCircle ? 9999 : prstName === 'roundRect' ? 8 : 0,
     path: d, viewBox };
 }
 
@@ -590,17 +597,39 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
   return { number, title: titleBlock?.text.split('\n')[0] || text.split('\n')[0] || `Слайд ${number}`, text, background: bg, bgGradient: bgGrad, width, height, slidePath: path, blocks };
 }
 
+export type PptxProgress = {
+  phase: string;
+  percent: number;
+  current?: number;
+  total?: number;
+  detail?: string;
+};
+
 /** Reads an OOXML presentation without changing its source file. */
-export async function parsePptx(file: File): Promise<PptxDeck> {
+export async function parsePptx(
+  file: File,
+  onProgress?: (progress: PptxProgress) => void
+): Promise<PptxDeck> {
+  onProgress?.({ phase: 'unzip', percent: 8, detail: 'PPTX архиві ашылуда...' });
   const bytes = new Uint8Array(await file.arrayBuffer());
   let files: Record<string, Uint8Array>;
   try { files = unzipSync(bytes); } catch { throw new Error('PPTX файлын ZIP/OOXML ретінде ашу мүмкін болмады.'); }
+  onProgress?.({ phase: 'xml', percent: 18, detail: 'Құрылымы мен түс палитрасы талдануда...' });
   const presentationPath = 'ppt/presentation.xml';
   const presentation = xml(files[presentationPath], presentationPath);
   const size = presentationSize(presentation);
   const themeColors = parseThemeColors(files);
-  const slides = orderedSlidePaths(files).map((path, index) => parseSlide(files, path, index + 1, size.width, size.height, themeColors));
-  if (!slides.length) throw new Error('PPTX ішінде слайд табылмады.');
+  const paths = orderedSlidePaths(files);
+  const total = paths.length;
+  if (!total) throw new Error('PPTX ішінде слайд табылмады.');
+  const slides: PptxSlide[] = [];
+  for (let index = 0; index < total; index++) {
+    const path = paths[index];
+    const s = parseSlide(files, path, index + 1, size.width, size.height, themeColors);
+    slides.push(s);
+    const pct = Math.round(20 + ((index + 1) / total) * 30);
+    onProgress?.({ phase: 'slides', percent: pct, current: index + 1, total, detail: `Слайдтар талдануда: ${index + 1} / ${total}` });
+  }
   return { fileName: file.name, width: size.width, height: size.height, slides, plainText: slides.map(slide => `Слайд ${slide.number}: ${slide.text}`).join('\n\n') };
 }
 

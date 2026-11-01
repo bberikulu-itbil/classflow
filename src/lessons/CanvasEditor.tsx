@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BringToFront, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Upload, Video, Sigma, MousePointerClick } from 'lucide-react';
+import { BringToFront, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Upload, Video, Sigma, MousePointerClick, Crop, FlipHorizontal, FlipVertical, Sparkles, Wand2 } from 'lucide-react';
 import { Button, LinkButton, inputCls } from '../ui';
 import { renderSlide } from '../components/Widgets';
 import { FieldRow } from './FieldRow';
@@ -7,8 +7,8 @@ import { fieldsOf } from './blocks';
 import { pageOf, typeLabel } from './pages';
 import type { PresentationVariant } from './presentationImport';
 import { track, useWide } from '../board/Win';
-import { uploadSlideImage } from './media';
-import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim } from './canvas';
+import { uploadSlideImage, removeWhiteBackground } from './media';
+import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim, type CanvasAppearance } from './canvas';
 import { blockForLanguage } from './canvas';
 
 type Tab = 'design' | 'content' | 'action';
@@ -66,6 +66,25 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   }), key);
   const textFor = (b: CBlock) => b.variants?.[canvasLang] ?? b.text ?? '';
   const patchText = (b: CBlock, value: string, key?: string) => patch(b.id, { ...(canvasLang === 'kk' ? {text:value} : {}), variants: { ...(b.variants || {}), [canvasLang]: value } }, key);
+  const patchAppearance = (id: string, ap: Partial<CanvasAppearance>, key?: string) => {
+    const curBlock = blocks.find(b => b.id === id);
+    if (!curBlock) return;
+    patch(id, { appearance: { ...(curBlock.appearance || {}), ...ap } }, key);
+  };
+  const handleRemoveWhiteBg = async (b: CBlock) => {
+    if (!b.src) return;
+    setBusy(true); setMsg('Ақ пикселдер тазартылуда...');
+    try {
+      const cleanSrc = await removeWhiteBackground(b.src);
+      patch(b.id, { src: cleanSrc });
+      setMsg('Ақ түсті пикселдер тазартылды!');
+    } catch {
+      patchAppearance(b.id, { removeBg: true });
+      setMsg('Фон мөлдір етіп біріктірілді.');
+    } finally {
+      setBusy(false);
+    }
+  };
   const undo = () => { const p = hist.current.pop(); if (!p) return; lastKey.current = null; latest.current = p; cb.current(p); setNHist(hist.current.length); setSel(null); setEditing(null); setMsg('Соңғы әрекет қайтарылды.'); };
   const sn = (v: number) => (snap ? Math.round(v / 10) * 10 : Math.round(v));
 
@@ -191,6 +210,16 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
             {sep}{sw(INK, sel.color || ink(bg), c => patch(sel.id, { color: c }), 'Мәтін түсі', true)}
           </>}
           {sel.kind === 'shape' && sw(INK, sel.fill, c => patch(sel.id, { fill: c }), 'Толтыру', true)}
+          {sel.kind === 'image' && <>
+            {ib(sel.appearance?.removeBg ? 'Фонды өшіру (қосулы)' : 'Ақ фонды өшіру', Sparkles, () => patchAppearance(sel.id, { removeBg: !sel.appearance?.removeBg }), { on: !!sel.appearance?.removeBg })}
+            {ib(`Сыйғызу: ${sel.appearance?.fit === 'cover' ? 'Толтыру' : sel.appearance?.fit === 'fill' ? 'Созу' : 'Сыйғызу'}`, Crop, () => {
+              const curFit = sel.appearance?.fit || 'fill';
+              const nextFit = curFit === 'contain' ? 'cover' : curFit === 'cover' ? 'fill' : 'contain';
+              patchAppearance(sel.id, { fit: nextFit });
+            })}
+            {ib('Көлденең шағылыстыру', FlipHorizontal, () => patchAppearance(sel.id, { flipH: !sel.appearance?.flipH }), { on: !!sel.appearance?.flipH })}
+            {ib('Тігінен шағылыстыру', FlipVertical, () => patchAppearance(sel.id, { flipV: !sel.appearance?.flipV }), { on: !!sel.appearance?.flipV })}
+          </>}
           {sep}
           {ib('Алға шығару', BringToFront, () => order(sel.id, 1), { off: selIdx === blocks.length - 1 })}
           {ib('Артқа жіберу', SendToBack, () => order(sel.id, -1), { off: selIdx === 0 })}
@@ -296,6 +325,89 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
                 <section className={side}><h3 className="font-bold">Фигура</h3>
                   <label className="block text-xs font-semibold text-text-secondary">Пішіні<select className={inputCls + ' mt-1 text-text'} value={sel.shape} onChange={e => patch(sel.id, { shape: e.target.value as any })}><option value="rect">Төртбұрыш</option><option value="ellipse">Эллипс</option></select></label></section>
               )}
+              {sel.kind === 'image' && (
+                <section className={side}>
+                  <h3 className="flex items-center justify-between font-bold">
+                    <span>Суретті өңдеу</span>
+                    {sel.appearance?.removeBg && <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent">Фонсыз</span>}
+                  </h3>
+
+                  <div className="space-y-3 pt-1">
+                    <div>
+                      <span className="mb-1 block text-xs font-semibold text-text-secondary">Фон және мөлдірлік</span>
+                      <label className="flex cursor-pointer items-center gap-2 text-xs font-medium">
+                        <input type="checkbox" className="h-4 w-4 rounded accent-accent" checked={!!sel.appearance?.removeBg} onChange={e => patchAppearance(sel.id, { removeBg: e.target.checked })} />
+                        Ақ фонды өшіру (Мөлдір фон)
+                      </label>
+                      <button type="button" disabled={busy || !sel.src} onClick={() => handleRemoveWhiteBg(sel)} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-xs font-medium hover:border-accent hover:text-accent disabled:opacity-50">
+                        <Wand2 size={14} aria-hidden="true" /> Ақ түсті пикселдерді тазарту (Chroma-key)
+                      </button>
+                    </div>
+
+                    <div>
+                      <span className="mb-1 block text-xs font-semibold text-text-secondary">Сыйғызу тәсілі</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {([['contain', 'Сыйғызу'], ['cover', 'Толтыру'], ['fill', 'Созу']] as const).map(([f, l]) => (
+                          <button key={f} type="button" aria-pressed={(sel.appearance?.fit || 'fill') === f} onClick={() => patchAppearance(sel.id, { fit: f })} className={`min-h-[32px] rounded-md border text-xs font-medium transition-colors ${(sel.appearance?.fit || 'fill') === f ? 'border-accent bg-accent-soft font-semibold text-accent' : 'border-border bg-surface-2 text-text-secondary hover:text-text'}`}>
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-text-secondary">
+                        <span>Бұрыштарын дөңгелету</span>
+                        <span className="font-mono tabular-nums">{sel.appearance?.radius === 9999 ? 'Дөңгелек' : `${sel.appearance?.radius || 0}px`}</span>
+                      </div>
+                      <input type="range" min={0} max={60} value={sel.appearance?.radius === 9999 ? 60 : (sel.appearance?.radius || 0)} onChange={e => patchAppearance(sel.id, { radius: +e.target.value })} className="w-full accent-[var(--color-accent)]" />
+                      <div className="mt-1.5 flex gap-1">
+                        {[0, 8, 16, 24].map(r => (
+                          <button key={r} type="button" onClick={() => patchAppearance(sel.id, { radius: r })} className="flex-1 rounded border border-border bg-surface-2 py-0.5 text-[11px] font-medium hover:border-accent">
+                            {r}
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => patchAppearance(sel.id, { radius: 9999 })} className="flex-1 rounded border border-border bg-surface-2 py-0.5 text-[11px] font-medium hover:border-accent">
+                          Дөңгелек
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-text-secondary">
+                        <span>Мөлдірлік</span>
+                        <span className="font-mono tabular-nums">{Math.round((sel.appearance?.opacity ?? 1) * 100)}%</span>
+                      </div>
+                      <input type="range" min={10} max={100} step={5} value={Math.round((sel.appearance?.opacity ?? 1) * 100)} onChange={e => patchAppearance(sel.id, { opacity: +e.target.value / 100 })} className="w-full accent-[var(--color-accent)]" />
+                    </div>
+
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-text-secondary">
+                        <span>Жиектеме / Рамка</span>
+                        <span className="font-mono tabular-nums">{sel.appearance?.strokeWidth || 0}px</span>
+                      </div>
+                      <input type="range" min={0} max={10} value={sel.appearance?.strokeWidth || 0} onChange={e => patchAppearance(sel.id, { strokeWidth: +e.target.value, stroke: sel.appearance?.stroke || '#0075F2' })} className="w-full accent-[var(--color-accent)]" />
+                      {!!sel.appearance?.strokeWidth && (
+                        <div className="mt-2">
+                          <span className="mb-1 block text-[11px] text-text-secondary">Жиек түсі</span>
+                          {sw(INK, sel.appearance?.stroke || '#0075F2', c => patchAppearance(sel.id, { stroke: c }), 'Жиек түсі', true)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 border-t border-border pt-1">
+                      <label className="flex flex-1 cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                        <input type="checkbox" className="h-4 w-4 rounded accent-accent" checked={!!sel.appearance?.flipH} onChange={e => patchAppearance(sel.id, { flipH: e.target.checked })} />
+                        Көлденең
+                      </label>
+                      <label className="flex flex-1 cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                        <input type="checkbox" className="h-4 w-4 rounded accent-accent" checked={!!sel.appearance?.flipV} onChange={e => patchAppearance(sel.id, { flipV: e.target.checked })} />
+                        Тігінен
+                      </label>
+                    </div>
+                  </div>
+                </section>
+              )}
             </>))}
             {tab === 'content' && (!sel ? (
               <section className={side}><label className="block text-sm font-semibold">Бет атауы<input className={inputCls + ' mt-1'} value={slide.title || ''} onChange={e => commit({ ...latest.current, title: e.target.value }, 'title')} /></label><p className="text-sm text-text-secondary">Атау беттер тізімінде, мазмұнда және тақтада көрінеді.</p></section>
@@ -319,6 +431,13 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
                   <label className="block text-sm font-semibold">немесе сілтеме (https://…)<input className={inputCls + ' mt-1'} value={sel.src} onChange={e => patch(sel.id, { src: e.target.value }, 'src' + sel.id)} /></label>
                   {sel.src && !imgOk(sel.src) && <p role="alert" className="text-sm text-danger">Сілтеме https:// деп басталуы керек.</p>}
                   <label className="block text-sm font-semibold">Сурет сипаттамасы (көзі көрмейтіндерге)<input className={inputCls + ' mt-1'} value={sel.alt} onChange={e => patch(sel.id, { alt: e.target.value }, 'alt' + sel.id)} /></label>
+                  {sel.src && imgOk(sel.src) && (
+                    <div className="pt-2">
+                      <button type="button" disabled={busy} onClick={() => handleRemoveWhiteBg(sel)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50">
+                        <Wand2 size={16} aria-hidden="true" /> Ақ түсті пикселдерді өшіру
+                      </button>
+                    </div>
+                  )}
                 </>)}
                 {sel.kind === 'shape' && <p className="text-sm text-text-secondary">Фигураның мәтіні жоқ: түсі мен пішіні жоғарғы құралдар жолағында.</p>}
               </section>

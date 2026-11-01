@@ -13,10 +13,11 @@ export type CanvasAppearance = {
   padding?: number[]; valign?: 'top' | 'middle' | 'bottom'; wrap?: boolean;
   opacity?: number; rotation?: number; radius?: number; gradient?: string;
   stroke?: string; strokeWidth?: number; path?: string; viewBox?: string;
-  imageViewport?: number[]; fit?: 'fill' | 'contain';
+  imageViewport?: number[]; fit?: 'fill' | 'contain' | 'cover';
   tableCell?: boolean;
   flipH?: boolean; flipV?: boolean;
   shadow?: string;
+  removeBg?: boolean; blendMode?: 'normal' | 'multiply';
   paragraphs?: { align: 'left' | 'center' | 'right'; offsetX?: number; offsetY?: number; lineHeight?: number; before?: number; after?: number; runs: { text: string; size: number; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; color?: string; fontFamily?: string; letterSpacing?: number }[] }[];
 };
 export type CBlock = {
@@ -59,10 +60,14 @@ export function norm(b: any): CBlock | null {
     ? Object.fromEntries(Object.entries(b.variants).filter(([, value]) => typeof value === 'string')) as TextVariants
     : undefined;
   const text = typeof b.text === 'string' ? b.text : (variants?.kk || Object.values(variants || {})[0] || '');
+  const appearance = b.appearance && typeof b.appearance === 'object' ? b.appearance : undefined;
+  const localized = b.localized && typeof b.localized === 'object' ? b.localized : undefined;
   return {
     id: typeof b.id === 'string' && b.id ? b.id : newId(), kind: b.kind, w, h,
     x: num(b.x, 0, exact ? -W * 10 : 0, exact ? W * 10 : W - w), y: num(b.y, 0, exact ? -H * 10 : 0, exact ? H * 10 : H - h),
-    ...(exact ? { exact: true, appearance: b.appearance && typeof b.appearance === 'object' ? b.appearance : undefined, localized: b.localized && typeof b.localized === 'object' ? b.localized : undefined } : {}),
+    ...(exact ? { exact: true } : {}),
+    ...(appearance ? { appearance } : {}),
+    ...(localized ? { localized } : {}),
     text, ...(variants && Object.keys(variants).length ? { variants } : {}), size: num(b.size, b.kind === 'code' ? 20 : 32, exact ? 0.1 : 8, 320), bold: !!b.bold,
     align: b.align === 'center' || b.align === 'right' ? b.align : 'left', color: typeof b.color === 'string' && HEX.test(b.color) ? b.color : undefined,
     code: typeof b.code === 'string' ? b.code : '', lang: typeof b.lang === 'string' ? b.lang : 'cpp',
@@ -73,7 +78,8 @@ export function norm(b: any): CBlock | null {
 /** What is stored: only the fields that matter for the block kind. */
 export function slim(b: CBlock): Record<string, unknown> {
   const o: Record<string, unknown> = { id: b.id, kind: b.kind, x: b.x, y: b.y, w: b.w, h: b.h };
-  if (b.exact) Object.assign(o, { exact: true }, b.appearance ? { appearance: b.appearance } : {});
+  if (b.exact) o.exact = true;
+  if (b.appearance && Object.keys(b.appearance).length) o.appearance = b.appearance;
   if (b.localized) o.localized = b.localized;
   if (b.kind === 'text') Object.assign(o, { text: b.text, size: b.size, align: b.align }, b.variants && Object.keys(b.variants).length ? { variants: b.variants } : {}, b.bold && { bold: true }, b.color && { color: b.color });
   if (b.kind === 'code') Object.assign(o, { code: b.code, lang: b.lang, size: b.size });
@@ -111,9 +117,43 @@ export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) 
       {rich ? rich.map((p, i) => <div key={i} style={{ position: p.offsetY !== undefined ? 'absolute' : undefined, left: p.offsetX !== undefined ? fs(p.offsetX) : undefined, top: p.offsetY !== undefined ? fs(p.offsetY) : undefined, textAlign: p.align, lineHeight: p.lineHeight ? fs(p.lineHeight) : undefined, marginTop: fs(p.before || 0), marginBottom: fs(p.after || 0) }}>{p.runs.map((r, j) => <span key={j} style={{ fontSize: fs(r.size), fontWeight: r.bold ? 700 : 400, fontStyle: r.italic ? 'italic' : undefined, textDecoration: r.underline && r.strike ? 'underline line-through' : r.underline ? 'underline' : r.strike ? 'line-through' : undefined, color: r.color, fontFamily: r.fontFamily, letterSpacing: r.letterSpacing ? fs(r.letterSpacing) : undefined }}>{R(r.text)}</span>)}</div>) : R(b.text || '')}
     </div>;
   }
-  if (b.exact && b.kind === 'image') {
+  if (b.kind === 'image') {
+    if (!imgOk(b.src)) return null;
     const [left, top, width, height] = a.imageViewport || [0, 0, 100, 100];
-    return imgOk(b.src) ? <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative', border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined, borderRadius: fs(a.radius || 0) }}><img src={b.src} alt={b.alt || ''} style={{ position: 'absolute', left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%`, maxWidth: 'none', objectFit: a.fit || 'fill' }} /></div> : null;
+    const hasViewport = Array.isArray(a.imageViewport);
+    const fit = a.fit || (b.exact ? 'fill' : 'contain');
+    const blend = (a.removeBg || a.blendMode === 'multiply') ? 'multiply' : undefined;
+    const rad = a.radius ? (a.radius >= 9999 ? '9999px' : (a.radius >= 50 && a.radius <= 100) ? `${a.radius}%` : fs(a.radius)) : undefined;
+    return (
+      <div style={{
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        position: 'relative',
+        border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined,
+        borderRadius: rad,
+      }}>
+        <img
+          src={b.src}
+          alt={b.alt || ''}
+          style={hasViewport ? {
+            position: 'absolute',
+            left: `${left}%`,
+            top: `${top}%`,
+            width: `${width}%`,
+            height: `${height}%`,
+            maxWidth: 'none',
+            objectFit: fit,
+            mixBlendMode: blend,
+          } : {
+            width: '100%',
+            height: '100%',
+            objectFit: fit,
+            mixBlendMode: blend,
+          }}
+        />
+      </div>
+    );
   }
   if (b.exact && b.kind === 'shape') {
     if (a.path) return <svg width="100%" height="100%" viewBox={a.viewBox} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}><path d={a.path} fill={b.fill === 'transparent' ? 'none' : (b.fill || 'none')} stroke={a.stroke} strokeWidth={a.strokeWidth || 0} style={{ strokeWidth: a.stroke ? fs(a.strokeWidth || 1) : undefined }} vectorEffect="non-scaling-stroke" /></svg>;
@@ -121,7 +161,6 @@ export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) 
   }
   if (b.kind === 'text') return <div style={{ fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{R(b.text || '')}</div>;
   if (b.kind === 'code') return <pre style={{ margin: 0, width: '100%', height: '100%', boxSizing: 'border-box', padding: '1.4cqw', background: '#0F172A', color: '#E2E8F5', borderRadius: '1.2cqw', fontSize: fs(b.size), lineHeight: 1.4, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', overflow: 'auto' }}>{b.code}</pre>;
-  if (b.kind === 'image') return imgOk(b.src) ? <img src={b.src} alt={b.alt || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : null;
   return <div style={{ width: '100%', height: '100%', background: b.fill, borderRadius: b.shape === 'ellipse' ? '50%' : '1.2cqw' }} />;
 }
 

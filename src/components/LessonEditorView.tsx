@@ -210,6 +210,13 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [aiBusy, setAiBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const [importProgress, setImportProgress] = useState<{
+    phase: string;
+    percent: number;
+    current?: number;
+    total?: number;
+    detail?: string;
+  } | null>(null);
   const [canvasEditorIndex, setCanvasEditorIndex] = useState<number | null>(isNew ? 0 : null);
   const [importVariant, setImportVariant] = useState<PresentationVariant>('kk');
   const importFile = useRef<HTMLInputElement>(null);
@@ -303,15 +310,28 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
     if (!file) return;
     if (!isPptx(file)) return setError('Тек .pptx файлын импорттауға болады.');
     setError(''); setMessage(''); setImportBusy(true);
+    setImportProgress({ phase: 'start', percent: 5, detail: 'Файл оқылуға дайындалуда...' });
     try {
-      const deck = await parsePptx(file);
+      const deck = await parsePptx(file, p => setImportProgress(p));
       const importBatchId = crypto.randomUUID();
       const imageSources: Record<string, string> = {};
       let inlineImageFallback = false;
       if (!DEMO) {
         const images = deck.slides.flatMap(slide => slide.blocks.filter(block => block.kind === 'image'));
-        for (const image of images) {
-          if (!/^image\/(png|jpeg|webp|gif)$/.test(image.mime) || imageSources[image.name]) continue;
+        const validImages = images.filter(img => /^image\/(png|jpeg|webp|gif)$/.test(img.mime));
+        const totalImgs = validImages.length;
+        let count = 0;
+        for (const image of validImages) {
+          if (imageSources[image.name]) continue;
+          count++;
+          const imgPct = Math.min(85, Math.round(50 + (count / Math.max(1, totalImgs)) * 35));
+          setImportProgress({
+            phase: 'images',
+            percent: imgPct,
+            current: count,
+            total: totalImgs,
+            detail: `Суреттер өңделуде және жүктелуде: ${count} / ${totalImgs}`
+          });
           try {
             imageSources[image.name] = await uploadSlideImage(new File([image.bytes.buffer as ArrayBuffer], image.name, { type: image.mime }), me?.school_id || '');
           } catch {
@@ -322,6 +342,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           }
         }
       }
+      setImportProgress({ phase: 'canvas', percent: 90, detail: 'ClassFlow кенеп беттері құрастырылуда...' });
       if (importVariant === 'kk') {
         const converted: Slide[] = deck.slides.map(slide => pptxSlideToCanvas(slide, { language: importVariant, importBatchId, imageSources: DEMO ? undefined : imageSources })) as Slide[];
         const emptySeed = isNew && slidesRef.current === SAMPLE;
@@ -345,7 +366,10 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
         }));
         setMessage(`${usable} бетке орысша мәтін нұсқасы қосылды.`);
       }
+      setImportProgress({ phase: 'done', percent: 100, detail: 'Импорт сәтті аяқталды!' });
+      setTimeout(() => setImportProgress(null), 800);
     } catch (e) {
+      setImportProgress(null);
       setError(e instanceof Error ? e.message : 'Презентацияны импорттау мүмкін болмады.');
     } finally {
       setImportBusy(false);
@@ -566,6 +590,10 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           saved={message}
           embedded
           previewHref={!isNew && route.lessonId ? `#preview/${route.lessonId}` : undefined}
+          importBusy={importBusy}
+          importVariant={importVariant}
+          onImportVariant={setImportVariant}
+          onImport={importSource}
           onTitle={setTitle}
           onChange={slide => setSlides(items => items.map((item, index) => index === canvasEditorIndex ? normalizePage(slide) : item))}
           onSelect={index => setCanvasEditorIndex(index)}
@@ -574,6 +602,39 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           onSave={save}
           onClose={() => setCanvasEditorIndex(null)}
         />}
+
+        {importProgress && (
+          <div role="dialog" aria-modal="true" aria-labelledby="import-progress-title" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                  <Upload className="h-6 w-6 animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 id="import-progress-title" className="truncate text-base font-bold text-text">Презентацияны импорттау</h3>
+                  <p className="truncate text-xs text-text-secondary">{importProgress.detail || 'Өңделуде...'}</p>
+                </div>
+                <span className="text-sm font-bold tabular-nums text-accent">{importProgress.percent}%</span>
+              </div>
+
+              <div className="h-3 w-full overflow-hidden rounded-full bg-surface-2 p-0.5">
+                <div
+                  role="progressbar"
+                  aria-valuenow={importProgress.percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
+                  style={{ width: `${importProgress.percent}%` }}
+                />
+              </div>
+
+              <div className="flex justify-between text-xs text-text-secondary">
+                <span>{importProgress.current && importProgress.total ? `${importProgress.current} / ${importProgress.total}` : 'Күте тұрыңыз...'}</span>
+                <span>{importProgress.percent === 100 ? 'Аяқталды' : 'Элементтер кенепке бейімделуде'}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
