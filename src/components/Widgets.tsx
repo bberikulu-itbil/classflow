@@ -497,7 +497,7 @@ const visualBullets = (items: any[], big: boolean, inner: (t: string) => React.R
 export function renderSlide(s: any, ctx: any = {}) {
   const sp = ctx.sp, R = (t: string) => rich(t, sp);
   const big = ctx.mode === 'board';
-  const wrap = (...k: any[]) => <div className="cf-slide w-full max-w-5xl mx-auto p-4">{k}</div>;
+  const wrap = (...k: any[]) => <div className={`cf-slide w-full ${big ? 'max-w-6xl' : 'max-w-5xl'} mx-auto p-4`}>{k}</div>;
 
   if (s.pageType === 'scroll') {
     return wrap(
@@ -594,7 +594,11 @@ export function renderSlide(s: any, ctx: any = {}) {
         })
       );
     case 'canvas':
-      return <div className={`cf-slide w-full max-w-5xl mx-auto ${ctx.mode === 'preview' ? 'p-1.5' : 'p-4'}`}><CanvasSlide s={s} R={R} sp={sp} lang={ctx.lang} /></div>;
+      return (
+        <div className={`cf-slide w-full ${big ? 'max-w-[min(94vw,calc((100vh-10rem)*16/9))]' : 'max-w-5xl'} mx-auto ${ctx.mode === 'preview' ? 'p-1.5' : 'p-4'}`}>
+          <CanvasSlide s={s} R={R} sp={sp} lang={ctx.lang} />
+        </div>
+      );
     case 'flashcards':
       return wrap(
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
