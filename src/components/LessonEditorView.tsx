@@ -12,6 +12,7 @@ import { downloadPptx, exportClassFlowPptx } from '../lessons/pptxExport';
 import { CanvasEditor } from '../lessons/CanvasEditor';
 import { canConvert, toCanvas } from '../lessons/canvas';
 import { isRoboticsLessonId, loadRoboticsLesson } from '../lessons/robotics';
+import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from '../lessons/spreadsheets';
 
 type Mode = 'manual' | 'ai';
 type PageType = 'slide' | 'scroll' | 'interactive';
@@ -245,6 +246,27 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           setSubject(rob.subject);
           setSlides(rob.slides);
           setCanvasEditorIndex(0);
+        }
+        setLoading(false);
+      });
+      return;
+    }
+    if (isSpreadsheetsLessonId(route.lessonId)) {
+      setLoading(true);
+      loadSpreadsheetsLesson(route.lessonId).then(sp => {
+        if (sp) {
+          setTitle(sp.title);
+          setSubject(sp.subject);
+          setTerms(parseTerms(sp.terms));
+          setSummary(sp.plan?.summary || '');
+          setObjectives(Array.isArray(sp.plan?.objectives) ? sp.plan.objectives.join('\n') : '');
+          setGrade(String(sp.plan?.grade || '8'));
+          setDuration(sp.plan?.duration || '45 минут');
+          const loadedSlides = parseSlides(sp.slides);
+          const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
+          setSlides(nextSlides);
+          const firstCanvas = nextSlides.findIndex(slide => slide.type === 'canvas' || canConvert(slide));
+          setCanvasEditorIndex(firstCanvas >= 0 ? firstCanvas : 0);
         }
         setLoading(false);
       });

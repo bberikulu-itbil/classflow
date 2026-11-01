@@ -12,17 +12,27 @@ const MODULE_KK: Record<string, string> = {
   'Сортировка': 'Сұрыптау',
   'Двумерные массивы': 'Екіөлшемді массивтер',
   'Рекурсия': 'Рекурсия',
+  'Spreadsheets': 'Электрондық кестелер',
 };
 
 const COURSE_KK: Record<string, string> = {
   'ACMP: Язык программирования C++': 'ACMP: C++ бағдарламалау тілі',
+  'Informatics 8th grade': 'Информатика 8-сынып',
+};
+
+const COURSE_RU: Record<string, string> = {
+  'Informatics 8th grade': 'Информатика 8 класс',
+};
+
+const MODULE_RU: Record<string, string> = {
+  'Spreadsheets': 'Электронные таблицы',
 };
 
 export const courseTitle = (course: Course, lang: Lang) =>
-  lang === 'kk' ? COURSE_KK[course.title] || course.title : course.title;
+  lang === 'kk' ? COURSE_KK[course.title] || course.title : COURSE_RU[course.title] || course.title;
 
 export const moduleTitle = (module: Mod, lang: Lang) =>
-  lang === 'kk' ? MODULE_KK[module.title] || module.title : module.title;
+  lang === 'kk' ? MODULE_KK[module.title] || module.title : MODULE_RU[module.title] || module.title;
 
 export const lessonTitle = (lesson: Les, lang: Lang) =>
   lang === 'ru' ? lesson.title_ru || lesson.title : lesson.title_kk || lesson.title;

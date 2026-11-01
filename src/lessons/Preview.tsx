@@ -7,6 +7,7 @@ import { tr, useLang } from './lang';
 import { spCtx, useSpoilers } from './spoil';
 
 import { isRoboticsLessonId, loadRoboticsLesson } from './robotics';
+import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from './spreadsheets';
 
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
 const label = (s: any, i: number, lang: 'kk' | 'ru') => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
@@ -25,17 +26,29 @@ export function LessonPreview({ id }: { id: string }) {
       const rob = await loadRoboticsLesson(id);
       if (rob) return rob as Row;
     }
+    if (isSpreadsheetsLessonId(id)) {
+      const sp = await loadSpreadsheetsLesson(id);
+      if (sp) return sp as Row;
+    }
     const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides').eq('id', id).maybeSingle();
     if (error) {
       if (isRoboticsLessonId(id)) {
         const rob = await loadRoboticsLesson(id);
         if (rob) return rob as Row;
       }
+      if (isSpreadsheetsLessonId(id)) {
+        const sp = await loadSpreadsheetsLesson(id);
+        if (sp) return sp as Row;
+      }
       throw new Error(error.message);
     }
     if (!data && isRoboticsLessonId(id)) {
       const rob = await loadRoboticsLesson(id);
       if (rob) return rob as Row;
+    }
+    if (!data && isSpreadsheetsLessonId(id)) {
+      const sp = await loadSpreadsheetsLesson(id);
+      if (sp) return sp as Row;
     }
     return data as Row | null;
   }, [id]);

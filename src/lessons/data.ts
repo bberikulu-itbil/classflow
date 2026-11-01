@@ -3,6 +3,7 @@ import { CLASSES, STUDENTS } from '../hw/fakeApi';
 import { byName } from '../views/session';
 import { schoolYear } from './model';
 import type { Cls, Lesson, Part, Score, Sess } from './model';
+import { SPREADSHEETS_LESSONS_META } from './spreadsheets';
 
 export interface LessonData { lessons: Lesson[]; sessions: Sess[]; classes: Cls[] }
 
@@ -22,6 +23,7 @@ function demo(): LessonData & { parts: Part[]; scores: Score[] } {
     { id: 'r5', title: 'FLL future edition', subject: 'Робототехника', class_id: null },
     { id: 'r6', title: 'FTC', subject: 'Робототехника', class_id: null },
     { id: 'r7', title: 'Social Media Challenge & Stemshop', subject: 'Робототехника', class_id: null },
+    ...SPREADSHEETS_LESSONS_META.map(s => ({ id: s.id, title: s.title, subject: s.subject, class_id: null })),
   ];
   const mk = (id: string, l: Lesson, cls: string, at: string, status = 'ended'): Sess => ({ id, title: l.title, lesson_id: l.id, class_id: cls, status, started_at: at, ended_at: at, created_at: at });
   const sessions = [
