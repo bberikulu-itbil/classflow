@@ -116,14 +116,54 @@ function emu(value: string, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
-function rect(node: Element | undefined, width: number, height: number) {
+type CoordTransform = { x: number; y: number; sx: number; sy: number };
+const IDENTITY_TRANSFORM: CoordTransform = { x: 0, y: 0, sx: 1, sy: 1 };
+
+/**
+ * A group has its own child coordinate system. `off/ext` place the group in
+ * the parent system, while `chOff/chExt` describe the coordinates used by
+ * the group's children.
+ */
+function groupTransform(node: Element): CoordTransform {
+  const xfrm = first(first(node, 'grpSpPr'), 'xfrm') || first(node, 'xfrm');
+  const off = first(xfrm, 'off');
+  const ext = first(xfrm, 'ext');
+  const chOff = first(xfrm, 'chOff');
+  const chExt = first(xfrm, 'chExt');
+  const ox = emu(attr(off, 'x'));
+  const oy = emu(attr(off, 'y'));
+  const ex = emu(attr(ext, 'cx'));
+  const ey = emu(attr(ext, 'cy'));
+  const cox = emu(attr(chOff, 'x'));
+  const coy = emu(attr(chOff, 'y'));
+  const cex = emu(attr(chExt, 'cx'), ex);
+  const cey = emu(attr(chExt, 'cy'), ey);
+  const sx = cex > 0 && ex > 0 ? ex / cex : 1;
+  const sy = cey > 0 && ey > 0 ? ey / cey : 1;
+  return { x: ox - cox * sx, y: oy - coy * sy, sx, sy };
+}
+
+function composeTransform(parent: CoordTransform, local: CoordTransform): CoordTransform {
+  return {
+    x: parent.x + local.x * parent.sx,
+    y: parent.y + local.y * parent.sy,
+    sx: parent.sx * local.sx,
+    sy: parent.sy * local.sy,
+  };
+}
+
+function rect(node: Element | undefined, width: number, height: number, transform: CoordTransform = IDENTITY_TRANSFORM) {
   const xfrm = first(node, 'xfrm');
   const off = first(xfrm, 'off');
   const ext = first(xfrm, 'ext');
-  const x = (emu(attr(off, 'x')) / width) * W;
-  const y = (emu(attr(off, 'y')) / height) * H;
-  const w = (emu(attr(ext, 'cx'), width / 4) / width) * W;
-  const h = (emu(attr(ext, 'cy'), height / 4) / height) * H;
+  const localX = emu(attr(off, 'x'));
+  const localY = emu(attr(off, 'y'));
+  const localW = emu(attr(ext, 'cx'), width / 4);
+  const localH = emu(attr(ext, 'cy'), height / 4);
+  const x = ((transform.x + localX * transform.sx) / width) * W;
+  const y = ((transform.y + localY * transform.sy) / height) * H;
+  const w = (localW * transform.sx / width) * W;
+  const h = (localH * transform.sy / height) * H;
   return {
     x: Math.max(0, Math.min(W - 30, x)),
     y: Math.max(0, Math.min(H - 30, y)),
@@ -147,12 +187,19 @@ function shapeKind(shape: Element): 'rect' | 'ellipse' {
   return preset.includes('ellipse') || preset.includes('oval') ? 'ellipse' : 'rect';
 }
 
-function style(node: Element | undefined) {
+function canvasFontSize(points: number, slideWidth: number) {
+  // PPTX stores font sizes in points; ClassFlow stores them in the 960px
+  // canvas coordinate system.
+  return points * (W * EMU_PER_INCH) / (slideWidth * 72);
+}
+
+function style(node: Element | undefined, slideWidth: number) {
   const run = first(node, 'rPr') || first(node, 'defRPr');
   const size = Number(attr(run, 'sz'));
   const align = attr(first(node, 'pPr'), 'algn');
+  const points = Number.isFinite(size) && size > 0 ? size / 100 : 18;
   return {
-    size: Number.isFinite(size) && size > 0 ? Math.max(8, Math.min(160, size / 100)) : 24,
+    size: Math.max(8, Math.min(160, canvasFontSize(points, slideWidth))),
     bold: attr(run, 'b') === '1' || attr(run, 'b') === 'true',
     color: colour(first(run, 'solidFill')),
     align: align === 'ctr' ? 'center' as const : align === 'r' ? 'right' as const : 'left' as const,
@@ -203,12 +250,14 @@ function titleType(shape: Element) {
   return type === 'title' || type === 'ctrTitle' || type === 'subTitle';
 }
 
-function drawingShapes(node: Element | null | undefined): Element[] {
+type DrawingEntry = { node: Element; transform: CoordTransform };
+
+function drawingShapes(node: Element | null | undefined, parentTransform: CoordTransform = IDENTITY_TRANSFORM): DrawingEntry[] {
   if (!node) return [];
-  const out: Element[] = [];
+  const out: DrawingEntry[] = [];
   for (const child of Array.from(node.children)) {
-    if (child.localName === 'sp' || child.localName === 'pic') out.push(child);
-    if (child.localName === 'grpSp') out.push(...drawingShapes(child));
+    if (child.localName === 'sp' || child.localName === 'pic') out.push({ node: child, transform: parentTransform });
+    if (child.localName === 'grpSp') out.push(...drawingShapes(child, composeTransform(parentTransform, groupTransform(child))));
   }
   return out;
 }
@@ -244,10 +293,11 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
   if (backgroundImage) blocks.push(backgroundImage);
   const tree = first(doc, 'spTree');
   const shapes = drawingShapes(tree);
-  for (const shape of shapes) {
+  for (const entry of shapes) {
+    const shape = entry.node;
     const local = shape.localName;
     if (local === 'sp') {
-      const box = rect(shape, width, height);
+      const box = rect(shape, width, height, entry.transform);
       const blip = first(shape, 'blip');
       const rid = attr(blip, 'r:embed') || attr(blip, 'embed');
       const imagePath = relTarget(files, path, rid);
@@ -260,7 +310,7 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
       const text = textIn(shape);
       if (fill) blocks.push({ kind: 'shape', shape: shapeKind(shape), fill, ...box });
       if (!text) continue;
-      const st = style(first(shape, 'txBody'));
+      const st = style(first(shape, 'txBody'), width);
       blocks.push({ kind: 'text', text, ...box, ...st, title: titleType(shape) });
     } else if (local === 'pic') {
       const blip = first(shape, 'blip');
@@ -269,7 +319,7 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
       const bytes = imagePath ? files[imagePath] : undefined;
       if (!bytes) continue;
       const mime = imageMime(imagePath);
-      blocks.push({ kind: 'image', name: imagePath.split('/').pop() || `image-${number}`, mime, bytes, dataUrl: dataUrl(bytes, mime), ...rect(shape, width, height) });
+      blocks.push({ kind: 'image', name: imagePath.split('/').pop() || `image-${number}`, mime, bytes, dataUrl: dataUrl(bytes, mime), ...rect(shape, width, height, entry.transform) });
     }
   }
   const text = blocks.filter((block): block is PptxTextBlock => block.kind === 'text').map(block => block.text).join('\n').trim();
