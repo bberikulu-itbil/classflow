@@ -116,7 +116,7 @@ export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) 
     return imgOk(b.src) ? <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative', border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined, borderRadius: fs(a.radius || 0) }}><img src={b.src} alt={b.alt || ''} style={{ position: 'absolute', left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%`, maxWidth: 'none', objectFit: a.fit || 'fill' }} /></div> : null;
   }
   if (b.exact && b.kind === 'shape') {
-    if (a.path) return <svg width="100%" height="100%" viewBox={a.viewBox} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}><path d={a.path} fill={b.fill || 'none'} stroke={a.stroke} strokeWidth={a.strokeWidth || 0} vectorEffect="non-scaling-stroke" /></svg>;
+    if (a.path) return <svg width="100%" height="100%" viewBox={a.viewBox} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}><path d={a.path} fill={b.fill === 'transparent' ? 'none' : (b.fill || 'none')} stroke={a.stroke} strokeWidth={a.strokeWidth || 0} style={{ strokeWidth: a.stroke ? fs(a.strokeWidth || 1) : undefined }} vectorEffect="non-scaling-stroke" /></svg>;
     return <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', background: a.gradient || b.fill, border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined, borderRadius: b.shape === 'ellipse' ? '50%' : fs(a.radius || 0) }} />;
   }
   if (b.kind === 'text') return <div style={{ fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{R(b.text || '')}</div>;

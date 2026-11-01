@@ -400,11 +400,28 @@ function imageMime(name: string) {
   return 'image/png';
 }
 
+function isBlipTransparent(blip: Element | undefined, ap?: CanvasAppearance): boolean {
+  if (!blip) return false;
+  if (ap?.opacity === 0) return true;
+  const alphaMod = first(blip, 'alphaModFix') || first(blip, 'alpha');
+  if (alphaMod) {
+    const amt = attr(alphaMod, 'amt') || attr(alphaMod, 'val');
+    if (amt === '0') return true;
+  }
+  return false;
+}
+
 function slideBackground(doc: XMLDocument, files?: Record<string, Uint8Array>, path?: string, themeColors?: Record<string, string>) {
   const bgPr = first(first(doc, 'bg'), 'bgPr') || first(doc, 'bg');
   const fill = first(bgPr, 'solidFill');
   const c = colour(fill, themeColors);
   if (c) return c;
+  const grad = first(bgPr, 'gradFill');
+  if (grad) {
+    const stops = elements(grad, 'gs');
+    const primary = colour(stops[stops.length - 1] || stops[0], themeColors);
+    if (primary) return primary;
+  }
   if (files && path) {
     try {
       const rels = readRels(files, path);
@@ -416,6 +433,12 @@ function slideBackground(doc: XMLDocument, files?: Record<string, Uint8Array>, p
           const lBg = first(first(lDoc, 'bg'), 'bgPr') || first(lDoc, 'bg');
           const lc = colour(first(lBg, 'solidFill'), themeColors);
           if (lc) return lc;
+          const lGrad = first(lBg, 'gradFill');
+          if (lGrad) {
+            const lStops = elements(lGrad, 'gs');
+            const lPrimary = colour(lStops[lStops.length - 1] || lStops[0], themeColors);
+            if (lPrimary) return lPrimary;
+          }
         }
       }
     } catch { /* ignore fallback */ }
@@ -518,8 +541,9 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
     } else if (local === 'sp' || local === 'cxnSp') {
       const box = rect(shape, width, height, entry.transform);
       const blip = first(shape, 'blip');
-      const rid = attr(blip, 'r:embed') || attr(blip, 'embed');
-      const imagePath = relTarget(files, path, rid);
+      const transparent = isBlipTransparent(blip, ap);
+      const rid = !transparent ? (attr(blip, 'r:embed') || attr(blip, 'embed')) : '';
+      const imagePath = rid ? relTarget(files, path, rid) : '';
       const imageBytes = imagePath ? files[imagePath] : undefined;
       if (imageBytes) {
         const mime = imageMime(imagePath);
@@ -527,12 +551,17 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
       }
       const fill = shapeFill(shape, themeColors);
       const text = ap.paragraphs?.map(p=>p.runs.map(r=>r.text).join('')).join('\n') || textIn(shape);
-      if (fill || ap.gradient || (ap.stroke && !imageBytes) || ap.path) blocks.push({ kind: 'shape', shape: shapeKind(shape), fill:fill || 'transparent', ...box, appearance:ap });
+      const hasVisibleFill = !!(fill && fill !== 'transparent') || !!ap.gradient;
+      const hasVisibleStroke = !!ap.stroke && (ap.strokeWidth || 0) > 0;
+      if (hasVisibleFill || hasVisibleStroke) {
+        blocks.push({ kind: 'shape', shape: shapeKind(shape), fill: fill || 'transparent', ...box, appearance: ap });
+      }
       if (!text) continue;
       const st = style(first(shape, 'txBody'), width, entry.transform.sy, themeColors);
       blocks.push({ kind: 'text', text, ...box, ...st, appearance:ap, title: titleType(shape) });
     } else if (local === 'pic') {
       const blip = first(shape, 'blip');
+      if (isBlipTransparent(blip, ap)) continue;
       const rid = attr(blip, 'r:embed') || attr(blip, 'embed');
       const imagePath = relTarget(files, path, rid);
       const bytes = imagePath ? files[imagePath] : undefined;
@@ -544,7 +573,20 @@ function parseSlide(files: Record<string, Uint8Array>, path: string, number: num
   const text = blocks.filter((block): block is PptxTextBlock => block.kind === 'text').map(block => block.text).join('\n').trim();
   const titleBlock = blocks.find((block): block is PptxTextBlock => block.kind === 'text' && !!block.title);
   const bg = slideBackground(doc, files, path, themeColors);
-  const bgGrad = gradient(first(doc, 'bgPr'), themeColors) || gradient(first(first(doc, 'bg'), 'bgPr'), themeColors);
+  let bgGrad = gradient(first(doc, 'bgPr'), themeColors) || gradient(first(first(doc, 'bg'), 'bgPr'), themeColors);
+  if (!bgGrad && files && path) {
+    try {
+      const rels = readRels(files, path);
+      const layoutRel = rels.find(r => r.type.includes('slideLayout'));
+      if (layoutRel) {
+        const layoutPath = resolveZipPath(path, layoutRel.target);
+        if (files[layoutPath]) {
+          const lDoc = xml(files[layoutPath], layoutPath);
+          bgGrad = gradient(first(lDoc, 'bgPr'), themeColors) || gradient(first(first(lDoc, 'bg'), 'bgPr'), themeColors);
+        }
+      }
+    } catch { /* ignore fallback */ }
+  }
   return { number, title: titleBlock?.text.split('\n')[0] || text.split('\n')[0] || `Слайд ${number}`, text, background: bg, bgGradient: bgGrad, width, height, slidePath: path, blocks };
 }
 
