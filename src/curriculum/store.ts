@@ -74,7 +74,18 @@ const demoSeed = (): Store => ({
 function readLocal(me: Me): Store {
   try {
     const v = JSON.parse(localStorage.getItem(key(me)) || 'null');
-    if (v && Array.isArray(v.courses) && Array.isArray(v.modules) && Array.isArray(v.places)) return { ...v, modules: v.modules.map((m: Partial<Mod> & { id: string }) => ({ kind: 'lesson', quarter: null, grade: null, ...m })) };
+    if (v && Array.isArray(v.courses) && Array.isArray(v.modules) && Array.isArray(v.places)) {
+      const storedCourses = v.courses;
+      const storedMods = v.modules.map((m: Partial<Mod> & { id: string }) => ({ kind: 'lesson', quarter: null, grade: null, ...m }));
+      const storedPlaces = v.places;
+      const hasCourse = storedCourses.some((x: Course) => x.id === SPREADSHEETS_COURSE.id || x.title === SPREADSHEETS_COURSE.title);
+      const courses = hasCourse ? storedCourses : [...storedCourses, SPREADSHEETS_COURSE];
+      const hasMod = storedMods.some((m: Mod) => m.id === SPREADSHEETS_MODULE.id || m.title === SPREADSHEETS_MODULE.title);
+      const modules = hasMod ? storedMods : [...storedMods, SPREADSHEETS_MODULE];
+      const staticPlaces: Place[] = SPREADSHEETS_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: SPREADSHEETS_MODULE.id, position }));
+      const places = [...storedPlaces, ...staticPlaces.filter(sp => !storedPlaces.some((dp: Place) => dp.lesson_id === sp.lesson_id))];
+      return { courses, modules, places };
+    }
   } catch { /* unreadable: start empty */ }
   return DEMO ? demoSeed() : { courses: [], modules: [], places: [] };
 }
@@ -150,7 +161,41 @@ export async function loadCurr(me: Me): Promise<Curr> {
     if (!c.error) {
       fail(m.error); fail(p.error);
       const mods = (m.data as unknown as Partial<Mod>[]).map(x => ({ kind: 'lesson', quarter: null, grade: null, ...x })) as Mod[];
-      return { courses: (c.data as Course[]).map(enrichCourse), modules: order(mods), places: order(p.data as Place[]), lessons, local: false, kindCol: !noKindCol };
+      const dbCourses = (c.data as Course[]).map(enrichCourse);
+
+      // Ensure SPREADSHEETS_COURSE is always available even if RLS or ownership hides it
+      const staticCourse = enrichCourse({
+        id: SPREADSHEETS_COURSE.id,
+        title: SPREADSHEETS_COURSE.title,
+        subject: SPREADSHEETS_COURSE.subject,
+        grade: SPREADSHEETS_COURSE.grade,
+      });
+      const existingCourse = dbCourses.find(x => x.id === staticCourse.id || x.title === staticCourse.title);
+      const effectiveCourses = existingCourse ? dbCourses : [...dbCourses, staticCourse];
+      const targetCourseId = existingCourse ? existingCourse.id : staticCourse.id;
+
+      const staticModule: Mod = {
+        id: SPREADSHEETS_MODULE.id,
+        course_id: targetCourseId,
+        title: SPREADSHEETS_MODULE.title,
+        position: SPREADSHEETS_MODULE.position,
+        kind: SPREADSHEETS_MODULE.kind as Kind,
+        quarter: SPREADSHEETS_MODULE.quarter,
+        grade: SPREADSHEETS_MODULE.grade,
+      };
+      const existingModule = mods.find(x => x.id === staticModule.id || (x.title === staticModule.title && x.course_id === targetCourseId));
+      const effectiveModules = existingModule ? mods : [...mods, staticModule];
+      const targetModuleId = existingModule ? existingModule.id : staticModule.id;
+
+      const dbPlaces = (p.data as Place[]) || [];
+      const staticPlaces: Place[] = SPREADSHEETS_LESSONS_META.map((l, position) => ({
+        lesson_id: l.id,
+        module_id: targetModuleId,
+        position,
+      }));
+      const effectivePlaces = [...dbPlaces, ...staticPlaces.filter(sp => !dbPlaces.some(dp => dp.lesson_id === sp.lesson_id))];
+
+      return { courses: effectiveCourses, modules: order(effectiveModules), places: order(effectivePlaces), lessons, local: false, kindCol: !noKindCol };
     }
     if (!missing(c.error)) fail(c.error);
     noTable = true;
