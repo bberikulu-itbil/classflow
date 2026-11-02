@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Dice5, EyeOff, Eye, Languages, List, Palette, Shuffle, Sparkles, Users, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Dice5, EyeOff, Eye, Languages, Layers, List, Palette, Shuffle, Sparkles, Users, X } from 'lucide-react';
 import { spaced } from '../components/Widgets';
 import { tr } from '../lessons/lang';
 import { RandomBody } from './Tools';
 import { IconB } from './Win';
+import type { SessionNavigation, LessonTarget } from '../views/sessionNav';
 
 export type PanelId = 'toc' | 'people' | 'activity' | 'design';
 export const PANEL_W = 360;
@@ -42,14 +43,72 @@ export function SidePanel({ title, icon, left, onClose, children }: { title: str
   );
 }
 
-export function TocPanel({ toc, now, lang, go }: { toc: any[] | null | false; now: number; lang: 'kk' | 'ru'; go: (i: number) => void }) {
+export function TocPanel({
+  toc,
+  now,
+  lang,
+  go,
+  nav,
+  onSwitchLesson,
+}: {
+  toc: any[] | null | false;
+  now: number;
+  lang: 'kk' | 'ru';
+  go: (i: number) => void;
+  nav?: SessionNavigation | null;
+  onSwitchLesson?: (target: LessonTarget) => void;
+}) {
   if (toc === null) return <p className="text-text-secondary">Жүктелуде...</p>;
   if (toc === false) return <p className="text-text-secondary">Мазмұн қолжетімсіз.</p>;
   return (
-    <ol className="space-y-1">{toc.map((x, i) => {
-      const t = tr(x, lang), cur = i === now;
-      return <li key={i}><button type="button" aria-current={cur ? 'true' : undefined} onClick={() => go(i)} className={`flex min-h-[44px] w-full items-baseline gap-2 rounded-lg px-2 py-1 text-left ${cur ? 'bg-accent font-semibold text-on-accent' : 'hover:bg-surface-2'}`}><span className="w-6 shrink-0 tabular-nums opacity-80">{i + 1}</span><span className="min-w-0 break-words">{t.title || t.prompt || t.type}</span></button></li>;
-    })}</ol>
+    <div className="space-y-4">
+      {nav && (
+        <div className="rounded-xl border border-border bg-surface-2/60 p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs text-text-secondary font-semibold">
+            <Layers size={14} className="text-accent" />
+            <span className="truncate">{nav.moduleTitle}</span>
+            <span>·</span>
+            <span>{nav.lessonPosition} / {nav.lessonCount} дәріс</span>
+          </div>
+
+          {(nav.nextLesson || nav.nextModule) && onSwitchLesson && (
+            <div className="space-y-1.5 pt-1 border-t border-border/60">
+              {nav.nextLesson && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchLesson(nav.nextLesson!)}
+                  className="flex min-h-[40px] w-full items-center justify-between gap-2 rounded-lg bg-accent/10 hover:bg-accent/20 px-3 py-1.5 text-left text-xs font-semibold text-accent transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BookOpen size={14} className="shrink-0" />
+                    <span className="truncate">Келесі дәріс: {nav.nextLesson.title}</span>
+                  </div>
+                  <ArrowRight size={14} className="shrink-0" />
+                </button>
+              )}
+              {nav.nextModule && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchLesson(nav.nextModule!)}
+                  className="flex min-h-[40px] w-full items-center justify-between gap-2 rounded-lg bg-surface-2 hover:bg-border px-3 py-1.5 text-left text-xs font-semibold text-text transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Layers size={14} className="shrink-0 text-text-secondary" />
+                    <span className="truncate">Келесі модуль: {nav.nextModule.moduleTitle}</span>
+                  </div>
+                  <ArrowRight size={14} className="shrink-0" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <ol className="space-y-1">{toc.map((x, i) => {
+        const t = tr(x, lang), cur = i === now;
+        return <li key={i}><button type="button" aria-current={cur ? 'true' : undefined} onClick={() => go(i)} className={`flex min-h-[44px] w-full items-baseline gap-2 rounded-lg px-2 py-1 text-left ${cur ? 'bg-accent font-semibold text-on-accent' : 'hover:bg-surface-2'}`}><span className="w-6 shrink-0 tabular-nums opacity-80">{i + 1}</span><span className="min-w-0 break-words">{t.title || t.prompt || t.type}</span></button></li>;
+      })}</ol>
+    </div>
   );
 }
 

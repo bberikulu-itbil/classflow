@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Binary, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, Languages, LogOut, Maximize, Minimize, Pencil, Timer as TimerIcon, Wrench } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Binary, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, Languages, LogOut, Maximize, Minimize, Pencil, Sparkles, Timer as TimerIcon, Wrench } from 'lucide-react';
 import { sb } from '../config';
 import { tr, useLang } from '../lessons/lang';
 import { countSpoilers, spCtx, useSpoilers } from '../lessons/spoil';
@@ -10,6 +10,7 @@ import { ActivityPanel, DesignPanel, PANELS, PANEL_W, PeoplePanel, SidePanel, To
 import '../board/look.css';
 import { DrawBar, DrawLayer, type Pen, type Stroke } from '../board/Draw';
 import { ConvBody, TimerBody, useTimer } from '../board/Tools';
+import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
 
 // clock() is a hook; as its own component the hook count no longer changes when a task appears
 const TaskClock = ({ task }: { task: any }) => <>{clock(task)}</>;
@@ -33,6 +34,9 @@ export function BoardView({ sid }: { sid: string }) {
   const [ui, setUi] = usePersist('cf_board_ui', { dock: true, rail: window.innerWidth >= 1024, hidePts: false });
   const [look, setLook] = usePersist('cf_board_look', { bg: '', size: 1 });
   const [toc, setToc] = useState<any[] | null | false>(null);
+  const [nav, setNav] = useState<SessionNavigation | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [switchAsk, setSwitchAsk] = useState<LessonTarget | null>(null);
   const spoil = useSpoilers(session?.current_slide ?? -1);
 
   const refresh = async () => {
@@ -108,6 +112,30 @@ export function BoardView({ sid }: { sid: string }) {
     if (panel !== 'toc' || toc !== null) return;
     sb.from('cf_session_private').select('slides').eq('session_id', sid).maybeSingle().then(({ data }: any) => setToc(Array.isArray(data?.slides) ? data.slides : false));
   }, [panel, toc, sid]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!session?.lesson_id) return () => { alive = false; };
+    loadSessionNavigation(session.lesson_id).then(v => {
+      if (alive) setNav(v);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [session?.lesson_id]);
+
+  const doSwitch = async (target: LessonTarget) => {
+    setSwitching(true);
+    try {
+      await switchSessionLesson(sid, target.id);
+      setSwitchAsk(null);
+      setPanel('');
+      setToc(null);
+      await refresh();
+    } catch (err) {
+      console.error('Failed to switch lesson', err);
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   if (!session) return <div data-theme="dark" className="min-h-screen bg-bg flex items-center justify-center text-text text-2xl">Жүктелуде...</div>;
 
@@ -192,7 +220,17 @@ export function BoardView({ sid }: { sid: string }) {
                   <DockBtn label={tl} pressed={wins.includes('timer')} onClick={() => toggle('timer')}><TimerIcon size={22} /></DockBtn>
                   <DockBtn label="Сан жүйесі" pressed={wins.includes('conv')} onClick={() => toggle('conv')}><Binary size={22} /></DockBtn>
                   <DockBtn label="Жасыру" onClick={() => setUi(u => ({ ...u, dock: false }))}><ChevronDown size={22} /></DockBtn>
-                  <DockBtn label={hidden > 0 ? 'Көрсету' : 'Алға'} strong disabled={!next} onClick={() => next?.()}>{hidden > 0 ? <Eye size={22} /> : <ArrowRight size={22} />}</DockBtn>
+                  <DockBtn
+                    label={hidden > 0 ? 'Көрсету' : next ? 'Алға' : (nav?.nextLesson || nav?.nextModule) ? (nav?.nextLesson ? 'Келесі дәріс' : 'Келесі модуль') : 'Алға'}
+                    strong
+                    disabled={!next && !(nav?.nextLesson || nav?.nextModule)}
+                    onClick={() => {
+                      if (next) next();
+                      else if (nav?.nextLesson || nav?.nextModule) setSwitchAsk(nav.nextLesson || nav.nextModule);
+                    }}
+                  >
+                    {hidden > 0 ? <Eye size={22} /> : next ? <ArrowRight size={22} /> : <Sparkles size={22} />}
+                  </DockBtn>
                 </>
               )}
             </div>
@@ -206,13 +244,69 @@ export function BoardView({ sid }: { sid: string }) {
             const meta = PANELS.find(x => x.id === panel)!;
             return (
               <SidePanel title={meta.label} icon={meta.icon} left={RAIL} onClose={() => setPanel('')}>
-                {panel === 'toc' && <TocPanel toc={toc} now={slideNo} lang={lang} go={go} />}
+                {panel === 'toc' && <TocPanel toc={toc} now={slideNo} lang={lang} go={go} nav={nav} onSwitchLesson={target => setSwitchAsk(target)} />}
                 {panel === 'people' && <PeoplePanel svg={qrSvg} code={session.join_code} big={bigQr} setBig={setBigQr} parts={parts} />}
                 {panel === 'activity' && <ActivityPanel parts={parts} session={session} groupScores={groupScores} leaderboard={leaderboard} hide={ui.hidePts} setHide={v => setUi(u => ({ ...u, hidePts: v }))} split={split} />}
                 {panel === 'design' && <DesignPanel bg={look.bg} setBg={v => setLook(l => ({ ...l, bg: v }))} size={look.size} setSize={v => setLook(l => ({ ...l, size: v }))} lang={lang} flip={flipLang} />}
               </SidePanel>
             );
           })()}
+
+          {/* Floating banner on last slide to switch to next lesson or module */}
+          {slideNo >= total - 1 && hidden === 0 && (nav?.nextLesson || nav?.nextModule) && (
+            <div className="fixed top-16 lg:top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full border border-border/80 bg-surface/95 backdrop-blur-md px-4 py-2 shadow-2xl animate-in fade-in duration-200">
+              <Sparkles size={16} className="text-accent shrink-0" />
+              <span className="text-xs sm:text-sm font-semibold text-text truncate max-w-xs sm:max-w-md">
+                Дәріс аяқталды · Келесі: <b>{(nav.nextLesson || nav.nextModule)!.title}</b>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSwitchAsk(nav.nextLesson || nav.nextModule)}
+                className="shrink-0 rounded-full bg-accent px-3 py-1 text-xs font-bold text-on-accent shadow hover:bg-accent-hover transition-all"
+              >
+                Ауысу →
+              </button>
+            </div>
+          )}
+
+          {/* Modal confirmation for switching lesson */}
+          {switchAsk && (
+            <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+              <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                    <BookOpen size={24} />
+                  </div>
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <h3 className="text-lg font-bold text-text">Жаңа сабаққа ауысу</h3>
+                    <p className="text-sm text-text-secondary">
+                      <b>«{switchAsk.title}»</b> ({switchAsk.moduleTitle}) сабағына ауысасыз ба?
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      Оқушылар мен басқа құрылғылар сабақтан шығарылмайды, бірден жаңа сабаққа ауысады.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => setSwitchAsk(null)}
+                    className="rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-sm font-semibold text-text hover:bg-border transition-colors"
+                  >
+                    Болдырмау
+                  </button>
+                  <button
+                    type="button"
+                    disabled={switching}
+                    onClick={() => doSwitch(switchAsk)}
+                    className="rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-on-accent shadow-md hover:bg-accent-hover transition-colors disabled:opacity-50"
+                  >
+                    {switching ? 'Ауысуда...' : 'Иә, ауысу'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -1,86 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, Hand, Lock, LockOpen, Monitor, Plus, Square, Play, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Square, Play, Sparkles, Check, X } from 'lucide-react';
 import { sb } from '../config';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import { spaced, fmt, renderSlide } from './Widgets';
 import { tr, useLang } from '../lessons/lang';
+import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
 const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
-
-interface LessonTarget { id: string; title: string; moduleTitle: string }
-interface RemoteNavigation {
-  moduleTitle: string;
-  lessonPosition: number;
-  lessonCount: number;
-  previousLesson: LessonTarget | null;
-  nextLesson: LessonTarget | null;
-  previousModule: LessonTarget | null;
-  nextModule: LessonTarget | null;
-}
-
-/** Builds navigation from the teacher's course tree without changing the live session snapshot. */
-async function loadRemoteNavigation(lessonId: string): Promise<RemoteNavigation | null> {
-  const placement = await sb.from('cf_curr_lessons').select('lesson_id,module_id,position').eq('lesson_id', lessonId).maybeSingle();
-  if (placement.error) throw new Error(placement.error.message);
-  if (!placement.data) return null;
-
-  const currentModule = await sb.from('cf_curr_modules').select('id,title,course_id,position').eq('id', placement.data.module_id).maybeSingle();
-  if (currentModule.error) throw new Error(currentModule.error.message);
-  if (!currentModule.data) return null;
-  const moduleRow = currentModule.data;
-
-  const [modulesRes, placesRes] = await Promise.all([
-    sb.from('cf_curr_modules').select('id,title,position').eq('course_id', moduleRow.course_id).order('position'),
-    sb.from('cf_curr_lessons').select('lesson_id,module_id,position'),
-  ]);
-  if (modulesRes.error) throw new Error(modulesRes.error.message);
-  if (placesRes.error) throw new Error(placesRes.error.message);
-
-  const places = (placesRes.data || []).filter((p: any) => (modulesRes.data || []).some((m: any) => m.id === p.module_id));
-  const lessonIds = [...new Set(places.map((p: any) => p.lesson_id))];
-  if (!lessonIds.length) return null;
-  const lessonsRes = await sb.from('cf_lessons').select('id,title').in('id', lessonIds);
-  if (lessonsRes.error) throw new Error(lessonsRes.error.message);
-  const lessonById = new Map((lessonsRes.data || []).map((l: any) => [l.id, l.title]));
-  const modules = [...(modulesRes.data || [])].sort((a: any, b: any) => a.position - b.position);
-  const moduleLessons = (moduleId: string): LessonTarget[] => places
-    .filter((p: any) => p.module_id === moduleId && lessonById.has(p.lesson_id))
-    .sort((a: any, b: any) => a.position - b.position)
-    .map((p: any) => ({ id: p.lesson_id, title: lessonById.get(p.lesson_id) || 'Дәріс', moduleTitle: modules.find((m: any) => m.id === moduleId)?.title || 'Модуль' }));
-
-  const moduleIndex = modules.findIndex((m: any) => m.id === moduleRow.id);
-  const currentLessons = moduleLessons(moduleRow.id);
-  const currentIndex = currentLessons.findIndex(x => x.id === lessonId);
-  if (moduleIndex < 0 || currentIndex < 0) return null;
-  const targetModule = (index: number) => {
-    const m = modules[index];
-    return m ? moduleLessons(m.id)[0] || null : null;
-  };
-  return {
-    moduleTitle: moduleRow.title,
-    lessonPosition: currentIndex + 1,
-    lessonCount: currentLessons.length,
-    previousLesson: currentLessons[currentIndex - 1] || null,
-    nextLesson: currentLessons[currentIndex + 1] || null,
-    previousModule: targetModule(moduleIndex - 1),
-    nextModule: targetModule(moduleIndex + 1),
-  };
-}
-
-const lessonNavLink = (target: LessonTarget | null, label: string, icon: React.ReactNode) => target ? (
-  <a href={`#preview/${target.id}`} target="_blank" rel="noreferrer" className="flex min-h-[58px] items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:border-accent hover:bg-surface-2">
-    {icon}<span className="min-w-0"><span className="block text-xs text-text-secondary">{label}</span><span className="block truncate text-sm font-semibold">{target.title}</span></span>
-  </a>
-) : (
-  <span aria-disabled="true" className="flex min-h-[58px] items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-left opacity-40">
-    {icon}<span className="text-xs text-text-secondary">{label}<span className="block">Жоқ</span></span>
-  </span>
-);
 
 /** Remaining (limited) or elapsed time of an open task, ticking every second. */
 function Countdown({ task }: { task: any }) {
@@ -91,9 +22,6 @@ function Countdown({ task }: { task: any }) {
   return <span className={`font-mono tabular-nums ${left !== null && left <= 10 ? 'text-danger font-bold' : ''}`}>{fmt(left ?? sec)}</span>;
 }
 
-const Stat = ({ k, v, tone = '' }: { k: string; v: React.ReactNode; tone?: string }) => (
-  <div className={`rounded-lg border border-border bg-surface p-3 ${tone}`}><div className="text-xs text-text-secondary">{k}</div><div className="text-lg font-bold">{v}</div></div>
-);
 const IconBtn = ({ label, onClick, children, tone = '' }: { label: string; onClick: () => void; children: React.ReactNode; tone?: string }) => (
   <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex h-11 w-11 items-center justify-center rounded-md cursor-pointer hover:bg-surface-2 ${tone || 'text-text-secondary'}`}>{children}</button>
 );
@@ -112,7 +40,9 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [msgInput, setMsgInput] = useState('');
   const [gradingPoints, setGradingPoints] = useState<{ [subId: string]: string }>({});
   const [attendanceRows, setAttendanceRows] = useState<any[]>([]);
-  const [lessonNav, setLessonNav] = useState<RemoteNavigation | null>(null);
+  const [lessonNav, setLessonNav] = useState<SessionNavigation | null>(null);
+  const [switchAsk, setSwitchAsk] = useState<LessonTarget | null>(null);
+  const [switching, setSwitching] = useState(false);
   const [note, setNote] = useState<{ text: string; bad: boolean }>({ text: '', bad: false });
   const [ending, setEnding] = useState(false);
   const autoTRef = useRef<any>(null);
@@ -172,12 +102,26 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     let alive = true;
     setLessonNav(null);
     if (!session?.lesson_id) return () => { alive = false; };
-    loadRemoteNavigation(session.lesson_id).then(value => { if (alive) setLessonNav(value); }).catch(err => {
+    loadSessionNavigation(session.lesson_id).then(value => { if (alive) setLessonNav(value); }).catch(err => {
       // A live session must still work when the optional course-tree migration is absent.
       console.warn('Remote lesson navigation unavailable', err);
     });
     return () => { alive = false; };
   }, [session?.lesson_id]);
+
+  const doSwitch = async (target: LessonTarget) => {
+    setSwitching(true);
+    try {
+      await switchSessionLesson(sid, target.id);
+      setSwitchAsk(null);
+      setNote({ text: `«${target.title}» сабағына ауыстырылды`, bad: false });
+      await refresh();
+    } catch (e) {
+      setNote({ text: e instanceof Error ? e.message : 'Ауысу қатесі', bad: true });
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   const total = session?.slide_count || 0, cur = session?.current_slide || 0;
   const goSlide = async (i: number) => {
@@ -260,51 +204,205 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
         {lessonNav && (
           <section aria-label="Дәрістер мен модульдер бойынша өту" className="lg:col-span-2">
-            <Card className="space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <h2 className="font-semibold">Дәрістер бойынша өту</h2>
-                  <p className="text-sm text-text-secondary">{lessonNav.moduleTitle} · {lessonNav.lessonPosition} / {lessonNav.lessonCount} дәріс</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-2.5 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-semibold text-text truncate min-w-0">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                  <Layers size={15} />
+                </span>
+                <div className="min-w-0 truncate">
+                  <span className="truncate font-bold">{lessonNav.moduleTitle}</span>
+                  <span className="mx-1.5 text-text-muted">·</span>
+                  <span className="text-text-secondary">{lessonNav.lessonPosition} / {lessonNav.lessonCount} дәріс</span>
                 </div>
-                <span className="text-xs text-text-muted">Жаңа қойындыда ашылады</span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {lessonNavLink(lessonNav.previousLesson, 'Алдыңғы дәріс', <ArrowLeft size={18} aria-hidden="true" />)}
-                {lessonNavLink(lessonNav.nextLesson, 'Келесі дәріс', <ArrowRight size={18} aria-hidden="true" />)}
-                {lessonNavLink(lessonNav.previousModule, 'Алдыңғы модуль', <ArrowLeft size={18} aria-hidden="true" />)}
-                {lessonNavLink(lessonNav.nextModule, 'Келесі модуль', <ArrowRight size={18} aria-hidden="true" />)}
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {lessonNav.nextLesson && (
+                  <button
+                    type="button"
+                    onClick={() => setSwitchAsk(lessonNav.nextLesson)}
+                    className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent hover:bg-accent/20 transition-colors"
+                  >
+                    <span>Келесі дәріс</span>
+                    <ArrowRight size={13} />
+                  </button>
+                )}
+                {lessonNav.nextModule && (
+                  <button
+                    type="button"
+                    onClick={() => setSwitchAsk(lessonNav.nextModule)}
+                    className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 text-xs font-semibold text-text hover:bg-border transition-colors"
+                  >
+                    <span>Келесі модуль</span>
+                    <ArrowRight size={13} />
+                  </button>
+                )}
               </div>
-            </Card>
+            </div>
           </section>
         )}
 
         <section aria-label="Слайдты басқару" className="space-y-3 min-w-0">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat k="Қатысу" v={`${onlineCount} / ${parts.length}`} />
-            <Stat k="Тапсырды" v={task ? `${subs.length} / ${parts.length}` : '—'} />
-            <Stat k="Қол көтерді" v={hands.length} tone={hands.length ? 'bg-warning-soft' : ''} />
-            <Stat k="Ескерту" v={warns} />
+          {/* Compact Stats Strip */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-2 sm:p-2.5 shadow-sm text-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 font-semibold text-text">
+                <span className="h-2 w-2 rounded-full bg-success" />
+                <span>{onlineCount}/{parts.length} онлайн</span>
+              </span>
+              {task && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2.5 py-1 font-semibold text-text">
+                  <span>Тапсырды: <b>{subs.length}/{parts.length}</b></span>
+                </span>
+              )}
+              {hands.length > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-warning-soft text-warning px-2.5 py-1 font-bold animate-pulse">
+                  <Hand size={13} />
+                  <span>{hands.length} қол</span>
+                </span>
+              )}
+              {warns > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-danger-soft text-danger px-2.5 py-1 font-semibold">
+                  <span>{warns} ескерту</span>
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={lockAll}
+              aria-pressed={!!session.locked}
+              className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer transition-colors ${
+                session.locked ? 'bg-danger-soft text-danger' : 'bg-surface-2 text-text hover:bg-border'
+              }`}
+            >
+              {session.locked ? <Lock size={13} aria-hidden="true" /> : <LockOpen size={13} aria-hidden="true" />}
+              <span>{session.locked ? 'Бұғатталған' : 'Бұғаттау'}</span>
+            </button>
           </div>
 
+          {/* Current Slide (Large) & Next Slide (Compact Peek) */}
           <Card className="space-y-3">
-            <div className="flex items-baseline justify-between gap-2 text-sm text-text-secondary">
-              <span>Слайд <b className="text-text">{cur + 1}</b> / {total} · {TYPE[slide.type] || slide.type || ''}</span>
-              <button type="button" onClick={lockAll} aria-pressed={!!session.locked} className={`inline-flex min-h-[44px] items-center gap-2 rounded-md px-3 text-sm font-semibold cursor-pointer ${session.locked ? 'bg-danger-soft text-danger' : 'bg-surface-2 text-text hover:bg-border'}`}>
-                {session.locked ? <Lock size={16} aria-hidden="true" /> : <LockOpen size={16} aria-hidden="true" />}{session.locked ? 'Экрандар бұғатталған' : 'Бәрін бұғаттау'}
-              </button>
+            {/* Header: Slide Number & Language */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="rounded-lg bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent whitespace-nowrap">
+                  Слайд {cur + 1} / {total}
+                </span>
+                <h2 className="text-sm font-bold text-text truncate">
+                  {slide.title || TYPE[slide.type] || 'Слайд'}
+                </h2>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={flipLang}
+                aria-label="Слайд тілі"
+                className="!min-h-[32px] !py-1 text-xs font-bold shrink-0"
+              >
+                {lang === 'kk' ? 'ҚАЗ' : 'РУС'}
+              </Button>
             </div>
-            <div className="flex items-center justify-between"><h2 className="font-semibold">Қазіргі слайд</h2><Button variant="secondary" onClick={flipLang} aria-label="Слайд тілі">{lang === 'kk' ? 'ҚАЗ' : 'РУС'}</Button></div>
-            <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#10213F] text-white">
-              <div className="pointer-events-none" inert>{renderSlide(tr(slide, lang), { mode: 'preview', lang })}</div>
+
+            {/* Large Current Slide Stage */}
+            <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#0b1329] text-white shadow-md border border-border/80">
+              <div className="aspect-video w-full pointer-events-none select-none" inert>
+                {renderSlide(tr(slide, lang), { mode: 'preview', lang })}
+              </div>
             </div>
-            <h2 className="font-semibold">Келесі слайд{next ? ` · ${cur + 2} / ${total}` : ''}</h2>
-            {next ? <div role="region" aria-label="Келесі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#10213F] text-white">
-              <div className="pointer-events-none" inert>{renderSlide(tr(next, lang), { mode: 'preview', lang })}</div>
-            </div> : <p role="status" className="rounded-xl bg-surface-2 p-5 text-text-secondary">Бұл — дәрістің соңғы слайды.</p>}
-            <div role="progressbar" aria-label="Сабақ барысы" aria-valuemin={1} aria-valuemax={total} aria-valuenow={cur + 1} className="h-1.5 rounded bg-surface-2"><div className="h-1.5 rounded bg-accent" style={{ width: pct + '%' }} /></div>
-            {slide.notes && <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning"><b>Ескертпе:</b> {slide.notes}</p>}
-            {next && <p className="text-sm text-text-secondary">Келесі: <b className="text-text">{next.title || TYPE[next.type]}</b></p>}
-            {navBtns('hidden grid-cols-2 gap-2 lg:grid')}
+
+            <div role="progressbar" aria-label="Сабақ барысы" aria-valuemin={1} aria-valuemax={total} aria-valuenow={cur + 1} className="h-1.5 rounded-full bg-surface-2">
+              <div className="h-1.5 rounded-full bg-accent transition-all duration-300" style={{ width: pct + '%' }} />
+            </div>
+
+            {slide.notes && (
+              <p className="rounded-lg bg-warning-soft p-2.5 text-xs text-warning font-medium">
+                <b>Ескертпе:</b> {slide.notes}
+              </p>
+            )}
+
+            {/* Next Slide (Compact Preview Peek) */}
+            {next ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => goSlide(cur + 1)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') goSlide(cur + 1); }}
+                aria-label={`Келесі слайдқа өту: ${next.title || TYPE[next.type] || 'Слайд'}`}
+                className="group flex items-center gap-3 rounded-xl border border-border/80 bg-surface-2/60 hover:bg-surface-2 p-2 sm:p-2.5 shadow-sm transition-all cursor-pointer active:scale-[0.99]"
+              >
+                {/* Mini preview thumbnail */}
+                <div className="relative aspect-video w-24 sm:w-28 shrink-0 overflow-hidden rounded-lg bg-[#0b1329] border border-border/80 shadow-inner">
+                  <div style={{ transform: 'scale(0.35)', transformOrigin: 'top left', width: '286%', height: '286%' }} className="pointer-events-none select-none" inert>
+                    {renderSlide(tr(next, lang), { mode: 'preview', lang })}
+                  </div>
+                </div>
+
+                {/* Info on the right */}
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-accent uppercase tracking-wider">
+                    <span>Келесі</span>
+                    <span>·</span>
+                    <span>{cur + 2} / {total}</span>
+                  </div>
+                  <p className="text-sm font-bold text-text truncate group-hover:text-accent transition-colors">
+                    {next.title || TYPE[next.type] || 'Слайд'}
+                  </p>
+                  {slideText(next) && (
+                    <p className="text-xs text-text-secondary truncate line-clamp-1">
+                      {slideText(next)}
+                    </p>
+                  )}
+                </div>
+
+                <ArrowRight size={18} className="text-text-secondary group-hover:text-accent transition-colors shrink-0 mr-1" />
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-surface-2 p-3 text-xs text-text-secondary border border-border/60">
+                <span>Бұл — дәрістің соңғы слайды.</span>
+                {(lessonNav?.nextLesson || lessonNav?.nextModule) && (
+                  <Button
+                    variant="primary"
+                    onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}
+                    className="!min-h-[34px] !py-1 text-xs font-bold gap-1.5"
+                  >
+                    <span>{lessonNav.nextLesson ? `Келесі дәріс: ${lessonNav.nextLesson.title}` : `Келесі модуль: ${lessonNav.nextModule!.moduleTitle}`}</span>
+                    <ArrowRight size={14} />
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Desktop navigation buttons */}
+            <div className="hidden lg:grid grid-cols-2 gap-2 pt-1">
+              <Button
+                variant="secondary"
+                className="h-12 text-sm font-bold"
+                disabled={cur <= 0}
+                onClick={() => goSlide(cur - 1)}
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+                <span>Артқа</span>
+              </Button>
+              {cur >= total - 1 && (lessonNav?.nextLesson || lessonNav?.nextModule) ? (
+                <Button
+                  variant="primary"
+                  className="h-12 text-sm font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                  onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}
+                >
+                  <span>Келесі сабаққа өту</span>
+                  <ArrowRight size={18} aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button
+                  className="h-12 text-sm font-bold"
+                  disabled={cur >= total - 1}
+                  onClick={() => goSlide(cur + 1)}
+                >
+                  <span>Келесі</span>
+                  <ArrowRight size={18} aria-hidden="true" />
+                </Button>
+              )}
+            </div>
             <p className="hidden text-xs text-text-muted lg:block">Пернетақтада ← және → слайдты ауыстырады.</p>
           </Card>
 
@@ -458,10 +556,81 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
         </section>
       </main>
 
-      {/* phone: the two buttons the teacher needs most stay under the thumb */}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface p-2 lg:hidden">
-        <div className="mx-auto max-w-xl">{navBtns('grid grid-cols-2 gap-2')}</div>
+      {/* phone: ergonomic thumb-friendly navigation bar with prominent buttons */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md p-2.5 shadow-[0_-4px_24px_rgba(0,0,0,0.18)] lg:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-2">
+          <button
+            type="button"
+            disabled={cur <= 0}
+            onClick={() => goSlide(cur - 1)}
+            className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface-2 text-sm font-bold text-text transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
+            <span>Артқа</span>
+          </button>
+
+          <div className="flex h-14 min-w-[72px] flex-col items-center justify-center rounded-xl border border-border/80 bg-surface px-2">
+            <span className="text-xs font-bold tabular-nums text-text">{cur + 1} / {total}</span>
+            <span className="text-[10px] text-text-muted">слайд</span>
+          </div>
+
+          {cur >= total - 1 && (lessonNav?.nextLesson || lessonNav?.nextModule) ? (
+            <button
+              type="button"
+              onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}
+              className="flex h-14 flex-[1.4] items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-2 text-white text-xs font-bold shadow-lg transition-all active:scale-95"
+            >
+              <span>Келесі сабақ</span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={cur >= total - 1}
+              onClick={() => goSlide(cur + 1)}
+              className="flex h-14 flex-[1.4] items-center justify-center gap-1.5 rounded-xl bg-accent text-on-accent text-sm font-bold shadow-lg transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
+            >
+              <span>Келесі</span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Confirmation modal for switching lesson */}
+      {switchAsk && (
+        <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                <BookOpen size={20} />
+              </div>
+              <div className="space-y-1 min-w-0 flex-1">
+                <h3 className="text-base font-bold text-text">Жаңа сабаққа ауысу</h3>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  <b>«{switchAsk.title}»</b> ({switchAsk.moduleTitle}) сабағына ауысасыз ба?
+                </p>
+                <p className="text-[11px] text-text-muted">
+                  Оқушылар мен басқа құрылғылар сабақтан шығарылмайды, бірден жаңа слайдқа ауысады.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+              <Button variant="secondary" onClick={() => setSwitchAsk(null)} className="!min-h-[36px] text-xs">
+                Болдырмау
+              </Button>
+              <Button
+                variant="primary"
+                disabled={switching}
+                onClick={() => doSwitch(switchAsk)}
+                className="!min-h-[36px] text-xs font-bold"
+              >
+                {switching ? 'Ауысуда...' : 'Иә, ауысу'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
