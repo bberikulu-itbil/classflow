@@ -13,7 +13,7 @@ import type { Course, Curr, Kind, Me, Mod, Place } from './store';
 import { SHOWS, gradeOf, gradesIn, visible } from './filter';
 import type { Show } from './filter';
 import { CreateMenu } from '../ui/CreateMenu';
-import { useLang } from '../lessons/lang';
+import { useLang, type Lang } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 
 /** Loads the whole structure and re-reads it after every change, so the screen can never drift from the stored rows. */
@@ -37,30 +37,223 @@ function Confirm({ text, onYes, onNo }: { text: string; onYes: () => void; onNo:
   );
 }
 
+function CourseActionMenu({
+  course,
+  lang,
+  onDelete,
+}: {
+  course: Course;
+  lang: Lang;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const out = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', out);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', out);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  const copyLink = async () => {
+    const url = `${window.location.origin}${window.location.pathname}#course/${course.id}`;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+    setOpen(false);
+  };
+
+  const item = 'flex min-h-[40px] w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-text hover:bg-surface-2 transition-colors';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label={`${courseTitle(course, lang)}: әрекеттер мәзірі`}
+        title="Әрекеттер"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(o => !o);
+        }}
+        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-secondary transition-colors hover:border-border hover:bg-surface-2 hover:text-text ${
+          open ? 'border-border bg-surface-2 text-text shadow-sm' : ''
+        }`}
+      >
+        <MoreVertical size={18} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <ul
+          className="absolute right-0 bottom-full mb-1 z-30 w-52 rounded-xl border border-border bg-surface p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 sm:bottom-auto sm:top-full sm:mt-1 sm:mb-0"
+          role="menu"
+        >
+          <li role="none">
+            <a
+              role="menuitem"
+              href={`#course/${course.id}`}
+              className={item}
+              onClick={() => setOpen(false)}
+            >
+              <ArrowRight size={15} className="text-text-secondary" aria-hidden="true" />
+              <span>Курсты ашу</span>
+            </a>
+          </li>
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              className={item}
+              onClick={copyLink}
+            >
+              {copied ? (
+                <>
+                  <Check size={15} className="text-success" aria-hidden="true" />
+                  <span className="text-success font-semibold">Сілтеме көшірілді!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 size={15} className="text-text-secondary" aria-hidden="true" />
+                  <span>Сілтемені көшіру</span>
+                </>
+              )}
+            </button>
+          </li>
+          <li role="none" className="my-1 border-t border-border/60" />
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              className={`${item} text-danger hover:bg-danger-soft hover:text-danger`}
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+            >
+              <Trash2 size={15} aria-hidden="true" />
+              <span>Курсты өшіру</span>
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function CoursesView({ me }: { me: Me }) {
   const { data, error, loading, reload, msg, act } = useCurr(me);
   const [lang] = useLang();
+  const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState(''), [subject, setSubject] = useState(''), [grade, setGrade] = useState(''), [err, setErr] = useState('');
   const [ask, setAsk] = useState<Course | null>(null);
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return setErr('Курстың атауын жазыңыз');
     setErr(''); const t = title.trim();
-    act(() => st.addCourse(me, { title: t, subject: subject.trim() || null, grade: grade ? +grade : null })).then(() => { setTitle(''); setSubject(''); setGrade(''); });
+    act(() => st.addCourse(me, { title: t, subject: subject.trim() || null, grade: grade ? +grade : null })).then(() => {
+      setTitle(''); setSubject(''); setGrade(''); setShowAdd(false);
+    });
   };
+
   const counts = (c: Course) => {
     const mods = data!.modules.filter(m => m.course_id === c.id), ids = new Set(mods.map(m => m.id));
     return `${mods.length} модуль · ${data!.places.filter(p => ids.has(p.module_id)).length} дәріс`;
   };
+
   return (
-    <Shell title="Курстар">
-      <p className="text-text-secondary">Курс — пән немесе сынып деңгейі бойынша толық бағдарлама. Ол сыныпқа, күнге және оқу жылына байланбайды: оларды кесте (КТП) береді.</p>
+    <main className="mx-auto max-w-4xl space-y-4 p-4">
+      {/* Header with Title and Add Button */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Курстар</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Курс — пән немесе сынып деңгейі бойынша толық бағдарлама. Ол сыныпқа, күнге және оқу жылына байланбайды: оларды кесте (КТП) береді.
+          </p>
+        </div>
+        <div className="shrink-0">
+          <Button
+            variant={showAdd ? 'secondary' : 'primary'}
+            onClick={() => {
+              setShowAdd(s => !s);
+              setErr('');
+            }}
+            className="w-full sm:w-auto gap-2"
+          >
+            {showAdd ? <X size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
+            <span>{showAdd ? 'Болдырмау' : 'Курс қосу'}</span>
+          </Button>
+        </div>
+      </div>
+
       <Local d={data} /><Status msg={msg} />
       {error && <ErrorBox message={error} onRetry={reload} />}
       {loading && !data && <Skeleton />}
+
+      {/* Expandable Course Creation Form */}
+      {showAdd && (
+        <Card className="space-y-3 border-accent/40 shadow-md animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-border/60 pb-2">
+            <h2 className="font-semibold text-base flex items-center gap-2">
+              <GraduationCap size={18} className="text-accent" />
+              <span>Жаңа курс қосу</span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowAdd(false)}
+              className="rounded-md p-1 text-text-secondary hover:bg-surface-2 hover:text-text transition-colors"
+              aria-label="Жабу"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <form onSubmit={submit} noValidate className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Атауы" error={err}>{id => <input id={id} className={inputCls} value={title} maxLength={80} placeholder="Информатика 7" aria-invalid={!!err || undefined} onChange={e => setTitle(e.target.value)} autoFocus />}</Field>
+              <Field label="Пән">{id => <input id={id} className={inputCls} value={subject} maxLength={60} placeholder="Информатика" onChange={e => setSubject(e.target.value)} />}</Field>
+              <Field label="Сынып деңгейі">{id => (
+                <select id={id} className={inputCls} value={grade} onChange={e => setGrade(e.target.value)}>
+                  <option value="">Көрсетілмейді</option>{Array.from({ length: 11 }, (_, i) => <option key={i} value={i + 1}>{i + 1}-сынып</option>)}
+                </select>)}</Field>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Button type="submit" variant="primary">Курс жасау</Button>
+              <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Болдырмау</Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       {data && (
         <>
-          {data.courses.length === 0 ? <EmptyState text="Әзірге курс жоқ. Төмендегі форма арқылы алғашқысын қосыңыз." /> : (
+          {data.courses.length === 0 ? (
+            <EmptyState text="Әзірге курс жоқ. Жоғарыдағы «Курс қосу» батырмасы арқылы алғашқысын қосыңыз." />
+          ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.courses.map((c, ci) => (
                 <div key={c.id} className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-all hover:border-accent/40 hover:shadow-md">
@@ -95,31 +288,23 @@ export function CoursesView({ me }: { me: Me }) {
                         <span>Курсты ашу</span>
                         <ArrowRight size={14} aria-hidden="true" />
                       </LinkButton>
-                      <IconBtn label={`${courseTitle(c, lang)}: өшіру`} onClick={() => setAsk(c)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
+                      <CourseActionMenu course={c} lang={lang} onDelete={() => setAsk(c)} />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          {ask && <Confirm text={`«${ask.title}» курсы мен оның модульдері өшіріледі. Дәрістердің өзі сақталады. Жалғастырасыз ба?`} onNo={() => setAsk(null)} onYes={() => { const c = ask; setAsk(null); act(() => st.delCourse(me, c.id)); }} />}
-          <Card className="space-y-3">
-            <h2 className="font-semibold">Курс қосу</h2>
-            <form onSubmit={submit} noValidate className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Атауы" error={err}>{id => <input id={id} className={inputCls} value={title} maxLength={80} placeholder="Информатика 7" aria-invalid={!!err || undefined} onChange={e => setTitle(e.target.value)} />}</Field>
-                <Field label="Пән">{id => <input id={id} className={inputCls} value={subject} maxLength={60} placeholder="Информатика" onChange={e => setSubject(e.target.value)} />}</Field>
-                <Field label="Сынып деңгейі">{id => (
-                  <select id={id} className={inputCls} value={grade} onChange={e => setGrade(e.target.value)}>
-                    <option value="">Көрсетілмейді</option>{Array.from({ length: 11 }, (_, i) => <option key={i} value={i + 1}>{i + 1}-сынып</option>)}
-                  </select>)}</Field>
-              </div>
-              <Button type="submit">Қосу</Button>
-            </form>
-          </Card>
+          {ask && (
+            <Confirm
+              text={`«${ask.title}» курсы мен оның модульдері өшіріледі. Дәрістердің өзі сақталады. Жалғастырасыз ба?`}
+              onNo={() => setAsk(null)}
+              onYes={() => { const c = ask; setAsk(null); act(() => st.delCourse(me, c.id)); }}
+            />
+          )}
         </>
       )}
-    </Shell>
+    </main>
   );
 }
 
