@@ -25,6 +25,7 @@ import { TeacherHomeView } from './views/TeacherHomeView';
 import { StudentHomeView } from './views/StudentHomeView';
 import { SharedEdit, SharedGame } from './views/Jeopardy';
 import { LessonDetail } from './lessons/LessonDetail';
+import { CourseDetailView } from './curriculum/CourseDetailView';
 
 let demoApi: ReturnType<typeof makeFakeApi> | undefined;
 
@@ -119,7 +120,7 @@ export default function App() {
   if (routeKey === 'assign' && isStaff) return framed('3xl', <AssignView />);
   if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
   if (routeKey === 'lesson' && isStaff) return framed('5xl', <LessonDetail key={routeId} id={routeId} me={me} />);
-  if (routeKey === 'course' && isStaff) return framed('5xl', <ModulesView key={routeId} me={me} courseId={routeId} />);
+  if (routeKey === 'course' && isStaff) return framed('5xl', <CourseDetailView key={routeId} courseId={routeId} me={me} />);
   if (routeKey === 'preview' && isStaff) return framed('5xl', <LessonPreview key={routeId} id={routeId} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
   if (routeKey === 'jeopardy-edit') return shell(<SharedEdit key={routeId} payload={routeId} me={me} canSave={isStaff} />);

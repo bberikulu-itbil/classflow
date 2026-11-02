@@ -4,7 +4,17 @@ import { currentQuarter } from '../lessons/model';
 import { ROBOTICS_LESSONS } from '../lessons/robotics';
 import { SPREADSHEETS_COURSE, SPREADSHEETS_MODULE, SPREADSHEETS_LESSONS_META } from '../lessons/spreadsheets';
 
-export interface Course { id: string; title: string; subject: string | null; grade: number | null }
+export interface Course {
+  id: string;
+  title: string;
+  subject: string | null;
+  grade: number | null;
+  description?: string | null;
+  cover_url?: string | null;
+  instructor?: string | null;
+  level?: string | null;
+  tags?: string[] | null;
+}
 export type Kind = 'lesson' | 'course';
 /** kind 'lesson' = school-lesson module (may belong to one quarter); 'course' = course module (no quarter). grade empty = the course's grade. */
 export interface Mod { id: string; course_id: string; title: string; position: number; kind: Kind; quarter: number | null; grade: number | null }
@@ -12,6 +22,28 @@ export interface Place { lesson_id: string; module_id: string; position: number 
 export interface Les { id: string; title: string; title_kk?: string; title_ru?: string; subject: string | null }
 export interface Curr { courses: Course[]; modules: Mod[]; places: Place[]; lessons: Les[]; local: boolean; kindCol?: boolean }
 export interface Me { id: string; school_id: string }
+
+export const getCourseMeta = (courseId: string): Partial<Course> => {
+  try {
+    return JSON.parse(localStorage.getItem('cf_course_meta_' + courseId) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+export const saveCourseMeta = (courseId: string, meta: Partial<Course>) => {
+  try {
+    const prev = getCourseMeta(courseId);
+    localStorage.setItem('cf_course_meta_' + courseId, JSON.stringify({ ...prev, ...meta }));
+  } catch (e) {
+    console.warn('Could not save course meta', e);
+  }
+};
+
+export const enrichCourse = (c: Course): Course => ({
+  ...c,
+  ...getCourseMeta(c.id),
+});
 
 // Rows live in cf_curr_* (supabase/008_curriculum.sql). Without the tables (and in the demo) the structure stays in this browser.
 // shortcut: structure made in the browser before the tables existed is not moved up; add a "move" card if a teacher has real data there.
@@ -103,8 +135,13 @@ export async function loadCurr(me: Me): Promise<Curr> {
   const lessons = await loadLessons(me.id);
   if (!noTable) {
     const readMods = () => sb.from('cf_curr_modules').select('id,course_id,title,position' + (noKindCol ? '' : ',kind,quarter,grade'));
+    const readCourses = async () => {
+      const full = await sb.from('cf_curr_courses').select('id,title,subject,grade,description,cover_url,instructor,level').order('created_at');
+      if (!full.error) return full;
+      return sb.from('cf_curr_courses').select('id,title,subject,grade').order('created_at');
+    };
     const [c, m0, p] = await Promise.all([
-      sb.from('cf_curr_courses').select('id,title,subject,grade').order('created_at'),
+      readCourses(),
       readMods(),
       sb.from('cf_curr_lessons').select('lesson_id,module_id,position'),
     ]);
@@ -113,13 +150,13 @@ export async function loadCurr(me: Me): Promise<Curr> {
     if (!c.error) {
       fail(m.error); fail(p.error);
       const mods = (m.data as unknown as Partial<Mod>[]).map(x => ({ kind: 'lesson', quarter: null, grade: null, ...x })) as Mod[];
-      return { courses: c.data as Course[], modules: order(mods), places: order(p.data as Place[]), lessons, local: false, kindCol: !noKindCol };
+      return { courses: (c.data as Course[]).map(enrichCourse), modules: order(mods), places: order(p.data as Place[]), lessons, local: false, kindCol: !noKindCol };
     }
     if (!missing(c.error)) fail(c.error);
     noTable = true;
   }
   const l = readLocal(me);
-  return { ...l, modules: order(l.modules), places: order(l.places), lessons, local: true, kindCol: true };
+  return { ...l, courses: (l.courses || []).map(enrichCourse), modules: order(l.modules), places: order(l.places), lessons, local: true, kindCol: true };
 }
 
 /** Runs `cloud` against the database, or `local` on the browser copy when there are no tables yet. */
@@ -136,8 +173,39 @@ const next = (xs: { position: number }[]) => xs.reduce((m, x) => Math.max(m, x.p
 
 export const addCourse = (me: Me, c: Omit<Course, 'id'>) => {
   const id = crypto.randomUUID();
-  return run(me, () => sb.from('cf_curr_courses').insert({ id, ...c, school_id: me.school_id, owner_id: me.id }), s => ({ ...s, courses: [...s.courses, { id, ...c }] }));
+  saveCourseMeta(id, c);
+  const basic = { title: c.title, subject: c.subject, grade: c.grade };
+  return run(me, () => sb.from('cf_curr_courses').insert({ id, ...basic, school_id: me.school_id, owner_id: me.id }), s => ({ ...s, courses: [...s.courses, { id, ...c }] }));
 };
+
+export const updateCourse = (me: Me, id: string, updates: Partial<Course>) => {
+  saveCourseMeta(id, updates);
+  return run(
+    me,
+    async () => {
+      const basic: Record<string, any> = {};
+      if ('title' in updates) basic.title = updates.title;
+      if ('subject' in updates) basic.subject = updates.subject;
+      if ('grade' in updates) basic.grade = updates.grade;
+      const extended: Record<string, any> = { ...basic };
+      if ('description' in updates) extended.description = updates.description;
+      if ('cover_url' in updates) extended.cover_url = updates.cover_url;
+      if ('instructor' in updates) extended.instructor = updates.instructor;
+      if ('level' in updates) extended.level = updates.level;
+
+      const res = await sb.from('cf_curr_courses').update(extended).eq('id', id);
+      if (res.error && (res.error.code === '42703' || res.error.message?.includes('column'))) {
+        return sb.from('cf_curr_courses').update(basic).eq('id', id);
+      }
+      return res;
+    },
+    s => ({
+      ...s,
+      courses: s.courses.map(c => (c.id === id ? { ...c, ...updates } : c)),
+    })
+  );
+};
+
 export const delCourse = (me: Me, id: string) =>
   run(me, () => sb.from('cf_curr_courses').delete().eq('id', id), s => {
     const mods = new Set(s.modules.filter(m => m.course_id === id).map(m => m.id));

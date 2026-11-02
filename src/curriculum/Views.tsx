@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, Info, Languages, Layers, MoreVertical, Pencil, Play, Plus, Share2, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Check, ChevronDown, GraduationCap, Info, Languages, Layers, MoreVertical, Pencil, Play, Plus, Share2, Trash2, X } from 'lucide-react';
 import { coverOf } from '../ui/cover';
 import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
@@ -61,20 +61,46 @@ export function CoursesView({ me }: { me: Me }) {
       {data && (
         <>
           {data.courses.length === 0 ? <EmptyState text="Әзірге курс жоқ. Төмендегі форма арқылы алғашқысын қосыңыз." /> : (
-            <ul className="space-y-2">
-              {data.courses.map(c => (
-                <li key={c.id}><Card className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="font-semibold break-words">{courseTitle(c, lang)}</h2>
-                    <p className="text-sm text-text-secondary">{[c.subject, c.grade && `${c.grade}-сынып`].filter(Boolean).join(' · ') || NO_SUBJECT} · {counts(c)}</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {data.courses.map((c, ci) => (
+                <div key={c.id} className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-all hover:border-accent/40 hover:shadow-md">
+                  {/* Cover */}
+                  <a href={'#course/' + c.id} className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900 block" tabIndex={-1} aria-hidden="true">
+                    {c.cover_url ? (
+                      <img src={c.cover_url} alt={courseTitle(c, lang)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-white" style={{ background: coverOf(ci) }}>
+                        <GraduationCap size={36} className="mb-1 opacity-80" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider opacity-85">{c.subject || 'Курс'}</span>
+                      </div>
+                    )}
+                    <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
+                      {c.subject && <span className="rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-bold text-accent shadow-sm backdrop-blur-md">{c.subject}</span>}
+                      {c.grade && <span className="rounded-full bg-surface-2/90 px-2 py-0.5 text-xs font-semibold text-text shadow-sm backdrop-blur-md">{c.grade}-сынып</span>}
+                    </div>
+                  </a>
+
+                  {/* Body */}
+                  <div className="flex flex-1 flex-col justify-between p-4 space-y-3">
+                    <div className="space-y-1">
+                      <a href={'#course/' + c.id} className="block font-bold text-lg text-text hover:text-accent transition-colors break-words">
+                        {courseTitle(c, lang)}
+                      </a>
+                      {c.description && <p className="text-xs text-text-secondary line-clamp-2">{c.description}</p>}
+                      <p className="text-xs text-text-muted pt-1">{counts(c)}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                      <LinkButton href={'#course/' + c.id} variant="primary" className="!min-h-[38px] flex-1 justify-center gap-1.5 text-xs font-semibold" aria-label={`${courseTitle(c, lang)}: ашу`}>
+                        <span>Курсты ашу</span>
+                        <ArrowRight size={14} aria-hidden="true" />
+                      </LinkButton>
+                      <IconBtn label={`${courseTitle(c, lang)}: өшіру`} onClick={() => setAsk(c)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <LinkButton href="#lessons/modules" variant="primary" onClick={() => st.selectCourse(c.id)} aria-label={`${courseTitle(c, lang)}: ашу`}>Ашу</LinkButton>
-                    <IconBtn label={`${courseTitle(c, lang)}: өшіру`} onClick={() => setAsk(c)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
-                  </div>
-                </Card></li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
           {ask && <Confirm text={`«${ask.title}» курсы мен оның модульдері өшіріледі. Дәрістердің өзі сақталады. Жалғастырасыз ба?`} onNo={() => setAsk(null)} onYes={() => { const c = ask; setAsk(null); act(() => st.delCourse(me, c.id)); }} />}
           <Card className="space-y-3">
