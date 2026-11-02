@@ -88,7 +88,7 @@ export default function App() {
   }, [routeKey, routeId]);
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
+    return <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
   }
 
   if (!me) {
@@ -96,7 +96,7 @@ export default function App() {
   }
 
   if (routeKey === 'join') {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Сабаққа қосылуда...</div>;
+    return <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Сабаққа қосылуда...</div>;
   }
 
   const isStaff = STAFF.includes(me.role);

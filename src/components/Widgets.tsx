@@ -2,6 +2,8 @@ import { rich } from '../lessons/spoil';
 import React, { useState, useEffect } from 'react';
 import { runPy, norm, sha256 } from '../utils/pyodide';
 import { CanvasSlide } from '../lessons/canvas';
+import { KindBadge } from '../lessons/kinds';
+import { designSlide } from '../lessons/sheetsLab/cv';
 
 export const BTN = 'px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition cursor-pointer';
 export const BTN_P = 'px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition cursor-pointer';
@@ -494,7 +496,27 @@ const visualBullets = (items: any[], big: boolean, inner: (t: string) => React.R
   </div>;
 };
 
-export function renderSlide(s: any, ctx: any = {}) {
+/** The slide, with its kind badge (Түсіндіру, Мысал, Практикалық тапсырма, ...) above it when the slide has one. */
+export function renderSlide(raw: any, ctx: any = {}) {
+  const s = designSlide(raw); // slides marked design:'lab' are drawn as canvas pages
+  return <>
+    {s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {ctx.lang === 'ru' ? 'В паре' : 'Жұппен'}</span>}</div>}
+    {renderSlideBody(s, ctx)}
+  </>;
+}
+
+/** Overview of L1-L3 for the board, preview and remote (students get the interactive LevelsPanel instead). */
+export function LevelsOverview({ s, big }: { s: any; big?: boolean }) {
+  if (!Array.isArray(s.levels) || !s.levels.length) return null;
+  return <div className="grid gap-2">{s.levels.map((l: any, i: number) => (
+    <div key={i} className="rounded-xl border border-slate-600 bg-slate-800 p-3">
+      <div className={`${big ? 'text-2xl' : 'text-base'} font-bold text-amber-300`}>L{l.lv || i + 1}{l.title ? ` · ${l.title}` : ''}<span className="ml-2 text-sm font-semibold text-slate-400">{l.points} ұпай{(l.variants || []).length > 1 ? ' · A / B' : ''}</span></div>
+      <p className={`${big ? 'text-xl' : 'text-sm'} mt-1 whitespace-pre-wrap text-slate-200`}>{(l.variants || [])[0]?.prompt}</p>
+    </div>
+  ))}</div>;
+}
+
+function renderSlideBody(s: any, ctx: any = {}) {
   const sp = ctx.sp, R = (t: string) => rich(t, sp);
   const big = ctx.mode === 'board';
   const wrap = (...k: any[]) => <div className={`cf-slide w-full ${big ? 'max-w-6xl' : 'max-w-5xl'} mx-auto p-4`}>{k}</div>;
@@ -557,7 +579,8 @@ export function renderSlide(s: any, ctx: any = {}) {
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         codeBlock(s, big),
-        imgBlock(s, big)
+        imgBlock(s, big),
+        <LevelsOverview s={s} big={big} />
       );
     case 'code':
       return wrap(

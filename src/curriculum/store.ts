@@ -2,6 +2,7 @@ import { sb, DEMO } from '../config';
 import { loadLessonData } from '../lessons/data';
 import { currentQuarter } from '../lessons/model';
 import { ROBOTICS_LESSONS } from '../lessons/robotics';
+import { SHEETSLAB_MODULE, SHEETSLAB_LESSONS_META } from '../lessons/sheetsLab';
 import { SPREADSHEETS_COURSE, SPREADSHEETS_MODULE, SPREADSHEETS_LESSONS_META } from '../lessons/spreadsheets';
 
 export interface Course {
@@ -63,12 +64,14 @@ const demoSeed = (): Store => ({
     { id: 'm2', course_id: 'k1', title: 'Бағдарламалау негіздері', position: 1, kind: 'lesson', quarter: null, grade: 7 },
     { id: 'm3', course_id: 'k2', title: 'Робототехника', position: 0, kind: 'course', quarter: null, grade: null },
     { id: SPREADSHEETS_MODULE.id, course_id: SPREADSHEETS_MODULE.course_id, title: SPREADSHEETS_MODULE.title, position: 0, kind: SPREADSHEETS_MODULE.kind as Kind, quarter: SPREADSHEETS_MODULE.quarter, grade: SPREADSHEETS_MODULE.grade },
+    { id: SHEETSLAB_MODULE.id, course_id: SHEETSLAB_MODULE.course_id, title: SHEETSLAB_MODULE.title, position: SHEETSLAB_MODULE.position, kind: SHEETSLAB_MODULE.kind as Kind, quarter: SHEETSLAB_MODULE.quarter, grade: SHEETSLAB_MODULE.grade },
   ],
   places: [
     { lesson_id: 'l1', module_id: 'm1', position: 0 },
     { lesson_id: 'l2', module_id: 'm1', position: 1 },
     ...['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7'].map((lesson_id, position) => ({ lesson_id, module_id: 'm3', position })),
     ...SPREADSHEETS_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: SPREADSHEETS_MODULE.id, position })),
+    ...SHEETSLAB_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: SHEETSLAB_MODULE.id, position })),
   ],
 });
 function readLocal(me: Me): Store {
@@ -85,7 +88,7 @@ const order = <T extends { position: number }>(a: T[]) => [...a].sort((x, y) => 
 export async function loadLessons(meId: string): Promise<Les[]> {
   if (DEMO) {
     const base = (await loadLessonData(meId)).lessons.map(l => {
-      const sp = SPREADSHEETS_LESSONS_META.find(s => s.id === l.id);
+      const sp = SPREADSHEETS_LESSONS_META.find(s => s.id === l.id) || SHEETSLAB_LESSONS_META.find(s => s.id === l.id);
       const rb = ROBOTICS_LESSONS.find(r => r.id === l.id);
       return {
         id: l.id,
@@ -127,7 +130,7 @@ export async function loadLessons(meId: string): Promise<Les[]> {
     title_ru: s.title_ru,
     subject: s.subject,
   }));
-  const staticLessons = [...robLessons, ...spreadsheetsLessons];
+  const staticLessons = [...robLessons, ...spreadsheetsLessons, ...SHEETSLAB_LESSONS_META.map(s => ({ id: s.id, title: s.title, title_kk: s.title_kk, title_ru: s.title_ru, subject: s.subject }))];
   return [...fromDb, ...staticLessons.filter(s => !fromDb.some(d => d.id === s.id))];
 }
 

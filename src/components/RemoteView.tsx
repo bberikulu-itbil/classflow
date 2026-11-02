@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
 import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Square, Play, Sparkles, Check, X } from 'lucide-react';
 import { sb } from '../config';
@@ -6,6 +6,7 @@ import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import { spaced, fmt, renderSlide } from './Widgets';
 import { tr, useLang } from '../lessons/lang';
+import { KindBadge, kindLabel } from '../lessons/kinds';
 import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
@@ -22,6 +23,20 @@ function Countdown({ task }: { task: any }) {
   return <span className={`font-mono tabular-nums ${left !== null && left <= 10 ? 'text-danger font-bold' : ''}`}>{fmt(left ?? sec)}</span>;
 }
 
+/** A slide drawn at a fixed 1280-wide design size and shrunk to fit its box, so a preview looks like the real slide at any size. */
+function Thumb({ children }: { children: React.ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [k, setK] = useState(0.2);
+  useLayoutEffect(() => {
+    const el = box.current!, fit = () => setK(el.clientWidth / 1280);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return <div ref={box} className="relative aspect-video w-full overflow-hidden"><div className="pointer-events-none select-none" style={{ width: 1280, height: 720, transform: `scale(${k})`, transformOrigin: 'top left' }} inert>{children}</div></div>;
+}
+
 const IconBtn = ({ label, onClick, children, tone = '' }: { label: string; onClick: () => void; children: React.ReactNode; tone?: string }) => (
   <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex h-11 w-11 items-center justify-center rounded-md cursor-pointer hover:bg-surface-2 ${tone || 'text-text-secondary'}`}>{children}</button>
 );
@@ -33,6 +48,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [parts, setParts] = useState<any[]>([]);
   const [task, setTask] = useState<any>(null);
   const [subs, setSubs] = useState<any[]>([]);
+  const [lvTasks, setLvTasks] = useState<any[]>([]); // every task of an open L1-L3 batch
+  const [pairs, setPairs] = useState<any[]>([]);
+  const [roster, setRoster] = useState<any[]>([]);
+  const [pf, setPf] = useState({ host: '', partner: '' });
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [groupScores, setGroupScores] = useState<any[]>([]);
   const [tab, setTab] = useState('class');
@@ -66,7 +85,15 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
       const activeTask = sRes.data?.active_task_id ? (await sb.from('cf_tasks').select('*').eq('id', sRes.data.active_task_id).single()).data : null;
       setTask(activeTask);
-      setSubs(activeTask ? (await sb.from('cf_submissions').select('*').eq('task_id', activeTask.id)).data || [] : []);
+      if (activeTask?.level != null) {
+        const batch = (await sb.from('cf_tasks').select('*').eq('session_id', sid).eq('slide_index', activeTask.slide_index).eq('opened_at', activeTask.opened_at).order('level').order('variant')).data || [];
+        setLvTasks(batch);
+        setSubs((await sb.from('cf_submissions').select('*').in('task_id', batch.map((b: any) => b.id))).data || []);
+      } else {
+        setLvTasks([]);
+        setSubs(activeTask ? (await sb.from('cf_submissions').select('*').eq('task_id', activeTask.id)).data || [] : []);
+      }
+      setPairs((await sb.from('cf_pairs').select('*').eq('session_id', sid)).data || []);
 
       if (sRes.data?.class_id) {
         const cls = (await sb.from('classes').select('name').eq('id', sRes.data.class_id)).data;
@@ -89,7 +116,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   useEffect(() => {
     refresh();
     const ch = sb.channel('cf-remote-' + sid);
-    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_submissions', 'cf_scores'].forEach(tb => {
+    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_submissions', 'cf_scores', 'cf_pairs'].forEach(tb => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, () => refresh());
     });
     ch.subscribe();
@@ -97,6 +124,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     return () => { sb.removeChannel(ch); clearInterval(iv); clearTimeout(autoTRef.current); };
   }, [sid]);
   useEffect(() => { if (tab === 'att') refresh(); }, [tab]);
+  // the class roster (also students who did not log in) for choosing a pair partner
+  useEffect(() => { if (tab === 'class' && !roster.length) sb.rpc('cf_attendance', { p_session: sid }).then(r => { if (r.data) setRoster(r.data); }, () => {}); }, [tab]);
 
   useEffect(() => {
     let alive = true;
@@ -292,6 +321,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 <h2 className="text-sm font-bold text-text truncate">
                   {slide.title || TYPE[slide.type] || 'Слайд'}
                 </h2>
+                <KindBadge kind={slide.kind} lang={lang} className="!px-2 !py-0.5 !text-xs whitespace-nowrap" />
               </div>
               <Button
                 variant="secondary"
@@ -330,11 +360,9 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 aria-label={`Келесі слайдқа өту: ${next.title || TYPE[next.type] || 'Слайд'}`}
                 className="group flex items-center gap-3 rounded-xl border border-border/80 bg-surface-2/60 hover:bg-surface-2 p-2 sm:p-2.5 shadow-sm transition-all cursor-pointer active:scale-[0.99]"
               >
-                {/* Mini preview thumbnail */}
-                <div className="relative aspect-video w-24 sm:w-28 shrink-0 overflow-hidden rounded-lg bg-[#0b1329] border border-border/80 shadow-inner">
-                  <div style={{ transform: 'scale(0.35)', transformOrigin: 'top left', width: '286%', height: '286%' }} className="pointer-events-none select-none" inert>
-                    {renderSlide(tr(next, lang), { mode: 'preview', lang })}
-                  </div>
+                {/* Next slide as it will look */}
+                <div className="w-36 sm:w-52 shrink-0 overflow-hidden rounded-lg bg-[#0b1329] border border-border/80 shadow-inner" data-testid="next-slide-preview">
+                  <Thumb>{renderSlide(tr(next, lang), { mode: 'preview', lang })}</Thumb>
                 </div>
 
                 {/* Info on the right */}
@@ -412,7 +440,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 <h2 className="font-semibold">Тапсырма {open ? <span className="ml-2 text-sm font-normal text-success">ашық</span> : task ? <span className="ml-2 text-sm font-normal text-text-secondary">жабылған</span> : null}</h2>
                 {open && task.time_limit ? <Countdown task={task} /> : null}
               </div>
-              {task && <p className="text-sm text-text-secondary break-words">{task.prompt}</p>}
+              {task && <p className="text-sm text-text-secondary break-words">{lvTasks.length ? `L1–L${Math.max(...lvTasks.map(x => x.level))}: ${lvTasks.length} тапсырма` : task.prompt}</p>}
               {task && (
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm"><span>Тапсырды</span><b>{subs.length} / {parts.length}</b></div>
@@ -437,6 +465,26 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                   <input aria-label="Хабарлама (оқушыларға қалқымалы терезе)" className={inputCls} placeholder="Хабарлама оқушыларға" value={msgInput} maxLength={200} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(null, 'Барлығына жіберілді'); }} />
                   <Button variant="secondary" onClick={() => send(null, 'Барлығына жіберілді')}><Bell size={16} aria-hidden="true" />Барлығына</Button>
                 </div>
+                <div data-testid="pairs" className="space-y-2 rounded-lg border border-border bg-surface p-2">
+                  <p className="px-1 text-sm font-semibold">👥 Жұптар <span className="font-normal text-text-secondary">— бір компьютер, екі оқушы</span></p>
+                  {pairs.map(q => (
+                    <div key={q.host_id} className="flex items-center justify-between gap-2 px-1 text-sm">
+                      <span className="break-words">{q.host_name} + {q.partner_name}</span>
+                      <IconBtn label={`${q.host_name} + ${q.partner_name}: жұпты бұзу`} onClick={() => run(() => sb.rpc('cf_pair_set', { p_session: sid, p_host: q.host_id, p_partner: null }))}><X size={16} aria-hidden="true" /></IconBtn>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap gap-2">
+                    <select aria-label="Аккаунтымен кірген оқушы" className={inputCls + ' !w-auto min-w-0 flex-1'} value={pf.host} onChange={e => setPf({ ...pf, host: e.target.value })}>
+                      <option value="">Компьютердегі оқушы…</option>
+                      {parts.filter(p => !pairs.some(q => q.host_id === p.student_id || q.partner_id === p.student_id)).map(p => <option key={p.student_id} value={p.student_id}>{p.full_name}</option>)}
+                    </select>
+                    <select aria-label="Қасына қосылатын оқушы" className={inputCls + ' !w-auto min-w-0 flex-1'} value={pf.partner} onChange={e => setPf({ ...pf, partner: e.target.value })}>
+                      <option value="">Жұбы…</option>
+                      {roster.filter(r => r.student_id !== pf.host && !pairs.some(q => q.host_id === r.student_id || q.partner_id === r.student_id)).map(r => <option key={r.student_id} value={r.student_id}>{r.full_name}</option>)}
+                    </select>
+                    <Button variant="secondary" disabled={!pf.host || !pf.partner} onClick={() => { run(() => sb.rpc('cf_pair_set', { p_session: sid, p_host: pf.host, p_partner: pf.partner }), 'Жұп қосылды'); setPf({ host: '', partner: '' }); }}><Plus size={16} aria-hidden="true" />Жұп қосу</Button>
+                  </div>
+                </div>
                 {hands.length > 0 && (
                   <div className="rounded-lg bg-warning-soft p-2 space-y-1">
                     <p className="px-1 text-sm font-semibold text-warning">Қол көтергендер</p>
@@ -456,7 +504,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                       <div className="ml-2 min-w-0 flex-1">
                         <p className="truncate font-medium">{p.full_name}</p>
                         <p className="truncate text-xs text-text-secondary">
-                          {PRESENCE[p.presence] || p.presence}{p.att === 'late' ? ' · кешікті' : ''}{p.locked ? ' · бұғатталған' : ''}{p.away_count > 0 ? ` · ${p.away_count}× шықты, ${fmt(p.away_seconds)}` : ''}
+                          {pairs.find(q => q.host_id === p.student_id) ? `👥 ${pairs.find(q => q.host_id === p.student_id).partner_name} · ` : pairs.find(q => q.partner_id === p.student_id) ? `👥 ${pairs.find(q => q.partner_id === p.student_id).host_name}-мен бір экран · ` : ''}{PRESENCE[p.presence] || p.presence}{p.att === 'late' ? ' · кешікті' : ''}{p.locked ? ' · бұғатталған' : ''}{p.away_count > 0 ? ` · ${p.away_count}× шықты, ${fmt(p.away_seconds)}` : ''}
                         </p>
                       </div>
                       <IconBtn label={`${p.full_name}: ${p.locked ? 'бұғатты ашу' : 'бұғаттау'}`} tone={p.locked ? 'text-danger' : ''} onClick={() => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: p.student_id, p_locked: !p.locked }))}>{p.locked ? <Lock size={18} aria-hidden="true" /> : <LockOpen size={18} aria-hidden="true" />}</IconBtn>
@@ -468,7 +516,30 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
               </>
             )}
 
-            {tab === 'subs' && (!task ? <EmptyState icon="✅" text="Белсенді тапсырма жоқ. Тест не тапсырма слайдында «Тапсырма жіберу» батырмасын басыңыз." /> : (
+            {tab === 'subs' && (!task ? <EmptyState icon="✅" text="Белсенді тапсырма жоқ. Тест не тапсырма слайдында «Тапсырма жіберу» батырмасын басыңыз." /> : lvTasks.length ? (
+              <div className="overflow-x-auto" data-testid="levels-matrix">
+                <table className="w-full text-sm">
+                  <caption className="sr-only">Деңгейлер бойынша жауаптар</caption>
+                  <thead><tr><th scope="col" className="text-left py-1">Оқушы</th>{lvTasks.map(x => <th key={x.id} scope="col" className="px-1 text-center">L{x.level}{x.variant}</th>)}</tr></thead>
+                  <tbody>{[...new Set(subs.map(x => x.student_id))].map(id => {
+                    const pr = pairs.find(q => q.host_id === id || q.partner_id === id);
+                    return (
+                      <tr key={id} className="border-t border-border">
+                        <td className="py-1.5 pr-2">{nameOf(id)}{pr ? <span title={`Жұп: ${pr.host_name} + ${pr.partner_name}`}> 👥</span> : null}</td>
+                        {lvTasks.map(x => {
+                          const sub = subs.find(y => y.student_id === id && y.task_id === x.id);
+                          if (!sub) return <td key={x.id} className="text-center text-text-muted">·</td>;
+                          if (sub.is_correct == null) return <td key={x.id} className="text-center"><button type="button" aria-label={`${nameOf(id)}: L${x.level}${x.variant} қабылдау`} title={sub.answer} className="cursor-pointer rounded bg-warning-soft px-1.5 text-warning" onClick={() => run(() => sb.rpc('cf_grade', { p_sub: sub.id, p_points: x.points, p_feedback: null }), 'Баға қойылды')}>⏳</button></td>;
+                          return <td key={x.id} title={sub.answer} className={`text-center font-bold ${sub.is_correct ? 'text-success' : 'text-danger'}`}>{sub.is_correct ? '✓' : '✗'}</td>;
+                        })}
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+                {subs.length === 0 && <p className="text-sm text-text-muted pt-2">Әзірге жауап жоқ.</p>}
+                <p className="pt-2 text-xs text-text-muted">⏳ — қолмен тексеру керек: басқанда толық ұпай қойылады, келесі деңгей ашылады.</p>
+              </div>
+            ) : (
               <>
                 <p className="text-sm text-text-secondary break-words">{task.prompt}</p>
                 {subs.length === 0 && <p className="text-sm text-text-muted">Әзірге жауап жоқ.</p>}
@@ -546,7 +617,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                   <li key={i}>
                     <button type="button" aria-current={i === cur ? 'step' : undefined} onClick={() => goSlide(i)}
                       className={`flex min-h-[44px] w-full items-center gap-3 rounded-md px-3 text-left text-sm cursor-pointer ${i === cur ? 'bg-accent text-on-accent font-semibold' : 'bg-surface border border-border hover:bg-surface-2'}`}>
-                      <span className="w-6 shrink-0 tabular-nums opacity-80">{i + 1}</span><span className="min-w-0 flex-1 truncate">{s.title || TYPE[s.type] || s.type}</span><span className="text-xs opacity-80">{TYPE[s.type] || ''}</span>
+                      <span className="w-6 shrink-0 tabular-nums opacity-80">{i + 1}</span><span className="min-w-0 flex-1 truncate">{s.title || TYPE[s.type] || s.type}</span><span className="text-xs opacity-80">{kindLabel(s.kind, lang) || TYPE[s.type] || ''}</span>
                     </button>
                   </li>
                 ))}

@@ -1,5 +1,6 @@
 // Informatics 8th grade: Spreadsheets module lessons generated from Informatics 8 Textbook (Chapter 2, pp. 23-38).
 // Completely bilingual (Kazakh primary with Russian translation blocks).
+import { SHEETSLAB_LESSONS_DATA } from './sheetsLab';
 
 export interface SpreadsheetsLessonMeta {
   id: string;
@@ -3484,11 +3485,11 @@ export const SPREADSHEETS_LESSONS_DATA: Record<string, {
 };
 
 export function isSpreadsheetsLessonId(id: string): boolean {
-  return id in SPREADSHEETS_LESSONS_DATA || SPREADSHEETS_LESSONS_META.some(m => m.id === id);
+  return id in SPREADSHEETS_LESSONS_DATA || id in SHEETSLAB_LESSONS_DATA || SPREADSHEETS_LESSONS_META.some(m => m.id === id);
 }
 
 export async function loadSpreadsheetsLesson(id: string): Promise<{ id: string; title: string; subject: string; slides: any[]; terms?: any[]; plan?: any } | null> {
-  const lesson = SPREADSHEETS_LESSONS_DATA[id];
+  const lesson = SPREADSHEETS_LESSONS_DATA[id] || SHEETSLAB_LESSONS_DATA[id];
   if (!lesson) return null;
   return {
     id: lesson.id,

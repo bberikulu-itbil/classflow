@@ -375,7 +375,8 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
         if (converted.length) setCanvasEditorIndex(firstConvertedIndex);
         setTitle(prev => prev.trim() || file.name.replace(/\.(pptx|pdf)$/i, ''));
         setSummary(prev => prev || 'PPTX слайдтары ClassFlow кенеп беттеріне айналдырылды. Бастапқы файл сақталмайды.');
-        setMessage(`${deck.slides.length} бет импортталды: мәтін, сурет, фигура және фон ClassFlow элементтеріне бөлінді.${inlineImageFallback ? ' Медиа қоймасы қолжетімсіз болғандықтан, суреттер кенеп ішінде сақталды.' : ''}`);
+        const notes = deck.slides.filter(slide => slide.notes).length;
+        setMessage(`${deck.slides.length} бет импортталды: мәтін, сурет, фигура, кесте және фон түпнұсқадағыдай орналасты.${notes ? ` Спикер жазбалары (${notes}) мұғалімге арналған «Ескертпе» болды.` : ''}${inlineImageFallback ? ' Медиа қоймасы қолжетімсіз болғандықтан, суреттер кенеп ішінде сақталды.' : ''}${deck.unsupported.length ? ` Көшірілмегендер: ${deck.unsupported.join('; ')}.` : ''}`);
       } else {
         const allImportedKkPages = slidesRef.current.filter(item => item.type === 'canvas' && item.importedLanguage === 'kk');
         const targets = allImportedKkPages.slice(-deck.slides.length);

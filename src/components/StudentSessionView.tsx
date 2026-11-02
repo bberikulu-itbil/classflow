@@ -1,9 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sb } from '../config';
 import { BTN, BTN_P, INP, renderSlide, CodeIDE, lbTable } from './Widgets';
+import { lazy, Suspense } from 'react';
+const MiniSheet = lazy(() => import('../sheet/MiniSheet'));
+import { LevelsPanel, type LvTask, type LvSub, type Pair } from './LevelsPanel';
+import type { SheetApi } from '../sheet/MiniSheet';
+import { tr, useLang } from '../lessons/lang';
 
 export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
+  const [lang, flipLang] = useLang();
   const [session, setSession] = useState<any>(null);
+  const [lvTasks, setLvTasks] = useState<LvTask[]>([]);
+  const [lvSubs, setLvSubs] = useState<LvSub[]>([]);
+  const [pair, setPair] = useState<Pair | null>(null);
+  const sheetApi = useRef<SheetApi | null>(null); // the sheet of the open task page: the panel reads cells from it
+  const [, setTick] = useState(0); // a sheet edit re-renders the panel so it shows the cell's current value
+  const [comment, setComment] = useState('');
   const [currentSlideData, setCurrentSlideData] = useState<any>(null);
   const [task, setTask] = useState<any>(null);
   const [mySub, setMySub] = useState<any>(null);
@@ -43,6 +55,15 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         sb.rpc('cf_leaderboard', { p_session: sid }),
       ]);
       setCurrentSlideData(curRes.data);
+      // practice slide with L1-L3: the latest batch of level tasks for this slide, my answers to it and my pair (if any)
+      const pairRow = (await sb.from('cf_pairs').select('*').eq('session_id', sid)).data?.[0] || null;
+      setPair(pairRow);
+      if (curRes.data?.slide?.levels) {
+        const rows = ((await sb.from('cf_tasks').select('*').eq('session_id', sid).eq('slide_index', curRes.data.index).not('level', 'is', null).order('opened_at', { ascending: false })).data || []) as LvTask[];
+        const batch = rows.filter(r => r.opened_at === rows[0]?.opened_at);
+        setLvTasks(batch);
+        setLvSubs(batch.length ? ((await sb.from('cf_submissions').select('*').in('task_id', batch.map(b => b.id)).eq('student_id', me.id)).data || []) as LvSub[] : []);
+      } else { setLvTasks([]); setLvSubs([]); }
       setMePart(partsRes.data?.[0] || null);
       setLeaderboard(lbRes.data || []);
 
@@ -103,7 +124,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     refresh();
 
     const ch = sb.channel('student-session-' + sid);
-    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_scores', 'cf_submissions'].forEach(tb => {
+    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_scores', 'cf_submissions', 'cf_pairs'].forEach(tb => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, () => refresh());
     });
 
@@ -140,7 +161,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
 
   if (ended) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center pt-24 text-center">
+      <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center pt-24 text-center">
         <h1 className="text-4xl font-black">Сабақ аяқталды</h1>
         <a href="#" className={`${BTN_P} inline-block mt-6`}>Басты бет</a>
       </div>
@@ -148,15 +169,23 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   }
 
   if (!session || !currentSlideData) {
-    return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
+    return <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
   }
 
-  const slide = currentSlideData.slide || {};
+  const slide = tr(currentSlideData.slide || {}, lang);
+  const sheetBox = slide.sheet ? <Suspense fallback={null}><MiniSheet key={`${sid}:${currentSlideData.index}`} cfg={slide.sheet} storageKey={`cf-sheet:${me.id}:${sid}:${currentSlideData.index}`} lang={lang} apiRef={sheetApi} onChange={() => setTick(x => x + 1)} tall />
+  </Suspense> : null;
+  const hasLevels = Array.isArray(slide.levels) && slide.levels.length > 0;
   const isScrollPage = slide.pageType === 'scroll';
   const isTask = !isScrollPage && ['quiz', 'task', 'code'].includes(slide.type);
   const mineRow = leaderboard.find(r => r.student_id === me.id);
   const locked = (mePart && mePart.locked) || (session && session.locked);
 
+  const submitLevel = async (taskId: string, ans: string) => {
+    const { error } = await sb.rpc('cf_submit', { p_task: taskId, p_answer: ans, p_meta: null });
+    if (error) alert(error.message);
+    await refresh();
+  };
   const submitAnswer = async (ans: string, meta: any = null) => {
     if (!task) return;
     await sb.rpc('cf_submit', { p_task: task.id, p_answer: ans, p_meta: meta });
@@ -164,11 +193,12 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex flex-col">
       {bannerShow && <div className="bg-red-600 text-center font-bold p-2">{bannerText}</div>}
       <div className="flex items-center justify-between p-2 border-b border-slate-800 text-sm">
         <b>{session.title}</b>
         <div className="flex items-center gap-2">
+          <button className={BTN} onClick={flipLang} aria-label="Тіл / Язык">{lang === 'kk' ? 'ҚАЗ' : 'РУС'}</button>
           <span className="text-amber-400 font-bold">⭐ {mineRow ? mineRow.points : 0}</span>
           <button
             className={BTN + ' !bg-amber-700 !text-white'}
@@ -228,17 +258,33 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
             })()}
           </div>
         ) : isTask ? (
-          <div className="max-w-3xl mx-auto p-4">
-            <h2 className="text-3xl font-black mb-4">{slide.title || ''}</h2>
-            {slide.prompt && <p className="text-xl whitespace-pre-wrap">{slide.prompt}</p>}
+          <div data-testid="task-page" className="border-t-4 border-orange-400 bg-gradient-to-b from-orange-500/10 to-transparent">
+            <div className="max-w-7xl mx-auto p-4 space-y-4">
+              <div data-testid="task-banner" className="flex flex-wrap items-center gap-3 rounded-3xl bg-gradient-to-r from-orange-500 to-amber-400 p-4 text-slate-950 shadow-lg">
+                <span className="text-5xl" aria-hidden="true">🛠️</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-black uppercase tracking-widest opacity-80">{lang === 'ru' ? 'Задание — выполняй сам' : 'Тапсырма — өзің орында'}</div>
+                  <h2 className="text-2xl sm:text-3xl font-black">{slide.title || ''}</h2>
+                </div>
+                {slide.pair && <span className="rounded-full bg-fuchsia-700 px-3 py-1 text-sm font-bold text-white">👥 {lang === 'ru' ? 'В паре' : 'Жұппен'}</span>}
+                {slide.points ? <span className="ml-auto rounded-full bg-slate-950 px-3 py-1 text-sm font-bold text-amber-300">{slide.points} ⭐</span> : null}
+              </div>
+              <div className={slide.sheet ? 'grid gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] items-start' : 'max-w-3xl mx-auto'}>
+                <div className="space-y-3 min-w-0">
+                  {slide.prompt && <p className="text-lg whitespace-pre-wrap rounded-2xl bg-slate-900 p-4 border border-slate-700">{slide.prompt}</p>}
+                  {hasLevels && <LevelsPanel slide={slide} tasks={lvTasks} subs={lvSubs} pair={pair} uid={me.id} lang={lang} onSubmit={submitLevel} readCell={slide.sheet ? (l => sheetApi.current?.get(l) ?? '') : undefined} />}
+                </div>
+                {slide.sheet && <div className="min-w-0 lg:sticky lg:top-2">{sheetBox}</div>}
+              </div>
+            </div>
           </div>
         ) : (
-          renderSlide(slide, { mode: 'student', lb: () => lbTable(leaderboard) })
+          <>{renderSlide(slide, { mode: 'student', lang, lb: () => lbTable(leaderboard) })}{slide.sheet && <div className="max-w-3xl mx-auto p-4">{sheetBox}</div>}</>
         )}
       </div>
 
       <div className="max-w-3xl mx-auto w-full p-4">
-        {!task ? (
+        {hasLevels ? null : !task ? (
           <p className="text-slate-500">{slide.type === 'code' && !isScrollPage ? 'Тапсырма әлі ашылмаған — жаттығып көруге болады.' : 'Тапсырма әлі ашылған жоқ...'}</p>
         ) : mySub ? (
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700 space-y-2">
@@ -276,6 +322,13 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           </div>
         ) : task.kind === 'code' ? (
           <p className="text-emerald-400 text-sm">📝 Тапсырма ашық: кодты жазып, «✔ Тексеру», сосын «📤 Жіберу» бас.</p>
+        ) : slide.sheet ? (
+          <div data-testid="free-submit" className="space-y-2 rounded-2xl border border-orange-400/40 bg-slate-900 p-4">
+            <textarea className={`${INP} h-20`} aria-label={lang === 'ru' ? 'Комментарий' : 'Пікір'} placeholder={lang === 'ru' ? 'Комментарий для учителя (необязательно)' : 'Мұғалімге пікір (міндетті емес)'} value={comment} onChange={e => setComment(e.target.value)} />
+            <button className={`${BTN_P} w-full`} onClick={() => { submitAnswer(`${comment.trim() ? comment.trim() + '\n\n' : ''}— ${lang === 'ru' ? 'Таблица' : 'Кесте'} —\n${sheetApi.current?.snapshot() ?? ''}`); setComment(''); }}>
+              📤 {lang === 'ru' ? 'Сдать работу' : 'Жұмысты жіберу'}
+            </button>
+          </div>
         ) : (
           <div>
             <textarea

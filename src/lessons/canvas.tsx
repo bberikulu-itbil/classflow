@@ -16,9 +16,15 @@ export type CanvasAppearance = {
   imageViewport?: number[]; fit?: 'fill' | 'contain' | 'cover';
   tableCell?: boolean;
   flipH?: boolean; flipV?: boolean;
-  shadow?: string;
+  /** Old pages store a ready CSS string; the PPTX import stores numbers in 960-space so they scale with the slide. */
+  shadow?: string | { x: number; y: number; blur: number; color: string };
   removeBg?: boolean; blendMode?: 'normal' | 'multiply';
-  paragraphs?: { align: 'left' | 'center' | 'right'; offsetX?: number; offsetY?: number; lineHeight?: number; before?: number; after?: number; runs: { text: string; size: number; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; color?: string; fontFamily?: string; letterSpacing?: number }[] }[];
+  /** OOXML preset dash (dash, sysDot, ...), line ends (triangle, arrow, stealth, diamond, oval), `px`: path is in 960-space px and stroke in user units. */
+  dash?: string; head?: string; tail?: string; px?: boolean;
+  gradDef?: { angle: number; radial?: boolean; scaled?: boolean; stops: { pos: number; color: string; alpha?: number }[] };
+  /** Text columns and vertical writing from the PPTX text box. */
+  vert?: boolean; cols?: number; colGap?: number;
+  paragraphs?: { align: 'left' | 'center' | 'right' | 'justify'; offsetX?: number; offsetY?: number; lineHeight?: number; before?: number; after?: number; marL?: number; indent?: number; bullet?: { text: string; color?: string; size?: number; fontFamily?: string }; runs: { text: string; size: number; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; color?: string; fontFamily?: string; letterSpacing?: number; baseline?: number; caps?: 'all' | 'small'; hl?: string; href?: string }[] }[];
 };
 export type CBlock = {
   id: string; kind: Kind; x: number; y: number; w: number; h: number;
@@ -30,6 +36,7 @@ export type CBlock = {
 export const W = 960, H = 540, MIN = 30;
 const KINDS: Kind[] = ['text', 'code', 'image', 'shape'];
 const HEX = /^#[0-9a-fA-F]{6}$/;
+const RGBA = /^rgba\(\d{1,3},\d{1,3},\d{1,3},[\d.]{1,5}\)$/;
 const hex = (c: unknown, d: string) => (typeof c === 'string' && HEX.test(c) ? c : d);
 const num = (v: unknown, d: number, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
 export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -72,7 +79,7 @@ export function norm(b: any): CBlock | null {
     align: b.align === 'center' || b.align === 'right' ? b.align : 'left', color: typeof b.color === 'string' && HEX.test(b.color) ? b.color : undefined,
     code: typeof b.code === 'string' ? b.code : '', lang: typeof b.lang === 'string' ? b.lang : 'cpp',
     src: typeof b.src === 'string' ? b.src : '', alt: typeof b.alt === 'string' ? b.alt : '',
-    shape: b.shape === 'ellipse' ? 'ellipse' : 'rect', fill: exact && b.fill === 'transparent' ? 'transparent' : hex(b.fill, '#2F6F65'), hide: !!b.hide,
+    shape: b.shape === 'ellipse' ? 'ellipse' : 'rect', fill: exact && (b.fill === 'transparent' || RGBA.test(b.fill)) ? b.fill : hex(b.fill, '#2F6F65'), hide: !!b.hide,
   };
 }
 /** What is stored: only the fields that matter for the block kind. */
@@ -96,6 +103,8 @@ export const box = (b: CBlock): React.CSSProperties => {
   if (b.appearance?.rotation) t.push(`rotate(${b.appearance.rotation}deg)`);
   if (b.appearance?.flipH) t.push('scaleX(-1)');
   if (b.appearance?.flipV) t.push('scaleY(-1)');
+  const s = b.appearance?.shadow, css = !s ? undefined : typeof s === 'string' ? s : `${fs(s.x)} ${fs(s.y)} ${fs(s.blur)} ${s.color}`;
+  const outline = !!b.appearance?.path; // a drawn outline needs drop-shadow; box-shadow would show the rectangle
   return {
     position: 'absolute',
     left: `${(b.x / W) * 100}%`,
@@ -104,17 +113,94 @@ export const box = (b: CBlock): React.CSSProperties => {
     height: `${(b.h / H) * 100}%`,
     transform: t.length ? t.join(' ') : undefined,
     opacity: b.appearance?.opacity,
-    boxShadow: b.appearance?.shadow,
+    boxShadow: outline ? undefined : css,
+    filter: outline && css ? `drop-shadow(${css})` : undefined,
   };
 };
 export const fs = (n: number) => `${n / 9.6}cqw`;
+
+/** Office fonts get their metric-compatible open twins, so lines wrap where they did in PowerPoint. */
+const TWINS: Record<string, string[]> = {
+  calibri: ['Carlito'], arial: ['Arimo', 'Liberation Sans'], helvetica: ['Arimo', 'Liberation Sans'], 'times new roman': ['Tinos', 'Liberation Serif'],
+  cambria: ['Caladea'], 'courier new': ['Cousine', 'Liberation Mono'], consolas: ['Inconsolata'], 'segoe ui': ['Inter'], aptos: ['Inter'],
+};
+/** Already on every machine (or the app's own Inter); everything else is requested once from Google Fonts. */
+const LOCAL_FONTS = /^(inter|sans-serif|serif|monospace|system-ui|georgia|verdana|tahoma|trebuchet ms|symbol|wingdings.*|comic sans ms|impact|lucida.*|palatino.*|garamond|book antiqua|century.*|candara|corbel|constantia|franklin gothic.*|gill sans.*|cascadia.*|menlo|monaco|sf pro.*)$/i;
+const loaded = new Set<string>();
+const loadFont = (name: string) => {
+  if (typeof document === 'undefined' || loaded.has(name) || LOCAL_FONTS.test(name) || !/^[\w .-]{2,40}$/.test(name)) return;
+  loaded.add(name);
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name).replace(/%20/g, '+')}:ital,wght@0,400;0,700;1,400;1,700&display=swap`;
+  document.head.appendChild(link);
+};
+const MONO = /mono|courier|consolas|menlo|code|cascadia/i;
+const SERIF = /times|cambria|georgia|garamond|palatino|serif$|book antiqua|century/i;
+export const fontStack = (name?: string) => {
+  if (!name) return 'Inter, sans-serif';
+  const twins = TWINS[name.toLowerCase()] || [];
+  (twins.length ? twins : [name]).forEach(loadFont);
+  const q = (n: string) => (/[ ,]/.test(n) ? `"${n}"` : n);
+  return [name, ...twins].map(q).join(', ') + `, ${MONO.test(name) ? 'monospace' : SERIF.test(name) ? 'serif' : 'Inter, sans-serif'}`;
+};
+
+const DASHES: Record<string, number[]> = { dash: [4, 3], sysDash: [3, 1], lgDash: [8, 3], dashDot: [4, 3, 1, 3], lgDashDot: [8, 3, 1, 3], lgDashDotDot: [8, 3, 1, 3, 1, 3], sysDashDot: [3, 1, 1, 1], sysDashDotDot: [3, 1, 1, 1, 1, 1], sysDot: [1, 1], dot: [1, 3] };
+const dashArray = (name: string | undefined, width: number, unit: (n: number) => string) => (name && DASHES[name] ? DASHES[name].map(n => unit(n * Math.max(width, 1))).join(' ') : undefined);
+const cssDash = (name?: string) => (!name || name === 'solid' ? 'solid' : /dot/i.test(name) && !/dash/i.test(name) ? 'dotted' : 'dashed');
+
+/** Outline shapes: presets, custom geometry and lines (with optional arrow ends). */
+function PathShape({ b, a }: { b: CBlock; a: CanvasAppearance }) {
+  const id = React.useId().replace(/[^\w]/g, '');
+  const sw = a.strokeWidth || 0, g = a.gradDef;
+  const fill = g ? `url(#g${id})` : b.fill === 'transparent' || !b.fill ? 'none' : b.fill;
+  const dash = dashArray(a.dash, sw, a.px ? n => String(n) : fs);
+  const end = (kind: string | undefined, side: 'start' | 'end') => {
+    if (!a.px || !kind || kind === 'none' || !a.stroke) return undefined;
+    const open = kind === 'arrow';
+    return (
+      <marker key={side} id={`m${side}${id}`} viewBox="0 0 10 10" refX={kind === 'oval' || kind === 'diamond' ? 5 : 9} refY="5" markerWidth="4" markerHeight="4" orient={side === 'start' ? 'auto-start-reverse' : 'auto'} markerUnits="strokeWidth">
+        {kind === 'oval' ? <circle cx="5" cy="5" r="4" fill={a.stroke} /> : kind === 'diamond' ? <path d="M0 5 L5 0 L10 5 L5 10 Z" fill={a.stroke} /> : open ? <path d="M1 1 L9 5 L1 9" fill="none" stroke={a.stroke} strokeWidth="1.6" /> : <path d="M0 0 L10 5 L0 10 Z" fill={a.stroke} />}
+      </marker>
+    );
+  };
+  const start = end(a.head, 'start'), finish = end(a.tail, 'end');
+  const [vx, vy, vw, vh] = (a.viewBox || '0 0 100 100').split(/[ ,]+/).map(Number);
+  const r = ((g?.angle || 0) * Math.PI) / 180, cos = Math.cos(r), sin = Math.sin(r);
+  // an unscaled angle is the real angle on screen; a scaled one runs corner to corner of the box (SVG's bounding-box units)
+  const len = Math.abs(vw * cos) + Math.abs(vh * sin);
+  const line = g && !g.scaled && !g.radial ? { gradientUnits: 'userSpaceOnUse' as const, x1: vx + vw / 2 - (cos * len) / 2, y1: vy + vh / 2 - (sin * len) / 2, x2: vx + vw / 2 + (cos * len) / 2, y2: vy + vh / 2 + (sin * len) / 2 } : { x1: 0.5 - cos / 2, y1: 0.5 - sin / 2, x2: 0.5 + cos / 2, y2: 0.5 + sin / 2 };
+  const stops = g?.stops.map((s, i) => <stop key={i} offset={`${s.pos}%`} stopColor={s.color} stopOpacity={s.alpha} />);
+  return (
+    <svg width="100%" height="100%" viewBox={a.viewBox} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
+      <defs>
+        {g && (g.radial ? <radialGradient id={`g${id}`} cx="0.5" cy="0.5" r="0.5">{stops}</radialGradient> : <linearGradient id={`g${id}`} {...line}>{stops}</linearGradient>)}
+        {start}{finish}
+      </defs>
+      <path d={a.path} fill={fill} fillRule="evenodd" stroke={a.stroke} strokeWidth={a.px ? sw : undefined} strokeLinejoin="round" style={a.px ? { strokeDasharray: dash } : { strokeWidth: a.stroke ? fs(sw || 1) : undefined, strokeDasharray: dash }} vectorEffect={a.px ? undefined : 'non-scaling-stroke'} markerStart={start ? `url(#mstart${id})` : undefined} markerEnd={finish ? `url(#mend${id})` : undefined} />
+    </svg>
+  );
+}
 
 export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) => React.ReactNode }) {
   const a = b.appearance || {};
   if (b.exact && b.kind === 'text') {
     const rich = a.paragraphs?.map(p => p.runs.map(r => r.text).join('')).join('\n') === b.text ? a.paragraphs : undefined;
-    return <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: a.padding?.map(fs).join(' '), display: 'flex', flexDirection: 'column', justifyContent: a.valign === 'middle' ? 'center' : a.valign === 'bottom' ? 'flex-end' : 'flex-start', fontFamily: a.fontFamily || 'Inter, sans-serif', fontSize: fs(b.size), fontWeight: a.weight || (b.bold ? 700 : 400), fontStyle: a.italic ? 'italic' : undefined, lineHeight: a.lineHeight ? fs(a.lineHeight) : 1.2, textAlign: b.align, color: b.color || ink(bg), letterSpacing: a.letterSpacing ? fs(a.letterSpacing) : undefined, whiteSpace: a.wrap === false ? 'pre' : 'pre-wrap', overflowWrap: 'normal' }}>
-      {rich ? rich.map((p, i) => <div key={i} style={{ position: p.offsetY !== undefined ? 'absolute' : undefined, left: p.offsetX !== undefined ? fs(p.offsetX) : undefined, top: p.offsetY !== undefined ? fs(p.offsetY) : undefined, textAlign: p.align, lineHeight: p.lineHeight ? fs(p.lineHeight) : undefined, marginTop: fs(p.before || 0), marginBottom: fs(p.after || 0) }}>{p.runs.map((r, j) => <span key={j} style={{ fontSize: fs(r.size), fontWeight: r.bold ? 700 : 400, fontStyle: r.italic ? 'italic' : undefined, textDecoration: r.underline && r.strike ? 'underline line-through' : r.underline ? 'underline' : r.strike ? 'line-through' : undefined, color: r.color, fontFamily: r.fontFamily, letterSpacing: r.letterSpacing ? fs(r.letterSpacing) : undefined }}>{R(r.text)}</span>)}</div>) : R(b.text || '')}
+    const cols = (a.cols || 1) > 1;
+    return <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: a.padding?.map(fs).join(' '), display: cols ? 'block' : 'flex', flexDirection: 'column', justifyContent: a.valign === 'middle' ? 'center' : a.valign === 'bottom' ? 'flex-end' : 'flex-start', fontFamily: fontStack(a.fontFamily), fontSize: fs(b.size), fontWeight: a.weight || (b.bold ? 700 : 400), fontStyle: a.italic ? 'italic' : undefined, lineHeight: a.lineHeight ? fs(a.lineHeight) : 1.2, textAlign: b.align, color: b.color || ink(bg), letterSpacing: a.letterSpacing ? fs(a.letterSpacing) : undefined, whiteSpace: a.wrap === false ? 'pre' : 'pre-wrap', overflowWrap: 'break-word', writingMode: a.vert ? 'vertical-rl' : undefined, columnCount: cols ? a.cols : undefined, columnGap: a.colGap ? fs(a.colGap) : undefined }}>
+      {rich ? rich.map((p, i) => {
+        const empty = p.runs.every(r => !r.text), size = Math.max(...p.runs.map(r => r.size), 0.1);
+        return (
+          // the paragraph's font size is its biggest run, so smaller runs never make a line taller than the line spacing asks
+          <div key={i} style={{ position: p.offsetY !== undefined ? 'absolute' : undefined, left: p.offsetX !== undefined ? fs(p.offsetX) : undefined, top: p.offsetY !== undefined ? fs(p.offsetY) : undefined, textAlign: p.align, fontSize: fs(size), lineHeight: p.lineHeight ? fs(p.lineHeight) : undefined, marginTop: p.before ? fs(p.before) : undefined, marginBottom: p.after ? fs(p.after) : undefined, paddingLeft: p.marL ? fs(p.marL) : undefined, textIndent: p.indent ? fs(p.indent) : undefined, breakInside: 'avoid' }}>
+            {p.bullet && !empty && <span style={{ display: 'inline-block', textIndent: 0, minWidth: p.indent && p.indent < 0 ? fs(-p.indent) : undefined, paddingRight: !p.indent || p.indent >= 0 ? '0.3em' : undefined, color: p.bullet.color, fontSize: p.bullet.size ? fs(p.bullet.size) : undefined, fontFamily: p.bullet.fontFamily ? fontStack(p.bullet.fontFamily) : undefined, fontWeight: 400, fontStyle: 'normal', textDecoration: 'none' }}>{p.bullet.text}</span>}
+            {empty ? <span>{'\u200b'}</span> : p.runs.map((r, j) => {
+              const span = <span key={j} style={{ fontSize: fs(r.baseline ? r.size * 0.65 : r.size), fontWeight: r.bold ? 700 : 400, fontStyle: r.italic ? 'italic' : undefined, textDecoration: r.underline && r.strike ? 'underline line-through' : r.underline ? 'underline' : r.strike ? 'line-through' : undefined, color: r.color, fontFamily: r.fontFamily ? fontStack(r.fontFamily) : undefined, letterSpacing: r.letterSpacing ? fs(r.letterSpacing) : undefined, verticalAlign: r.baseline ? fs(r.baseline * r.size) : undefined, textTransform: r.caps === 'all' ? 'uppercase' : undefined, fontVariant: r.caps === 'small' ? 'small-caps' : undefined, backgroundColor: r.hl }}>{R(r.text)}</span>;
+              return r.href && /^(https?:|mailto:)/i.test(r.href) ? <a key={j} href={r.href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'inherit' }}>{span}</a> : span;
+            })}
+          </div>
+        );
+      }) : R(b.text || '')}
     </div>;
   }
   if (b.kind === 'image') {
@@ -130,7 +216,7 @@ export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) 
         height: '100%',
         overflow: 'hidden',
         position: 'relative',
-        border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined,
+        border: a.stroke ? `${fs(a.strokeWidth || 1)} ${cssDash(a.dash)} ${a.stroke}` : undefined,
         borderRadius: rad,
       }}>
         <img
@@ -156,7 +242,7 @@ export function BlockView({ b, bg, R }: { b: CBlock; bg: string; R: (t: string) 
     );
   }
   if (b.exact && b.kind === 'shape') {
-    if (a.path) return <svg width="100%" height="100%" viewBox={a.viewBox} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}><path d={a.path} fill={b.fill === 'transparent' ? 'none' : (b.fill || 'none')} stroke={a.stroke} strokeWidth={a.strokeWidth || 0} style={{ strokeWidth: a.stroke ? fs(a.strokeWidth || 1) : undefined }} vectorEffect="non-scaling-stroke" /></svg>;
+    if (a.path) return <PathShape b={b} a={a} />;
     return <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', background: a.gradient || b.fill, border: a.stroke ? `${fs(a.strokeWidth || 1)} solid ${a.stroke}` : undefined, borderRadius: b.shape === 'ellipse' ? '50%' : fs(a.radius || 0) }} />;
   }
   if (b.kind === 'text') return <div style={{ fontSize: fs(b.size), fontWeight: b.bold ? 800 : 500, textAlign: b.align, color: b.color || ink(bg), lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{R(b.text || '')}</div>;
