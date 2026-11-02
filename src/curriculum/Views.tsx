@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Info, Languages, Layers, Pencil, Play, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, Info, Languages, Layers, MoreVertical, Pencil, Play, Plus, Share2, Trash2, X } from 'lucide-react';
 import { coverOf } from '../ui/cover';
 import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
@@ -100,6 +100,137 @@ export function CoursesView({ me }: { me: Me }) {
 const KIND_LABEL: Record<Kind, string> = { lesson: 'Сабақ', course: 'Курс' };
 const qLabel = (q: number | null) => (q ? `${q}-тоқсан` : 'Тоқсансыз');
 
+function ModuleActionMenu({
+  mod,
+  index,
+  total,
+  isEditing,
+  onToggleEdit,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+}: {
+  mod: Mod;
+  index: number;
+  total: number;
+  isEditing: boolean;
+  onToggleEdit: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const out = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', out);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', out);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  const item = 'flex min-h-[42px] w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-text hover:bg-surface-2 transition-colors disabled:opacity-30 disabled:hover:bg-transparent';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label={`${mod.title}: әрекеттер мәзірі`}
+        title="Әрекеттер"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(o => !o);
+        }}
+        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-secondary transition-colors hover:border-border hover:bg-surface-2 hover:text-text ${
+          open ? 'border-border bg-surface-2 text-text shadow-sm' : ''
+        }`}
+      >
+        <MoreVertical size={18} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <ul
+          className="absolute right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-surface p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+          role="menu"
+        >
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                onToggleEdit();
+              }}
+            >
+              <Pencil size={15} className="text-text-secondary" aria-hidden="true" />
+              <span>{isEditing ? 'Өңдеуді аяқтау' : 'Өңдеу'}</span>
+            </button>
+          </li>
+          {index > 0 && (
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                className={item}
+                onClick={() => {
+                  setOpen(false);
+                  onMoveUp();
+                }}
+              >
+                <ArrowUp size={15} className="text-text-secondary" aria-hidden="true" />
+                <span>Жоғары жылжыту</span>
+              </button>
+            </li>
+          )}
+          {index < total - 1 && (
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                className={item}
+                onClick={() => {
+                  setOpen(false);
+                  onMoveDown();
+                }}
+              >
+                <ArrowDown size={15} className="text-text-secondary" aria-hidden="true" />
+                <span>Төмен жылжыту</span>
+              </button>
+            </li>
+          )}
+          <li role="separator" className="my-1 border-t border-border" />
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              className={`${item} text-danger hover:!bg-danger-soft`}
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+            >
+              <Trash2 size={15} aria-hidden="true" />
+              <span>Модульді өшіру</span>
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
   const { data, error, loading, reload, msg, act } = useCurr(me);
   const [lang, flipLang] = useLang();
@@ -109,6 +240,7 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
   const [nf, setNf] = useState<{ title: string; kind: Kind; quarter: string; grade: string; course: string }>({ title: '', kind: 'lesson', quarter: String(currentQuarter()), grade: '', course: '' });
   const [ask, setAsk] = useState<Mod | null>(null);
   const [info, setInfo] = useState(false), [openId, setOpenId] = useState(''), [editId, setEditId] = useState('');
+  const [copiedId, setCopiedId] = useState('');
   const classes = useLoad(loadClasses, []);
   const [cls, setCls] = useState(st.selectedClass()), [busy, setBusy] = useState(''), [startErr, setStartErr] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
@@ -116,8 +248,34 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
   const pickClass = (id: string) => { setCls(id); st.selectClass(id); setStartErr(''); };
   /** The lecture is a lesson already: with a class chosen it opens as a live lesson in one click. */
   const start = async (lessonId: string) => {
+    if (DEMO) { setStartErr('Демо режимде сабақ басталмайды'); return; }
     setBusy(lessonId); setStartErr('');
     try { await startSession(lessonId, cls, getPrefs().groups); } catch (e) { setStartErr((e as Error).message || 'Сабақты бастау мүмкін болмады'); setBusy(''); }
+  };
+  const shareLesson = async (lessonId: string, title: string) => {
+    const url = `${window.location.origin}${window.location.pathname}#preview/${lessonId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(lessonId);
+      setTimeout(() => setCopiedId(cur => (cur === lessonId ? '' : cur)), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedId(lessonId);
+      setTimeout(() => setCopiedId(cur => (cur === lessonId ? '' : cur)), 2000);
+    }
   };
   useEffect(() => { if (st.takeNewModule()) setForm(true); }, []);
   useEffect(() => { if (form) nameRef.current?.focus(); }, [form]);
@@ -207,70 +365,155 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
             const editing = editId === m.id, open = editing || openId === m.id;
             const info1 = [KIND_LABEL[m.kind], m.kind === 'lesson' ? qLabel(m.quarter) : null, g && `${g}-сынып`, `${ps.length} дәріс`].filter(Boolean).join(' · ');
             return (
-              <section key={m.id} aria-label={moduleTitle(m, lang)} className="rounded-lg border border-border bg-surface">
-                <div className="flex items-center gap-1 pr-1">
-                  {/* the cover belongs to the module (a lecture has none); it is the toggle, editing icons stay outside it */}
+              <section key={m.id} aria-label={moduleTitle(m, lang)} className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm transition-all hover:border-slate-400/40 dark:hover:border-slate-600/40">
+                <div className="flex items-center gap-1 pr-2">
                   <h2 className="min-w-0 flex-1">
                     <button type="button" aria-expanded={open} aria-controls={`mod-${m.id}`} aria-describedby={`mod-${m.id}-meta`} onClick={() => setOpenId(openId === m.id ? '' : m.id)}
-                      className="flex min-h-[56px] w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-surface-2">
-                      <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-white" style={{ background: coverOf(m.kind === 'course' ? 3 : mi) }}><Layers size={20} /></span>
+                      className="flex min-h-[58px] w-full items-center gap-3.5 rounded-lg p-2.5 text-left hover:bg-surface-2/60 transition-colors">
+                      <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm" style={{ background: coverOf(m.kind === 'course' ? 3 : mi) }}><Layers size={22} /></span>
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words font-semibold">{moduleTitle(m, lang)}</span>
-                        <span id={`mod-${m.id}-meta`} className="block text-xs font-normal text-text-secondary">{info1}</span>
+                        <span className="block break-words font-semibold text-text text-base sm:text-lg">{moduleTitle(m, lang)}</span>
+                        <span id={`mod-${m.id}-meta`} className="block text-xs font-normal text-text-secondary mt-0.5">{info1}</span>
                       </span>
-                      <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+                      <ChevronDown size={20} aria-hidden="true" className={`shrink-0 text-text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                     </button>
                   </h2>
-                  <IconBtn label={`${m.title}: өңдеу`} pressed={editing} onClick={() => setEditId(editing ? '' : m.id)}><Pencil size={16} aria-hidden="true" /></IconBtn>
+                  <ModuleActionMenu
+                    mod={m}
+                    index={mi}
+                    total={mods.length}
+                    isEditing={editing}
+                    onToggleEdit={() => {
+                      setOpenId(m.id);
+                      setEditId(editing ? '' : m.id);
+                    }}
+                    onMoveUp={() => act(() => st.swapModules(me, m, mods[mi - 1]))}
+                    onMoveDown={() => act(() => st.swapModules(me, m, mods[mi + 1]))}
+                    onDelete={() => setAsk(m)}
+                  />
                 </div>
                 {open && (
-                  <div id={`mod-${m.id}`} className="space-y-2 border-t border-border p-2">
+                  <div id={`mod-${m.id}`} className="space-y-3 border-t border-border bg-surface-2/20 p-3 sm:p-4">
                     {editing && (
-                      <>
-                        <div className="flex items-center gap-1">
-                          <input aria-label={`Модуль ${mi + 1}: атауы`} defaultValue={m.title} key={m.title} maxLength={80}
-                            onBlur={e => { const v = e.target.value.trim(); if (!v) e.target.value = m.title; else if (v !== m.title) act(() => st.renameModule(me, m.id, v)); }}
-                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                            className="min-h-[44px] min-w-0 flex-1 rounded-md border border-border-input bg-surface px-2 font-semibold" />
-                          <IconBtn label={`${m.title}: жоғары`} disabled={mi === 0} onClick={() => act(() => st.swapModules(me, m, mods[mi - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
-                          <IconBtn label={`${m.title}: төмен`} disabled={mi === mods.length - 1} onClick={() => act(() => st.swapModules(me, m, mods[mi + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
-                          <IconBtn label={`${m.title}: өшіру`} onClick={() => setAsk(m)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
+                      <div className="rounded-xl border border-border bg-surface p-3 sm:p-4 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-semibold text-text">Модуль параметрлерін өңдеу</h3>
+                          <Button variant="secondary" className="!min-h-[34px] text-xs font-semibold px-3" onClick={() => setEditId('')}>Дайын</Button>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
+                          <input aria-label={`Модуль ${mi + 1}: атауы`} defaultValue={m.title} key={m.title} maxLength={80} placeholder="Модуль атауы"
+                            onBlur={e => { const v = e.target.value.trim(); if (!v) e.target.value = m.title; else if (v !== m.title) act(() => st.renameModule(me, m.id, v)); }}
+                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            className="min-h-[42px] min-w-0 flex-1 rounded-md border border-border-input bg-surface px-3 font-semibold text-sm" />
+                          <div className="flex items-center gap-1">
+                            <IconBtn label={`${m.title}: жоғары`} disabled={mi === 0} onClick={() => act(() => st.swapModules(me, m, mods[mi - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
+                            <IconBtn label={`${m.title}: төмен`} disabled={mi === mods.length - 1} onClick={() => act(() => st.swapModules(me, m, mods[mi + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
+                            <IconBtn label={`${m.title}: өшіру`} onClick={() => setAsk(m)}><Trash2 size={16} aria-hidden="true" /></IconBtn>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                           <select aria-label={`${m.title}: түрі`} className={sel} disabled={noKind} value={m.kind} onChange={e => meta(m, { kind: e.target.value as Kind })}><option value="lesson">Сабақ</option><option value="course">Курс</option></select>
                           <select aria-label={`${m.title}: тоқсаны`} className={sel} disabled={noKind || m.kind === 'course'} value={m.kind === 'course' ? '' : m.quarter ?? ''} onChange={e => meta(m, { quarter: e.target.value ? +e.target.value : null })}><option value="">Барлық тоқсан</option>{[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}-тоқсан</option>)}</select>
                           <select aria-label={`${m.title}: параллелі`} className={sel} disabled={noKind} value={m.grade ?? ''} onChange={e => meta(m, { grade: e.target.value ? +e.target.value : null })}><option value="">{cr?.grade ? `Курстан · ${cr.grade}-сынып` : 'Көрсетілмейді'}</option>{Array.from({ length: 11 }, (_, i) => <option key={i} value={i + 1}>{i + 1}-сынып</option>)}</select>
                           {courses.length > 1 && cr && <span className="text-sm text-text-muted">Курс: {courseTitle(cr, lang)}</span>}
                         </div>
-                      </>
+                      </div>
                     )}
-                    {!editing && <div className="flex flex-wrap gap-2 px-2"><Button variant="secondary" onClick={() => { window.location.hash = 'edit/new?module=' + encodeURIComponent(m.id); }}>＋ Дәріс жасау</Button>{free.length > 0 && <span className="self-center text-xs text-text-muted">немесе дайын дәрісті қосыңыз</span>}</div>}
-                    {ps.length === 0 ? <p className="px-2 text-sm text-text-muted">Модульде дәріс жоқ.</p> : (
-                      <ol className="space-y-1">
+                    {!editing && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button variant="secondary" className="!min-h-[38px] gap-1.5 text-sm font-semibold shadow-sm" onClick={() => { window.location.hash = 'edit/new?module=' + encodeURIComponent(m.id); }}>
+                            <Plus size={16} aria-hidden="true" />
+                            <span>Дәріс жасау</span>
+                          </Button>
+                          {free.length > 0 && <span className="text-xs text-text-muted">немесе дайын дәрісті қосыңыз</span>}
+                        </div>
+                      </div>
+                    )}
+                    {ps.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-text-muted bg-surface/40">
+                        Модульде әзірге дәріс жоқ.
+                      </div>
+                    ) : (
+                      <ol className="space-y-2">
                         {ps.map((p, i) => {
                           const l = lesson(p.lesson_id)!;
                           return (
-                            <li key={p.lesson_id} className="flex flex-wrap items-center gap-1 rounded-md px-2 hover:bg-surface-2">
-                              <span className="w-6 text-sm text-text-muted">{i + 1}.</span>
-                              <a href={'#edit/' + l.id} className="min-w-0 flex-1 py-2 break-words text-accent underline">{lessonTitle(l, lang)}</a>
-                              {!editing && <div className="flex flex-wrap items-center gap-1">
-                                <Button variant="success" className="!min-h-[44px]" disabled={!!DEMO || !clsName} title={!clsName ? 'Алдымен сыныпты таңдаңыз' : DEMO ? 'Демо режимде сабақ басталмайды' : undefined} loading={busy === l.id} onClick={() => start(l.id)} aria-label={`${lessonTitle(l, lang)}: ${clsName ? clsName + ' сыныбымен ' : ''}бастау`}><Play size={14} aria-hidden="true" />Бастау</Button>
-                                <LinkButton href={'#edit/' + l.id} variant="secondary" aria-label={`${lessonTitle(l, lang)}: өңдеу`}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
-                              </div>}
-                              {editing && <>
-                                <IconBtn label={`${l.title}: жоғары`} disabled={i === 0} onClick={() => act(() => st.swapLessons(me, p, ps[i - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
-                                <IconBtn label={`${l.title}: төмен`} disabled={i === ps.length - 1} onClick={() => act(() => st.swapLessons(me, p, ps[i + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
-                                <IconBtn label={`${l.title}: модульден алу`} onClick={() => act(() => st.unplaceLesson(me, l.id))}><X size={16} aria-hidden="true" /></IconBtn>
-                              </>}
+                            <li key={p.lesson_id} className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface p-2.5 sm:p-3 transition-all hover:border-accent/40 hover:bg-surface-2/60 hover:shadow-sm">
+                              <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xs font-bold text-text-secondary group-hover:bg-accent group-hover:text-on-accent transition-colors">
+                                  {i + 1}
+                                </span>
+                                <a href={'#edit/' + l.id} className="min-w-0 font-medium text-text hover:text-accent transition-colors break-words text-sm sm:text-base leading-snug">
+                                  {lessonTitle(l, lang)}
+                                </a>
+                              </div>
+                              {!editing && (
+                                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                  <Button
+                                    variant="success"
+                                    className="!min-h-[38px] px-3.5 gap-1.5 text-xs sm:text-sm font-semibold shadow-sm"
+                                    disabled={!!DEMO}
+                                    title={!clsName ? 'Сынып таңдалмаса да жалпы сабақ ретінде басталады' : DEMO ? 'Демо режимде сабақ басталмайды' : undefined}
+                                    loading={busy === l.id}
+                                    onClick={() => start(l.id)}
+                                    aria-label={`${lessonTitle(l, lang)}: ${clsName ? clsName + ' сыныбымен ' : ''}бастау`}
+                                  >
+                                    <Play size={14} className="fill-current" aria-hidden="true" />
+                                    <span>Бастау</span>
+                                  </Button>
+                                  <LinkButton
+                                    href={'#edit/' + l.id}
+                                    variant="secondary"
+                                    className="!min-h-[38px] px-3 gap-1.5 text-xs sm:text-sm font-medium"
+                                    aria-label={`${lessonTitle(l, lang)}: өңдеу`}
+                                  >
+                                    <Pencil size={14} aria-hidden="true" />
+                                    <span>Өңдеу</span>
+                                  </LinkButton>
+                                  <button
+                                    type="button"
+                                    onClick={() => shareLesson(l.id, lessonTitle(l, lang))}
+                                    title={copiedId === l.id ? 'Сілтеме көшірілді!' : 'Сілтемені бөлісу'}
+                                    aria-label={`${lessonTitle(l, lang)}: бөлісу`}
+                                    className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-md border px-3 text-xs sm:text-sm font-medium transition-colors ${
+                                      copiedId === l.id
+                                        ? 'border-success/40 bg-success-soft text-success'
+                                        : 'border-border bg-surface text-text hover:bg-surface-2'
+                                    }`}
+                                  >
+                                    {copiedId === l.id ? (
+                                      <>
+                                        <Check size={14} className="text-success" aria-hidden="true" />
+                                        <span className="font-semibold text-success">Көшірілді!</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Share2 size={14} className="text-text-secondary" aria-hidden="true" />
+                                        <span>Бөлісу</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                              {editing && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <IconBtn label={`${l.title}: жоғары`} disabled={i === 0} onClick={() => act(() => st.swapLessons(me, p, ps[i - 1]))}><ArrowUp size={16} aria-hidden="true" /></IconBtn>
+                                  <IconBtn label={`${l.title}: төмен`} disabled={i === ps.length - 1} onClick={() => act(() => st.swapLessons(me, p, ps[i + 1]))}><ArrowDown size={16} aria-hidden="true" /></IconBtn>
+                                  <IconBtn label={`${l.title}: модульден алу`} onClick={() => act(() => st.unplaceLesson(me, l.id))}><X size={16} aria-hidden="true" /></IconBtn>
+                                </div>
+                              )}
                             </li>
                           );
                         })}
                       </ol>
                     )}
-                    {editing && <>
-                      <AddLesson key={m.id} free={free} label={moduleTitle(m, lang)} lang={lang} onAdd={id => act(() => st.placeLesson(me, id, m.id, st.nextPosition(data.places.filter(p => p.module_id === m.id))))} />
-                      <div className="px-2"><Button variant="secondary" onClick={() => setEditId('')}>Дайын</Button></div>
-                    </>}
+                    {editing && (
+                      <div className="space-y-2 pt-2">
+                        <AddLesson key={m.id} free={free} label={moduleTitle(m, lang)} lang={lang} onAdd={id => act(() => st.placeLesson(me, id, m.id, st.nextPosition(data.places.filter(p => p.module_id === m.id))))} />
+                        <div className="px-1"><Button variant="secondary" onClick={() => setEditId('')}>Дайын</Button></div>
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
