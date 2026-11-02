@@ -119,21 +119,24 @@ export function CourseCardPreview({
             }}
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 p-4 text-center text-white">
-            <GraduationCap size={44} className="mb-2 opacity-80" />
-            <span className="text-xs font-semibold uppercase tracking-widest opacity-75">{subject || 'Курс'}</span>
+          <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 p-4 text-center text-white">
+            <div className="flex max-w-[88%] flex-col items-center justify-center rounded-2xl bg-black/40 px-4 py-3 backdrop-blur-md border border-white/20 shadow-lg transition-transform duration-200 hover:scale-105">
+              <GraduationCap size={32} className="mb-1.5 text-white/95" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-white/80">{subject || 'Курс'}</span>
+              <span className="mt-1 text-sm font-bold text-white text-center line-clamp-1">{title || 'Курс атауы'}</span>
+            </div>
           </div>
         )}
 
         {/* Category Pill Tag */}
         <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
           {subject && (
-            <span className="rounded-full bg-surface/90 px-3 py-1 text-xs font-bold text-accent shadow-sm backdrop-blur-md">
+            <span className="rounded-lg bg-surface px-2.5 py-1 text-xs font-bold text-text shadow-md border border-border/80">
               {subject}
             </span>
           )}
           {grade && (
-            <span className="rounded-full bg-surface-2/90 px-2.5 py-1 text-xs font-semibold text-text shadow-sm backdrop-blur-md">
+            <span className="rounded-lg bg-surface-2 px-2 py-1 text-xs font-semibold text-text shadow-md border border-border/80">
               {grade}-сынып
             </span>
           )}

@@ -110,7 +110,7 @@ function CourseActionMenu({
 
       {open && (
         <ul
-          className="absolute right-0 bottom-full mb-1 z-30 w-52 rounded-xl border border-border bg-surface p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 sm:bottom-auto sm:top-full sm:mt-1 sm:mb-0"
+          className="absolute right-0 bottom-full mb-2 z-50 w-52 rounded-xl border border-border bg-surface p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
           role="menu"
         >
           <li role="none">
@@ -256,20 +256,35 @@ export function CoursesView({ me }: { me: Me }) {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.courses.map((c, ci) => (
-                <div key={c.id} className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-all hover:border-accent/40 hover:shadow-md">
+                <div key={c.id} className="group relative flex flex-col rounded-2xl border border-border bg-surface shadow-sm transition-all hover:border-accent/40 hover:shadow-md">
                   {/* Cover */}
-                  <a href={'#course/' + c.id} className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900 block" tabIndex={-1} aria-hidden="true">
+                  <a href={'#course/' + c.id} className="relative aspect-[16/10] w-full overflow-hidden rounded-t-2xl bg-slate-900 block" tabIndex={-1} aria-hidden="true">
                     {c.cover_url ? (
                       <img src={c.cover_url} alt={courseTitle(c, lang)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-white" style={{ background: coverOf(ci) }}>
-                        <GraduationCap size={36} className="mb-1 opacity-80" />
-                        <span className="text-[11px] font-bold uppercase tracking-wider opacity-85">{c.subject || 'Курс'}</span>
+                      <div className="relative flex h-full w-full flex-col items-center justify-center p-4 text-center text-white" style={{ background: coverOf(ci) }}>
+                        <div className="flex max-w-[88%] flex-col items-center justify-center rounded-2xl bg-black/40 px-4 py-3 backdrop-blur-md border border-white/20 shadow-lg transition-transform duration-200 group-hover:scale-105">
+                          <GraduationCap size={32} className="mb-1.5 text-white/95" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-white/80">
+                            {c.subject || 'Курс'}
+                          </span>
+                          <span className="mt-1 text-sm font-bold text-white text-center line-clamp-1">
+                            {courseTitle(c, lang)}
+                          </span>
+                        </div>
                       </div>
                     )}
                     <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
-                      {c.subject && <span className="rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-bold text-accent shadow-sm backdrop-blur-md">{c.subject}</span>}
-                      {c.grade && <span className="rounded-full bg-surface-2/90 px-2 py-0.5 text-xs font-semibold text-text shadow-sm backdrop-blur-md">{c.grade}-сынып</span>}
+                      {c.subject && (
+                        <span className="rounded-lg bg-surface px-2.5 py-1 text-xs font-bold text-text shadow-md border border-border/80">
+                          {c.subject}
+                        </span>
+                      )}
+                      {c.grade && (
+                        <span className="rounded-lg bg-surface-2 px-2 py-1 text-xs font-semibold text-text shadow-md border border-border/80">
+                          {c.grade}-сынып
+                        </span>
+                      )}
                     </div>
                   </a>
 
