@@ -537,12 +537,11 @@ function DemoSheetSlide({ s, ctx }: { s: any; ctx: any }) {
 export function renderSlide(raw: any, ctx: any = {}) {
   const s = designSlide(raw); // slides marked design:'lab' are drawn as canvas pages
   const badge = s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {pick(ctx.lang || 'kk', 'Жұппен', 'В паре', 'In a pair')}</span>}</div>;
-  // the board puts a slide's children in a row: the demo sheet needs the whole width, so the badge and the page share one column
-  if (s.demoSheet) return <div className="w-full">{badge}<DemoSheetSlide s={s} ctx={ctx} /></div>;
-  return <>
+  // the board lays its child out in a row: the badge and the page must share one column, or the page is squeezed to the right edge
+  return <div className="w-full">
     {badge}
-    {renderSlideBody(s, ctx)}
-  </>;
+    {s.demoSheet ? <DemoSheetSlide s={s} ctx={ctx} /> : renderSlideBody(s, ctx)}
+  </div>;
 }
 
 /** Overview of L1-L3 for the board, preview and remote (students get the interactive LevelsPanel instead). */
