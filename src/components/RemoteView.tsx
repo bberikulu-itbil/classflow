@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Square, Play, Sparkles, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, X } from 'lucide-react';
 import { sb } from '../config';
+import { ShareBoard } from './ShareBoard';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import { spaced, fmt, renderSlide } from './Widgets';
@@ -64,6 +65,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [switching, setSwitching] = useState(false);
   const [note, setNote] = useState<{ text: string; bad: boolean }>({ text: '', bad: false });
   const [ending, setEnding] = useState(false);
+  const [share, setShare] = useState(false);
   const autoTRef = useRef<any>(null);
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -215,8 +217,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
           <span className="hidden items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 sm:inline-flex text-xs font-semibold text-success whitespace-nowrap"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />Тікелей</span>
           <span className="rounded-md bg-surface-2 px-3 py-2 text-sm whitespace-nowrap"><span className="text-text-secondary">Код </span><b className="font-mono tracking-wider">{spaced(session.join_code)}</b></span>
           <a href={`#board/${sid}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Monitor size={16} aria-hidden="true" />Тақта<span className="sr-only"> (жаңа терезеде)</span></a>
+          <button type="button" onClick={() => setShare(true)} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Share2 size={16} aria-hidden="true" />Бөлісу</button>
           <Button variant="danger" onClick={() => setEnding(true)} aria-expanded={ending}><Square size={14} aria-hidden="true" />Аяқтау</Button>
         </div>
+        {share && <ShareBoard sid={sid} onClose={() => setShare(false)} />}
         {ending && (
           <div role="alertdialog" aria-label="Сабақты аяқтау" className="border-t border-border bg-danger-soft">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-2 text-sm text-danger lg:px-4">

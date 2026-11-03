@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Binary, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, Languages, LogOut, Maximize, Minimize, Pencil, Sparkles, Timer as TimerIcon, Wrench } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Binary, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, Languages, LogOut, Maximize, Minimize, Pencil, Share2, Sparkles, Timer as TimerIcon, Wrench } from 'lucide-react';
 import { sb } from '../config';
 import { tr, useLang } from '../lessons/lang';
 import { countSpoilers, spCtx, useSpoilers } from '../lessons/spoil';
@@ -10,6 +10,7 @@ import { ActivityPanel, DesignPanel, PANELS, PANEL_W, PeoplePanel, SidePanel, To
 import '../board/look.css';
 import { DrawBar, DrawLayer, type Pen, type Stroke } from '../board/Draw';
 import { ConvBody, TimerBody, useTimer } from '../board/Tools';
+import { ShareBoard } from './ShareBoard';
 import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
 
 // clock() is a hook; as its own component the hook count no longer changes when a task appears
@@ -35,7 +36,7 @@ export function BoardView({ sid }: { sid: string }) {
   const [look, setLook] = usePersist('cf_board_look', { bg: '', size: 1 });
   const [toc, setToc] = useState<any[] | null | false>(null);
   const [nav, setNav] = useState<SessionNavigation | null>(null);
-  const [switching, setSwitching] = useState(false);
+  const [switching, setSwitching] = useState(false), [share, setShare] = useState(false);
   const [switchAsk, setSwitchAsk] = useState<LessonTarget | null>(null);
   const spoil = useSpoilers(session?.current_slide ?? -1);
 
@@ -217,6 +218,7 @@ export function BoardView({ sid }: { sid: string }) {
                   <DockBtn label="Артқа" disabled={!prev} onClick={() => prev?.()}><ArrowLeft size={22} /></DockBtn>
                   <DockBtn label={lang === 'ru' ? 'РУС' : 'ҚАЗ'} pressed={lang === 'ru'} onClick={flipLang}><Languages size={22} /></DockBtn>
                   <DockBtn label="Сызу" onClick={() => setDraw(true)}><Pencil size={22} /></DockBtn>
+                  <DockBtn label="Бөлісу" pressed={share} onClick={() => setShare(true)}><Share2 size={22} /></DockBtn>
                   <DockBtn label={tl} pressed={wins.includes('timer')} onClick={() => toggle('timer')}><TimerIcon size={22} /></DockBtn>
                   <DockBtn label="Сан жүйесі" pressed={wins.includes('conv')} onClick={() => toggle('conv')}><Binary size={22} /></DockBtn>
                   <DockBtn label="Жасыру" onClick={() => setUi(u => ({ ...u, dock: false }))}><ChevronDown size={22} /></DockBtn>
@@ -238,6 +240,7 @@ export function BoardView({ sid }: { sid: string }) {
             <button type="button" onClick={() => setUi(u => ({ ...u, dock: true }))} aria-label="Құралдар панелін көрсету" style={{ left: edge }} className={`${tab} right-0 bottom-0 mx-auto w-fit gap-2 rounded-t-xl border-b-0 px-5 py-2 text-sm font-semibold`}><Wrench size={18} aria-hidden="true" />Құралдар<ChevronUp size={18} aria-hidden="true" /></button>
           )}
 
+          {share && <ShareBoard sid={sid} onClose={() => setShare(false)} />}
           {win('timer', 'Таймер', <TimerIcon size={18} />, { x: 24 + inset, y: 96 }, <TimerBody t={timer} />, 320)}
           {win('conv', 'Санау жүйелері', <Binary size={18} />, { x: 64 + inset, y: 120 }, <ConvBody />, 360)}
           {panel && ui.rail && (() => {

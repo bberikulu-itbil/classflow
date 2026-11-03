@@ -5,6 +5,7 @@ import { sb, STAFF, DEMO } from './config';
 import { LoginView } from './components/LoginView';
 import { RemoteView } from './components/RemoteView';
 import { BoardView } from './components/BoardView';
+import { PublicBoard } from './components/PublicBoard';
 import { StudentSessionView } from './components/StudentSessionView';
 import { PlansView } from './components/PlansView';
 import { PlanEditorView } from './components/PlanEditorView';
@@ -90,6 +91,8 @@ export default function App() {
   if (loading) {
     return <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
   }
+
+  if (routeKey === 'b' && routeId) return <PublicBoard key={routeId} token={routeId} />;
 
   if (!me) {
     return <LoginView onLogin={boot} />;
