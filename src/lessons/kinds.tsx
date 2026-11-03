@@ -2,13 +2,13 @@ import React from 'react';
 import type { Lang } from './lang';
 
 /** What a slide is for in the lesson. A slide carries it as `kind`; slides without one show no badge. */
-export const KINDS: Record<string, { kk: string; ru: string; icon: string; cls: string }> = {
-  explain: { kk: 'Түсіндіру', ru: 'Объяснение', icon: '📖', cls: 'bg-blue-500/20 text-blue-200 border-blue-400/50' },
-  example: { kk: 'Мысал', ru: 'Пример', icon: '💡', cls: 'bg-violet-500/20 text-violet-200 border-violet-400/50' },
-  exampletask: { kk: 'Мысал тапсырма', ru: 'Задача с разбором', icon: '🧩', cls: 'bg-teal-500/20 text-teal-200 border-teal-400/50' },
-  practice: { kk: 'Практикалық тапсырма', ru: 'Практическое задание', icon: '🛠️', cls: 'bg-orange-500/20 text-orange-200 border-orange-400/50' },
-  video: { kk: 'Видео', ru: 'Видео', icon: '🎬', cls: 'bg-rose-500/20 text-rose-200 border-rose-400/50' },
-  check: { kk: 'Тексеру', ru: 'Проверка', icon: '✅', cls: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50' },
+export const KINDS: Record<string, { kk: string; ru: string; en: string; icon: string; cls: string }> = {
+  explain: { kk: 'Түсіндіру', ru: 'Объяснение', en: 'Explanation', icon: '📖', cls: 'bg-[#DBEAFE] text-[#1E3A8A] border-[#93C5FD]' },
+  example: { kk: 'Мысал', ru: 'Пример', en: 'Example', icon: '💡', cls: 'bg-[#EDE9FE] text-[#4C1D95] border-[#C4B5FD]' },
+  exampletask: { kk: 'Мысал тапсырма', ru: 'Задача с разбором', en: 'Worked example', icon: '🧩', cls: 'bg-[#CCFBF1] text-[#134E4A] border-[#5EEAD4]' },
+  practice: { kk: 'Практикалық тапсырма', ru: 'Практическое задание', en: 'Practice task', icon: '🛠️', cls: 'bg-[#FFEDD5] text-[#7C2D12] border-[#FDBA74]' },
+  video: { kk: 'Видео', ru: 'Видео', en: 'Video', icon: '🎬', cls: 'bg-[#FFE4E6] text-[#881337] border-[#FDA4AF]' },
+  check: { kk: 'Тексеру', ru: 'Проверка', en: 'Check', icon: '✅', cls: 'bg-[#D1FAE5] text-[#064E3B] border-[#6EE7B7]' },
 };
 
 export const kindLabel = (kind: string | undefined, lang: Lang = 'kk') => (kind && KINDS[kind] ? KINDS[kind][lang] : '');

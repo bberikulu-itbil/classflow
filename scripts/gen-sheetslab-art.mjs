@@ -62,5 +62,22 @@ files.salary = svg(640, 330, pane(640, 330) + [[1520, C.blue], [2500, C.violet],
 files.video = svg(640, 360, pane(640, 360) + r(50, 36, 540, 288, C.ink, { r: 18 }) + `<circle cx="320" cy="180" r="62" fill="${C.rose}"/><polygon points="300,146 300,214 356,180" fill="#fff"/>` + t(320, 304, 'video', { s: 18, c: '#94A3B8', w: 700 }));
 files.hero = svg(640, 420, defs() + r(20, 24, 600, 372, '#fff', { r: 22, st: C.line }) + r(20, 24, 600, 44, C.teal, { r: 22 }) + r(20, 50, 600, 18, C.teal, { r: 0 }) + ['#F87171', '#FBBF24', '#34D399'].map((c, i) => `<circle cx="${50 + i * 24}" cy="46" r="7" fill="${c}"/>`).join('') + grid(40, 84, 5, 5, 76, 40, { A1: 'Name', B1: 'Math', C1: 'Phys', D1: 'Avg', A2: 'Aidar', B2: 80, C2: 75, D2: 77.5, A3: 'Dana', B3: 92, C3: 88, D3: 90, A4: 'Erlan', B4: 61, C4: 70, D4: 65.5 }, { A1: C.mint, B1: C.mint, C1: C.mint, D1: C.mint, D2: C.sun, D3: C.sun, D4: C.sun }, { fs: 13 })
   + [[444, 60, C.blue], [486, 110, C.violet], [528, 84, C.green], [570, 140, C.amber]].map(([x, h, c]) => r(x - 14, 340 - h, 32, h, c, { r: 5 })).join('') + t(100, 372, '=AVERAGE(B2:C2)', { s: 16, w: 800, a: 'start', c: C.teal, f: 'ui-monospace,monospace' }));
+const box = (x, y, w, h, fill, st) => r(x, y, w, h, fill, { r: 14, st, sw: 2.5 });
+files.stats = svg(640, 360, defs(C.violet) + pane(640, 360) + [2, 5, 5, 7, 11].map((v, i) => r(40 + i * 86, 40, 76, 64, i === 2 ? C.sun : C.pane, { st: i === 2 ? C.amber : C.line, sw: i === 2 ? 4 : 2, r: 10 }) + t(78 + i * 86, 84, v, { s: 30, w: 900 })).join('')
+  + `<path d="M40 122 L 456 122" stroke="${C.blue}" stroke-width="3"/>` + t(248, 150, 'range = 11 − 2 = 9', { s: 18, c: C.blue, w: 800 })
+  + r(40, 190, 176, 70, C.sky, { st: C.blue }) + t(128, 220, 'mean', { s: 16, c: C.mute }) + t(128, 250, '30 ÷ 5 = 6', { s: 22, w: 900, c: C.blue })
+  + r(232, 190, 176, 70, C.sun, { st: C.amber }) + t(320, 220, 'median', { s: 16, c: C.mute }) + t(320, 250, 'middle = 5', { s: 22, w: 900, c: '#B45309' })
+  + r(424, 190, 176, 70, C.mint, { st: C.green }) + t(512, 220, 'mode', { s: 16, c: C.mute }) + t(512, 250, 'most often = 5', { s: 20, w: 900, c: C.teal })
+  + t(320, 320, 'AVERAGE · MEDIAN · MODE · MAX − MIN', { s: 18, w: 800, f: 'ui-monospace,monospace', c: C.violet }));
+files.countif = svg(640, 360, defs(C.teal) + pane(640, 360)
+  + grid(24, 20, 2, 6, 78, 42, { A1: 'class', B1: 'points', A2: '8A', B2: 21, A3: '8B', B3: 18, A4: '8A', B4: 25, A5: '8C', B5: 15, A6: '8B', B6: 20 }, { A2: C.mint, B2: C.mint, A4: C.mint, B4: C.mint })
+  + [['=COUNTIF(A2:A6;"8A")', '→ 2', 40, C.blue], ['=SUMIF(A2:A6;"8A";B2:B6)', '→ 46', 112, C.violet], ['=AVERAGEIF(A2:A6;"8A";B2:B6)', '→ 23', 184, C.teal]].map(([f, v, y, c]) => r(224, y, 392, 58, C.pane, { st: c, sw: 2.5 }) + t(240, y + 26, f, { a: 'start', s: 15, w: 800, f: 'ui-monospace,monospace', c }) + t(240, y + 48, v, { a: 'start', s: 18, w: 900 })).join('')
+  + t(420, 290, 'condition in quotes: "8A"  ">3"', { s: 16, c: C.mute, w: 700 }));
+const flow = (h, steps, y = 110) => svg(640, h, defs(C.mute) + pane(640, h) + steps.map(([n, w, c], i) => {
+  const x = 22 + i * (596 / steps.length), bw = 596 / steps.length - 18;
+  return r(x, y, bw, 110, c, { r: 16, st: C.line }) + t(x + bw / 2, y + 44, n, { s: 34 }) + t(x + bw / 2, y + 84, w, { s: 17, w: 800 }) + (i < steps.length - 1 ? line(x + bw + 1, y + 55, x + bw + 17, y + 55, C.mute, 3, true) : '');
+}).join('') + t(320, 62, 'step by step', { s: 22, w: 900, c: C.teal }) + t(320, 276, 'check the result: does it make sense?', { s: 17, c: C.mute, w: 700 }));
+files.steps = flow(330, [['📖', 'read', C.sky], ['🗂️', 'data', C.mint], ['ƒx', 'formula', C.sun], ['✅', 'check', '#FFE4E6']]);
+files.analysis = flow(330, [['❓', 'question', C.sky], ['🗂️', 'data', C.mint], ['ƒx', 'calculate', C.sun], ['📊', 'chart', '#EDE9FE'], ['💬', 'conclusion', '#FFE4E6']]);
 for (const [k, v] of Object.entries(files)) writeFileSync(OUT + `inf8-${k}.svg`, v);
 console.log('written', Object.keys(files).length, 'pictures');

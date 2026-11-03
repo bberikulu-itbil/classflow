@@ -4,6 +4,7 @@ import { runPy, norm, sha256 } from '../utils/pyodide';
 import { CanvasSlide } from '../lessons/canvas';
 import { KindBadge } from '../lessons/kinds';
 import { designSlide } from '../lessons/sheetsLab/cv';
+import { pick, type Lang } from '../lessons/lang';
 
 export const BTN = 'px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition cursor-pointer';
 export const BTN_P = 'px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition cursor-pointer';
@@ -199,7 +200,7 @@ export function LogicGate({ gate = 'AND' }: { gate?: string }) {
         </div>
         <div
           className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${
-            out ? 'bg-amber-400 text-black' : 'bg-slate-700 text-white'
+            out ? 'bg-amber-400 text-black' : 'bg-slate-700 text-text'
           }`}
         >
           {out}
@@ -443,7 +444,7 @@ const presentationBlock = (s: any, big: boolean) => {
     </div>
   );
   if (sourceUrl && !html && typeof s.img !== 'string') {
-    return <div key="presentation-source" className="my-2 overflow-hidden rounded-xl border border-slate-600 bg-slate-900 text-white">
+    return <div key="presentation-source" className="my-2 overflow-hidden rounded-xl border border-slate-600 bg-slate-900 text-text">
       <div className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
           <p className="font-bold">Түпнұсқа презентация</p>
@@ -496,11 +497,26 @@ const visualBullets = (items: any[], big: boolean, inner: (t: string) => React.R
   </div>;
 };
 
+/** A YouTube video in a 16:9 frame (privacy-friendly domain) with a plain link next to it for networks that block embeds. */
+export function VideoBlock({ id, start, title, lang = 'kk' }: { id: string; start?: number; title?: string; lang?: Lang }) {
+  id = /^[\w-]{11}$/.test(id.trim()) ? id.trim() : /(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/.exec(id)?.[1] ?? id; // a pasted link works as well as the bare code
+  const q = start ? `&start=${start}` : '';
+  return (
+    <figure data-testid="video-block" className="mb-4">
+      <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-black shadow-sm">
+        <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?rel=0${q}`} title={title || 'YouTube'} loading="lazy" referrerPolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen />
+      </div>
+      <figcaption className="mt-2 text-sm"><a className="font-semibold text-accent underline" href={`https://www.youtube.com/watch?v=${id}${q}`} target="_blank" rel="noopener noreferrer">▶ {pick(lang, 'Көрінбесе, YouTube-та ашу', 'Не открывается — смотреть на YouTube', 'Not playing? Open on YouTube')} ↗</a></figcaption>
+    </figure>
+  );
+}
+
 /** The slide, with its kind badge (Түсіндіру, Мысал, Практикалық тапсырма, ...) above it when the slide has one. */
 export function renderSlide(raw: any, ctx: any = {}) {
   const s = designSlide(raw); // slides marked design:'lab' are drawn as canvas pages
   return <>
-    {s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {ctx.lang === 'ru' ? 'В паре' : 'Жұппен'}</span>}</div>}
+    {s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {pick(ctx.lang || 'kk', 'Жұппен', 'В паре', 'In a pair')}</span>}</div>}
     {renderSlideBody(s, ctx)}
   </>;
 }
@@ -526,7 +542,7 @@ function renderSlideBody(s: any, ctx: any = {}) {
       <article className="max-w-3xl mx-auto overflow-hidden rounded-2xl bg-slate-900 border border-slate-700">
         <header className="bg-emerald-950/60 px-6 py-8 md:px-10">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">🧠 Оқу картасы</p>
-          <h1 className={`${big ? 'text-6xl' : 'text-4xl'} mt-3 font-black text-white`}>{s.title || 'Ұзын бет'}</h1>
+          <h1 className={`${big ? 'text-6xl' : 'text-4xl'} mt-3 font-black text-text`}>{s.title || 'Ұзын бет'}</h1>
           {s.subtitle && <p className="mt-3 text-lg text-slate-300">{s.subtitle}</p>}
         </header>
         <div className="space-y-8 px-6 py-8 md:px-10 md:py-10">
@@ -536,7 +552,7 @@ function renderSlideBody(s: any, ctx: any = {}) {
             </section>
           )}
           {s.prompt && <section className="rounded-2xl border border-blue-500/40 bg-blue-950/30 p-4"><div className="mb-2 text-2xl">💬</div><p className={`${big ? 'text-3xl' : 'text-xl'} whitespace-pre-wrap text-slate-200`}>{s.prompt}</p></section>}
-          {s.starter && <section><h2 className="mb-3 text-lg font-bold text-white">💻 Код мысалы</h2><pre className={`${big ? 'text-xl' : 'text-sm'} overflow-auto rounded-xl bg-[#0F172A] p-4 text-[#E2E8F5] font-mono`}>{s.starter}</pre></section>}
+          {s.starter && <section><h2 className="mb-3 text-lg font-bold text-text">💻 Код мысалы</h2><pre className={`${big ? 'text-xl' : 'text-sm'} overflow-auto rounded-xl bg-[#0F172A] p-4 text-[#E2E8F5] font-mono`}>{s.starter}</pre></section>}
           {!s.bullets?.length && !s.prompt && !s.starter && <p className="text-slate-400">Бұл бетке мазмұн қосылмаған.</p>}
         </div>
       </article>
@@ -547,27 +563,28 @@ function renderSlideBody(s: any, ctx: any = {}) {
     case 'title':
       return wrap(
         <div className="text-center py-16">
-          <h1 className={`${big ? 'text-7xl' : 'text-5xl'} font-black text-white`}>{s.title}</h1>
+          <h1 className={`${big ? 'text-7xl' : 'text-5xl'} font-black text-text`}>{s.title}</h1>
           <p className="text-2xl text-blue-400 mt-4">{s.subtitle}</p>
           {imgBlock(s, big)}
         </div>
       );
     case 'content':
       return wrap(
-        s.title && <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600/25 text-2xl">📚</span><h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black text-white`}>{s.title}</h2></div>,
+        s.title && <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600/25 text-2xl">📚</span><h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black text-text`}>{s.title}</h2></div>,
+        s.video && <VideoBlock id={s.video} start={s.videoStart} title={s.title} lang={ctx.lang} />,
         visualBullets(s.bullets || [], big, R),
         codeBlock(s, big),
         imgBlock(s, big)
       );
     case 'quiz':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         codeBlock(s, big),
         imgBlock(s, big),
-        <div className="grid gap-2">
+        !ctx.noOptions && <div className="grid gap-2">
           {(s.options || []).map((o: string, i: number) => (
-            <div key={i} className={`p-3 rounded-xl bg-slate-800 border border-slate-600 ${big ? 'text-2xl' : 'text-lg'} text-white`}>
+            <div key={i} className={`p-3 rounded-xl bg-slate-800 border border-slate-600 ${big ? 'text-2xl' : 'text-lg'} text-text`}>
               {String.fromCharCode(65 + i)}. {o}
             </div>
           ))}
@@ -575,15 +592,17 @@ function renderSlideBody(s: any, ctx: any = {}) {
       );
     case 'task':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         codeBlock(s, big),
         imgBlock(s, big),
+        s.picture && <img key="pic" src={s.picture} alt={s.pictureAlt || ''} className="mb-4 h-auto max-h-[60vh] w-auto max-w-full rounded-2xl border border-border bg-white" />,
+        Array.isArray(s.criteria) && <ul key="crit" className="grid gap-2">{s.criteria.map((c: any, i: number) => <li key={c.id} className={`${big ? 'text-2xl' : 'text-base'} rounded-xl border border-border bg-surface p-3`}><b>{i + 1}.</b> {c.text} <span className="text-text-muted">· {c.points ?? 1} ⭐</span></li>)}</ul>,
         <LevelsOverview s={s} big={big} />
       );
     case 'code':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         imgBlock(s, big),
         s.starter && <pre className={`p-3 bg-[#0F172A] rounded-xl text-[#E2E8F5] font-mono ${big ? 'text-xl' : 'text-sm'}`}>{s.starter}</pre>
@@ -595,7 +614,7 @@ function renderSlideBody(s: any, ctx: any = {}) {
       );
     case 'solution':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-2 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-2 text-text`}>{s.title}</h2>,
         ...(s.sections || []).map((sec: any, i: number) => {
           const idx = sec.hide && sp ? sp.n++ : -1, closed = idx >= 0 && !sp.shown.has(idx), inner = sec.hide ? (t: string) => rich(t) : R;
           const visual = solutionVisual(sec.h, !!sec.hide);
@@ -623,28 +642,28 @@ function renderSlideBody(s: any, ctx: any = {}) {
       );
     case 'flashcards':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         <Flashcards cards={s.cards} />
       );
     case 'matching':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         <Matching pairs={s.pairs} />
       );
     case 'logic':
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         <LogicGate gate={s.gate} />
       );
     case 'leaderboard':
       return wrap(
-        s.title ? <h2 className={`${big ? 'text-5xl' : 'text-4xl'} font-black mb-4 text-white`}>{s.title}</h2> : <h2 className="text-4xl font-black mb-4 text-white">🏆 Жарыс кестесі</h2>,
+        s.title ? <h2 className={`${big ? 'text-5xl' : 'text-4xl'} font-black mb-4 text-text`}>{s.title}</h2> : <h2 className="text-4xl font-black mb-4 text-text">🏆 Жарыс кестесі</h2>,
         ctx.lb ? ctx.lb() : null
       );
     default:
       return wrap(
-        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-white`}>{s.title}</h2>,
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         imgBlock(s, big)
       );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BTN_P, INP } from './Widgets';
+import type { Lang } from '../lessons/lang';
 
 export interface LvTask { id: string; level: number; variant: 'A' | 'B'; status: string; points: number; reveal?: any; opened_at: string }
 export interface LvSub { task_id: string; is_correct: boolean | null; points: number | null; feedback?: string | null; answer?: string }
@@ -14,6 +15,9 @@ const L = { kk: {
 }, ru: {
   title: 'Уровни', locked: 'Сначала правильно выполни предыдущий уровень', notOpen: 'Задание ещё не открыто', pair: 'Пара', both: 'Выполните оба варианта', partner: 'Выполняется на экране напарника',
   ok: 'Верно', bad: 'Неверно, попробуй ещё', wait: 'Учитель проверяет', send: 'Отправить', ph: 'Твой ответ', fromSheet: 'Отправить из таблицы', now: 'Сейчас', empty: 'пусто', variant: 'вариант', closed: 'Закрыто', right: 'Правильный ответ',
+}, en: {
+  title: 'Levels', locked: 'First finish the previous level correctly', notOpen: 'The task is not open yet', pair: 'Pair', both: 'Do both variants', partner: 'Done on your partner\'s screen',
+  ok: 'Correct', bad: 'Not correct, try again', wait: 'Teacher is checking', send: 'Send', ph: 'Your answer', fromSheet: 'Send from the sheet', now: 'Now', empty: 'empty', variant: 'variant', closed: 'Closed', right: 'Correct answer',
 } };
 
 /**
@@ -25,7 +29,7 @@ const L = { kk: {
 export const cellAnswer = (v: string) => v.split(',').map(x => (x.trim() !== '' && !Number.isNaN(Number(x)) ? String(+Number(x).toFixed(2)) : x.trim())).join(',');
 
 export function LevelsPanel({ slide, tasks, subs, pair, uid, lang, onSubmit, readCell }: {
-  slide: any; tasks: LvTask[]; subs: LvSub[]; pair: Pair | null; uid: string; lang: 'kk' | 'ru';
+  slide: any; tasks: LvTask[]; subs: LvSub[]; pair: Pair | null; uid: string; lang: Lang;
   onSubmit: (taskId: string, answer: string) => Promise<void> | void;
   /** Reads the current value of a cell (or "C2,D2") from the sheet next to the panel; with it a variant that names a `cell` is answered from the sheet. */
   readCell?: (cells: string) => string;

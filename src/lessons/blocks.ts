@@ -12,7 +12,7 @@ export function fieldsOf(s: any): Field[] {
   const out: Field[] = [];
   switch (s?.type) {
     case 'title': out.push(f('title', 'Тақырып', 'Мәтін', 'text', 'title'), f('subtitle', 'Ішкі тақырып', 'Мәтін', 'text', 'subtitle')); break;
-    case 'content': out.push(f('title', 'Тақырып', 'Мәтін', 'text', 'title'), L('bullets', 'Негізгі ойлар (әр жол — бір тармақ)', 'Мәтін', 'bullets')); break;
+    case 'content': out.push(f('title', 'Тақырып', 'Мәтін', 'text', 'title'), L('bullets', 'Негізгі ойлар (әр жол — бір тармақ)', 'Мәтін', 'bullets'), f('video', 'YouTube видео: сілтеме немесе коды (болса)', 'Мәтін', 'text', 'video')); break;
     case 'solution':
       out.push(f('title', 'Тақырып', 'Мәтін', 'text', 'title'));
       (s.sections || []).forEach((sec: any, i: number) => {

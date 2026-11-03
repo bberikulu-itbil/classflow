@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, BookOpen, Dice5, EyeOff, Eye, Languages, Layers, List, Palette, Shuffle, Sparkles, Users, X } from 'lucide-react';
 import { spaced } from '../components/Widgets';
-import { tr } from '../lessons/lang';
+import { tr, setLang } from '../lessons/lang';
 import { RandomBody } from './Tools';
 import { IconB } from './Win';
 import type { SessionNavigation, LessonTarget } from '../views/sessionNav';
@@ -53,7 +53,7 @@ export function TocPanel({
 }: {
   toc: any[] | null | false;
   now: number;
-  lang: 'kk' | 'ru';
+  lang: 'kk' | 'ru' | 'en';
   go: (i: number) => void;
   nav?: SessionNavigation | null;
   onSwitchLesson?: (target: LessonTarget) => void;
@@ -178,14 +178,14 @@ export function ActivityPanel({ parts, session, groupScores, leaderboard, hide, 
   );
 }
 
-export function DesignPanel({ bg, setBg, size, setSize, lang, flip }: { bg: string; setBg: (v: string) => void; size: number; setSize: (v: number) => void; lang: 'kk' | 'ru'; flip: () => void }) {
+export function DesignPanel({ bg, setBg, size, setSize, lang, flip }: { bg: string; setBg: (v: string) => void; size: number; setSize: (v: number) => void; lang: 'kk' | 'ru' | 'en'; flip: () => void }) {
   const groups = ['Қараңғы', 'Ашық', 'Қанық'];
   return (
     <>
       <div className={sec}>
         <h3 className="flex items-center gap-2 font-bold"><Languages size={18} aria-hidden="true" />Дәріс тілі</h3>
         <div role="group" aria-label="Дәріс тілі" className="flex gap-2">
-          {([['kk', 'ҚАЗ · Қазақша'], ['ru', 'РУС · Русский']] as const).map(([v, l]) => <button key={v} type="button" aria-pressed={lang === v} onClick={() => lang !== v && flip()} className={`${btn} flex-1 ${lang === v ? '!border-accent !bg-accent !text-on-accent' : ''}`}>{l}</button>)}
+          {([['kk', 'ҚАЗ · Қазақша'], ['ru', 'РУС · Русский'], ['en', 'ENG · English']] as const).map(([v, l]) => <button key={v} type="button" aria-pressed={lang === v} onClick={() => setLang(v)} className={`${btn} flex-1 ${lang === v ? '!border-accent !bg-accent !text-on-accent' : ''}`}>{l}</button>)}
         </div>
       </div>
       <div className={sec}>

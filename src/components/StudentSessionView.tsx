@@ -3,9 +3,10 @@ import { sb } from '../config';
 import { BTN, BTN_P, INP, renderSlide, CodeIDE, lbTable } from './Widgets';
 import { lazy, Suspense } from 'react';
 const MiniSheet = lazy(() => import('../sheet/MiniSheet'));
-import { LevelsPanel, type LvTask, type LvSub, type Pair } from './LevelsPanel';
+import { LevelsPanel, cellAnswer, type LvTask, type LvSub, type Pair } from './LevelsPanel';
 import type { SheetApi } from '../sheet/MiniSheet';
-import { tr, useLang } from '../lessons/lang';
+import { tr, useLang, pick, LANG_LABEL } from '../lessons/lang';
+import { CriteriaPanel, criteriaAnswer, type Criterion } from './CriteriaPanel';
 
 export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   const [lang, flipLang] = useLang();
@@ -161,7 +162,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
 
   if (ended) {
     return (
-      <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center pt-24 text-center">
+      <div data-theme="light" className="min-h-screen bg-bg text-text flex flex-col items-center justify-center pt-24 text-center">
         <h1 className="text-4xl font-black">Сабақ аяқталды</h1>
         <a href="#" className={`${BTN_P} inline-block mt-6`}>Басты бет</a>
       </div>
@@ -169,15 +170,16 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   }
 
   if (!session || !currentSlideData) {
-    return <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
+    return <div data-theme="light" className="min-h-screen bg-bg text-text flex items-center justify-center">Жүктелуде...</div>;
   }
 
   const slide = tr(currentSlideData.slide || {}, lang);
   const sheetBox = slide.sheet ? <Suspense fallback={null}><MiniSheet key={`${sid}:${currentSlideData.index}`} cfg={slide.sheet} storageKey={`cf-sheet:${me.id}:${sid}:${currentSlideData.index}`} lang={lang} apiRef={sheetApi} onChange={() => setTick(x => x + 1)} tall />
   </Suspense> : null;
   const hasLevels = Array.isArray(slide.levels) && slide.levels.length > 0;
+  const hasCrit = Array.isArray(slide.criteria) && slide.criteria.length > 0;
   const isScrollPage = slide.pageType === 'scroll';
-  const isTask = !isScrollPage && ['quiz', 'task', 'code'].includes(slide.type);
+  const isTask = !isScrollPage && ['task', 'code'].includes(slide.type);
   const mineRow = leaderboard.find(r => r.student_id === me.id);
   const locked = (mePart && mePart.locked) || (session && session.locked);
 
@@ -193,12 +195,12 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   };
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div data-theme="light" className="min-h-screen bg-bg text-text flex flex-col">
       {bannerShow && <div className="bg-red-600 text-center font-bold p-2">{bannerText}</div>}
       <div className="flex items-center justify-between p-2 border-b border-slate-800 text-sm">
         <b>{session.title}</b>
         <div className="flex items-center gap-2">
-          <button className={BTN} onClick={flipLang} aria-label="Тіл / Язык">{lang === 'kk' ? 'ҚАЗ' : 'РУС'}</button>
+          <button className={BTN} onClick={flipLang} aria-label="Тіл / Язык">{LANG_LABEL[lang]}</button>
           <span className="text-amber-400 font-bold">⭐ {mineRow ? mineRow.points : 0}</span>
           <button
             className={BTN + ' !bg-amber-700 !text-white'}
@@ -234,7 +236,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         </div>
       </div>
 
-      <div className="flex-1">
+      <div className={slide.type === 'quiz' ? '' : 'flex-1'}>
         {slide.type === 'code' && !isScrollPage ? (
           <div className="p-3 max-w-6xl mx-auto w-full">
             {(() => {
@@ -263,29 +265,64 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
               <div data-testid="task-banner" className="flex flex-wrap items-center gap-3 rounded-3xl bg-gradient-to-r from-orange-500 to-amber-400 p-4 text-slate-950 shadow-lg">
                 <span className="text-5xl" aria-hidden="true">🛠️</span>
                 <div className="min-w-0">
-                  <div className="text-xs font-black uppercase tracking-widest opacity-80">{lang === 'ru' ? 'Задание — выполняй сам' : 'Тапсырма — өзің орында'}</div>
+                  <div className="text-xs font-black uppercase tracking-widest opacity-80">{pick(lang, 'Тапсырма — өзің орында', 'Задание — выполняй сам', 'Task — do it yourself')}</div>
                   <h2 className="text-2xl sm:text-3xl font-black">{slide.title || ''}</h2>
                 </div>
-                {slide.pair && <span className="rounded-full bg-fuchsia-700 px-3 py-1 text-sm font-bold text-white">👥 {lang === 'ru' ? 'В паре' : 'Жұппен'}</span>}
-                {slide.points ? <span className="ml-auto rounded-full bg-slate-950 px-3 py-1 text-sm font-bold text-amber-300">{slide.points} ⭐</span> : null}
+                {slide.pair && <span className="rounded-full bg-fuchsia-700 px-3 py-1 text-sm font-bold text-white">👥 {pick(lang, 'Жұппен', 'В паре', 'In a pair')}</span>}
+                {slide.points ? <span className="ml-auto rounded-full bg-text px-3 py-1 text-sm font-bold text-bg">{slide.points} ⭐</span> : null}
               </div>
-              <div className={slide.sheet ? 'grid gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] items-start' : 'max-w-3xl mx-auto'}>
+              <div className={slide.sheet ? 'grid gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] items-start' : 'max-w-3xl mx-auto'}>
                 <div className="space-y-3 min-w-0">
-                  {slide.prompt && <p className="text-lg whitespace-pre-wrap rounded-2xl bg-slate-900 p-4 border border-slate-700">{slide.prompt}</p>}
+                  {slide.prompt && <p className="whitespace-pre-wrap rounded-2xl border border-border bg-surface p-4 text-lg">{slide.prompt}</p>}
+                  {(slide.steps?.length || hasCrit) && (
+                    <ol data-testid="task-steps" className="space-y-2 rounded-2xl border border-orange-300 bg-warning-soft p-4">
+                      <li className="font-black text-warning">{pick(lang, 'Қалай орындаймыз?', 'Как выполнять?', 'How to do it')}</li>
+                      {(slide.steps?.length ? slide.steps : [
+                        pick(lang, 'Суретке мұқият қара — онда дайын кесте көрсетілген.', 'Внимательно посмотри на рисунок — на нём готовая таблица.', 'Look carefully at the picture: it shows the finished table.'),
+                        pick(lang, 'Оң жақтағы кестеге деректерді суреттегідей енгіз (A1 ұяшығынан бастап). Ұяшықты бас та жаза бер.', 'Введи данные в таблицу справа так же, как на рисунке (с ячейки A1). Нажми на ячейку и пиши.', 'Type the data into the sheet on the right exactly as in the picture (start at cell A1). Click a cell and type.'),
+                        pick(lang, 'Есептеу керек жерлерге формула жаз (= белгісінен баста), санды қолмен жазба.', 'Там, где нужно считать, пиши формулу (начинай с =), не вводи число вручную.', 'Where a calculation is needed, write a formula (start with =); do not type the number by hand.'),
+                        pick(lang, 'Төмендегі критерийлерді оқып шық, «Жіберу» бас — жүйе өзі тексеріп, ұпай береді.', 'Прочитай критерии ниже и нажми «Отправить» — система сама проверит и выставит баллы.', 'Read the criteria below and press Submit — the system checks it and gives points.'),
+                      ]).map((x: string, i: number) => (
+                        <li key={i} className="flex gap-2"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-warning text-sm font-black text-bg" aria-hidden="true">{i + 1}</span><span className="min-w-0">{x}</span></li>
+                      ))}
+                    </ol>
+                  )}
+                  {slide.picture && (
+                    <figure data-testid="task-picture" className="rounded-2xl border border-border bg-white p-2 shadow-sm">
+                      <figcaption className="px-2 pb-1 text-sm font-bold text-text-secondary">🖼️ {pick(lang, 'Суретке қара', 'Посмотри на рисунок', 'Look at the picture')}</figcaption>
+                      <img src={slide.picture} alt={slide.pictureAlt || slide.title || ''} className="h-auto w-full rounded-xl" />
+                    </figure>
+                  )}
                   {hasLevels && <LevelsPanel slide={slide} tasks={lvTasks} subs={lvSubs} pair={pair} uid={me.id} lang={lang} onSubmit={submitLevel} readCell={slide.sheet ? (l => sheetApi.current?.get(l) ?? '') : undefined} />}
                 </div>
-                {slide.sheet && <div className="min-w-0 lg:sticky lg:top-2">{sheetBox}</div>}
+                {slide.sheet && (
+                  <div className="min-w-0 space-y-3 lg:sticky lg:top-2">
+                    {slide.picture && <div className="px-1 text-sm font-bold text-text-secondary">📊 {pick(lang, 'Мына жерге енгіз', 'Вводи сюда', 'Enter it here')}</div>}
+                    {sheetBox}
+                    {hasCrit && <CriteriaPanel
+                      criteria={slide.criteria as Criterion[]} lang={lang} sub={mySub} maxPoints={(slide.criteria as Criterion[]).reduce((n, c) => n + (c.points ?? 1), 0)}
+                      open={task?.status === 'open' && task.kind === 'sheet'} notOpen={!task || task.kind !== 'sheet'} closed={!!task && task.kind === 'sheet' && task.status !== 'open'}
+                      live={c => cellAnswer(sheetApi.current?.get(c) ?? '')}
+                      onSend={() => submitAnswer(criteriaAnswer(slide.criteria as Criterion[], c => cellAnswer(sheetApi.current?.get(c) ?? ''), c => sheetApi.current?.raw(c) ?? ''))}
+                    />}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         ) : (
-          <>{renderSlide(slide, { mode: 'student', lang, lb: () => lbTable(leaderboard) })}{slide.sheet && <div className="max-w-3xl mx-auto p-4">{sheetBox}</div>}</>
+          <>{renderSlide(slide, { mode: 'student', lang, noOptions: slide.type === 'quiz', lb: () => lbTable(leaderboard) })}{slide.sheet && <div className="max-w-3xl mx-auto p-4">{sheetBox}</div>}</>
         )}
       </div>
 
       <div className="max-w-3xl mx-auto w-full p-4">
-        {hasLevels ? null : !task ? (
-          <p className="text-slate-500">{slide.type === 'code' && !isScrollPage ? 'Тапсырма әлі ашылмаған — жаттығып көруге болады.' : 'Тапсырма әлі ашылған жоқ...'}</p>
+        {hasLevels || hasCrit ? null : !task && slide.type === 'quiz' && Array.isArray(slide.options) ? (
+          <div data-testid="quiz-preview" className="grid gap-2">
+            {slide.options.map((o: string, i: number) => <div key={i} className="rounded-2xl border border-border bg-surface p-4 text-left text-lg">{String.fromCharCode(65 + i)}. {o}</div>)}
+            <p className="text-sm text-text-muted">{pick(lang, 'Мұғалім тапсырманы ашқанда жауап бересің.', 'Ответишь, когда учитель откроет вопрос.', 'You can answer when the teacher opens the question.')}</p>
+          </div>
+        ) : !task ? (
+          !['quiz', 'task', 'code'].includes(slide.type) ? null : <p className="text-slate-500">{slide.type === 'code' && !isScrollPage ? pick(lang, 'Тапсырма әлі ашылмаған — жаттығып көруге болады.', 'Задание ещё не открыто — можно потренироваться.', 'The task is not open yet — you can practise.') : pick(lang, 'Тапсырма әлі ашылған жоқ...', 'Задание ещё не открыто...', 'The task is not open yet...')}</p>
         ) : mySub ? (
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700 space-y-2">
             <div className="font-bold text-emerald-400">✓ Жауап жіберілді</div>
@@ -324,9 +361,9 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           <p className="text-emerald-400 text-sm">📝 Тапсырма ашық: кодты жазып, «✔ Тексеру», сосын «📤 Жіберу» бас.</p>
         ) : slide.sheet ? (
           <div data-testid="free-submit" className="space-y-2 rounded-2xl border border-orange-400/40 bg-slate-900 p-4">
-            <textarea className={`${INP} h-20`} aria-label={lang === 'ru' ? 'Комментарий' : 'Пікір'} placeholder={lang === 'ru' ? 'Комментарий для учителя (необязательно)' : 'Мұғалімге пікір (міндетті емес)'} value={comment} onChange={e => setComment(e.target.value)} />
-            <button className={`${BTN_P} w-full`} onClick={() => { submitAnswer(`${comment.trim() ? comment.trim() + '\n\n' : ''}— ${lang === 'ru' ? 'Таблица' : 'Кесте'} —\n${sheetApi.current?.snapshot() ?? ''}`); setComment(''); }}>
-              📤 {lang === 'ru' ? 'Сдать работу' : 'Жұмысты жіберу'}
+            <textarea className={`${INP} h-20`} aria-label={pick(lang, 'Пікір', 'Комментарий', 'Comment')} placeholder={pick(lang, 'Мұғалімге пікір (міндетті емес)', 'Комментарий для учителя (необязательно)', 'Comment for the teacher (optional)')} value={comment} onChange={e => setComment(e.target.value)} />
+            <button className={`${BTN_P} w-full`} onClick={() => { submitAnswer(`${comment.trim() ? comment.trim() + '\n\n' : ''}— ${pick(lang, 'Кесте', 'Таблица', 'Table')} —\n${sheetApi.current?.snapshot() ?? ''}`); setComment(''); }}>
+              📤 {pick(lang, 'Жұмысты жіберу', 'Сдать работу', 'Hand in the work')}
             </button>
           </div>
         ) : (
@@ -379,7 +416,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       )}
 
       {dictOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-950 overflow-auto p-4 text-white">
+        <div className="fixed inset-0 z-40 bg-bg overflow-auto p-4 text-text">
           <div className="max-w-xl mx-auto space-y-3">
             <div className="flex justify-between">
               <h2 className="text-xl font-bold">📖 Сөздік</h2>

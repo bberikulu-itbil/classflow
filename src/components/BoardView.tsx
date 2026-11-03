@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Binary, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, Languages, LogOut, Maximize, Minimize, Pencil, Share2, Sparkles, Timer as TimerIcon, Wrench } from 'lucide-react';
 import { sb } from '../config';
-import { tr, useLang } from '../lessons/lang';
+import { tr, useLang, LANG_LABEL } from '../lessons/lang';
 import { countSpoilers, spCtx, useSpoilers } from '../lessons/spoil';
 import { renderSlide, spaced, fmt, lbTable, clock } from './Widgets';
 import qrcode from 'qrcode-generator';
@@ -216,7 +216,7 @@ export function BoardView({ sid }: { sid: string }) {
               ) : (
                 <>
                   <DockBtn label="Артқа" disabled={!prev} onClick={() => prev?.()}><ArrowLeft size={22} /></DockBtn>
-                  <DockBtn label={lang === 'ru' ? 'РУС' : 'ҚАЗ'} pressed={lang === 'ru'} onClick={flipLang}><Languages size={22} /></DockBtn>
+                  <DockBtn label={LANG_LABEL[lang]} pressed={lang !== 'kk'} onClick={flipLang}><Languages size={22} /></DockBtn>
                   <DockBtn label="Сызу" onClick={() => setDraw(true)}><Pencil size={22} /></DockBtn>
                   <DockBtn label="Бөлісу" pressed={share} onClick={() => setShare(true)}><Share2 size={22} /></DockBtn>
                   <DockBtn label={tl} pressed={wins.includes('timer')} onClick={() => toggle('timer')}><TimerIcon size={22} /></DockBtn>

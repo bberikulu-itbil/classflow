@@ -15,6 +15,10 @@ g = ev({ A1: '4', A2: '6', A3: '8', A4: '=SUM(A1:A3)', A5: '=AVERAGE(A1:A3)', A6
 assert.deepEqual(['A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10'].map(g), ['18', '6', '8', '4', '3', '12', '0.86']);
 g = ev({ A1: '5', A2: 'a', A3: '7', B1: '1', B2: '2', B3: '3', C1: '=SUMIF(A1:A3;">5")', C2: '=COUNTIF(A1:A3;"a")', C3: '=SUMPRODUCT(A1:A3;B1:B3)', C4: '=SUMIF(B1:B3;">1";A1:A3)' });
 assert.deepEqual(['C1', 'C2', 'C3', 'C4'].map(g), ['7', '1', '26', '7']);
+// statistics (chapter 3): median of odd and even counts, mode (first of the most frequent, #N/A without repeats), COUNTA, LARGE/SMALL, AVERAGEIF
+g = ev({ A1: '3', A2: '9', A3: '4', A4: '7', A5: '5', B1: '=MEDIAN(A1:A5)', B2: '=MEDIAN(A1:A4)', B3: '=MODE(A1:A5)', C1: '2', C2: '5', C3: '5', C4: '7', C5: '7', B4: '=MODE(C1:C5)', B5: '=COUNTA(A1:A5;D1)', B6: '=LARGE(A1:A5;2)', B7: '=SMALL(A1:A5;2)',
+  E1: '8A', E2: '8B', E3: '8A', F1: '10', F2: '20', F3: '40', B8: '=AVERAGEIF(E1:E3;"8A";F1:F3)', B9: '=LARGE(A1:A5;9)' });
+assert.deepEqual(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'].map(g), ['5', '5.5', '#N/A', '5', '5', '7', '4', '25', '#NUM!']);
 // IF / comparisons / text
 g = ev({ A1: '60', B1: '=IF(A1>=50;"сынды";"сынбады")', B2: '=IF(AND(A1>10;A1<100);1;0)', B3: '="a"&"b"&A1', B4: '=A1=60', B5: '=50%', B6: '=-A1^2' });
 // like Excel, unary minus binds tighter than ^

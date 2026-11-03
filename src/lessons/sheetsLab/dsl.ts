@@ -1,67 +1,77 @@
-// Tiny builders for the Informatics 8 "Spreadsheets lab" module. Every text is a [kk, ru] pair so a slide cannot miss its Russian half.
-export type T = [string, string];
+// Tiny builders for the Informatics 8 "Spreadsheets" module (textbook chapter 3). Every text is a [kk, ru, en] triple,
+// so a slide cannot miss a language. The sheet engine computes the accepted answers of practice tasks from a reference solution.
+import { evaluator } from '../../sheet/engine';
+
+export type T = [string, string, string];
 export type SlideKind = 'explain' | 'example' | 'exampletask' | 'practice' | 'video' | 'check';
 
-const kk = (xs: T[]) => xs.map(x => x[0]);
-const ru = (xs: T[]) => xs.map(x => x[1]);
+const at = (xs: T[], i: 0 | 1 | 2) => xs.map(x => x[i]);
+/** The `ru` and `en` blocks of a slide: whatever `f` returns for language i. */
+const langs = (f: (i: 0 | 1 | 2) => object) => ({ ru: f(1), en: f(2) });
 
 export const titleSlide = (t: T, sub: T) => ({
-  type: 'title', pageType: 'slide', templateId: 'title', title: t[0], subtitle: sub[0], ru: { title: t[1], subtitle: sub[1] },
+  type: 'title', pageType: 'slide', templateId: 'title', title: t[0], subtitle: sub[0],
+  ...langs(i => ({ title: t[i], subtitle: sub[i] })),
 });
 
-/** Text slide: kind explain | example | video. `code` shows a formula or a small table in a code block. */
-export const info = (kind: SlideKind, t: T, bullets: T[], o: { code?: string; notes?: T; sheet?: object } = {}) => ({
-  type: 'content', pageType: 'slide', templateId: 'explanation', kind, title: t[0], bullets: kk(bullets),
-  ...(o.code ? { code: o.code, lang: 'text' } : {}), ...(o.notes ? { notes: o.notes[0] } : {}), ...(o.sheet ? { sheet: o.sheet } : {}),
-  ru: { title: t[1], bullets: ru(bullets), ...(o.notes ? { notes: o.notes[1] } : {}) },
+/** Text slide: kind explain | example | video. `code` shows a formula or a small table in a code block; `art` names a picture; `video` is a YouTube id. */
+export const info = (kind: SlideKind, t: T, bullets: T[], o: { code?: string; notes?: T; art?: string; video?: string } = {}) => ({
+  type: 'content', pageType: 'slide', templateId: 'explanation', kind, title: t[0], bullets: at(bullets, 0),
+  ...(o.code ? { code: o.code, lang: 'text' } : {}), ...(o.notes ? { notes: o.notes[0] } : {}), ...(o.art ? { art: o.art } : {}), ...(o.video ? { video: o.video } : {}),
+  ...langs(i => ({ title: t[i], bullets: at(bullets, i), ...(o.notes ? { notes: o.notes[i] } : {}) })),
 });
 
 /** Worked example: statement, steps, and the result the teacher reveals with a click. */
-export const walk = (t: T, task: T, steps: T[], result: T) => ({
-  type: 'solution', pageType: 'slide', templateId: 'worked-example', kind: 'exampletask', title: t[0],
-  sections: [{ h: 'Шарты', text: task[0] }, { h: 'Алгоритм (қадамдар)', bullets: kk(steps) }, { h: 'Шешімі', text: result[0], hide: true }],
-  ru: { title: t[1], sections: [{ h: 'Условие', text: task[1] }, { h: 'Алгоритм (шаги)', bullets: ru(steps) }, { h: 'Решение', text: result[1], hide: true }] },
-});
-
-/** Auto-checked test question (one correct option). */
-export const quiz = (t: T, prompt: T, options: T[], answer: number, why: T, points = 1) => ({
-  type: 'quiz', pageType: 'interactive', templateId: 'single-choice', kind: 'check', title: t[0], prompt: prompt[0], options: kk(options), answer, explanation: why[0], points,
-  ru: { title: t[1], prompt: prompt[1], options: ru(options), explanation: why[1] },
-});
-
-/** One variant of a level: its text in both languages and the accepted answers (the control value read off the student's sheet). */
-export interface V { p: T; accept: string[]; cell?: string | false }
-/** The sheet cell a prompt asks about ("A8-де қандай сан?" -> A8): the last single address of the closing question. `cell: false` on a variant opts out. */
-export const cellOf = (p: string): string | undefined => {
-  const q = p.split(/[.!]\s+/).pop() || '';
-  if (!/(қандай сан|не көрінеді|нәтиже)/i.test(q)) return undefined;
-  return [...q.matchAll(/(?<![\w:$])([A-Z]{1,2}\d{1,3})(?![\w:(])/g)].pop()?.[1];
-};
-export const lv = (n: 1 | 2 | 3, points: number, title: T, A: V, B?: V) => ({ n, points, title, A, B });
-type Lv = ReturnType<typeof lv>;
-
-/** Practice slide with levels L1-L3. The student works in the sheet; a variant with a `cell` is checked by reading that cell (or "C2,D2": several, joined by a comma).
- *  `cells` maps "1A", "2B"... (level + variant) to the cell(s); a prompt that closes with "... A8-де қандай сан?" is detected by cellOf. */
-export const practice = (t: T, intro: T, levels: Lv[], o: { pair?: boolean; notes?: T; sheet?: object; cells?: Record<string, string> } = {}) => {
-  const cellFor = (l: Lv, v: 'A' | 'B') => { const x = v === 'A' ? l.A : l.B!, c = x.cell === false ? undefined : x.cell || o.cells?.[`${l.n}${v}`] || cellOf(x.p[0]); return c ? { cell: c } : {}; };
-  const vs = (l: Lv, i: 0 | 1) => [l.A, ...(l.B ? [l.B] : [])].map((x, k) => { const v = k ? 'B' : 'A'; return { v, prompt: x.p[i], ...cellFor(l, v) }; });
+export const walk = (t: T, task: T, steps: T[], result: T, o: { art?: string; notes?: T } = {}) => {
+  const head: [T, T, T] = [['Шарты', 'Условие', 'Task'], ['Алгоритм (қадамдар)', 'Алгоритм (шаги)', 'Steps'], ['Шешімі', 'Решение', 'Solution']];
+  const secs = (i: 0 | 1 | 2) => [{ h: head[0][i], text: task[i] }, { h: head[1][i], bullets: at(steps, i) }, { h: head[2][i], text: result[i], hide: true }];
   return {
-    type: 'task', pageType: 'interactive', templateId: 'short-answer', kind: 'practice', ...(o.pair ? { pair: true } : {}), ...(o.sheet ? { sheet: o.sheet } : {}), title: t[0], prompt: intro[0],
-    levels: levels.map(l => ({ lv: l.n, points: l.points, title: l.title[0], variants: [l.A, ...(l.B ? [l.B] : [])].map((x, k) => { const v = k ? 'B' : 'A'; return { v, prompt: x.p[0], accept: x.accept, ...cellFor(l, v) }; }) })),
-    ...(o.notes ? { notes: o.notes[0] } : {}),
-    ru: { title: t[1], prompt: intro[1], levels: levels.map(l => ({ lv: l.n, points: l.points, title: l.title[1], variants: vs(l, 1) })), ...(o.notes ? { notes: o.notes[1] } : {}) },
+    type: 'solution', pageType: 'slide', templateId: 'worked-example', kind: 'exampletask', title: t[0], sections: secs(0), ...(o.art ? { art: o.art } : {}), ...(o.notes ? { notes: o.notes[0] } : {}),
+    ...langs(i => ({ title: t[i], sections: secs(i), ...(o.notes ? { notes: o.notes[i] } : {}) })),
   };
 };
 
-/** Open practical work without a right answer: the student builds something in the sheet and hands in a copy of it; the teacher grades it. */
-export const freeTask = (t: T, intro: T, steps: T[], sheet: object, points = 5) => ({
-  type: 'task', pageType: 'interactive', templateId: 'short-answer', kind: 'practice', free: true, sheet, points, title: t[0], prompt: intro[0] + '\n\n' + steps.map((x, i) => `${i + 1}) ${x[0]}`).join('\n'),
-  ru: { title: t[1], prompt: intro[1] + '\n\n' + steps.map((x, i) => `${i + 1}) ${x[1]}`).join('\n') },
+/** Auto-checked test question (one correct option). The options show on the student's phone even before the teacher opens it. */
+export const quiz = (t: T, prompt: T, options: T[], answer: number, why: T, points = 1) => ({
+  type: 'quiz', pageType: 'interactive', templateId: 'single-choice', kind: 'check', title: t[0], prompt: prompt[0], options: at(options, 0), answer, explanation: why[0], points,
+  ...langs(i => ({ title: t[i], prompt: prompt[i], options: at(options, i), explanation: why[i] })),
 });
 
-/** Accepted spellings of a number: dot or comma as the decimal sign. */
-export const num = (x: number | string) => { const s = String(x); return s.includes('.') ? [s, s.replace('.', ',')] : [s]; };
-/** Round to 2 decimals the way a sheet shows it. */
+/** A table of the picture: cell -> text. A [kk, ru, en] triple is a word that changes with the language (headers), a plain string is a number or a formula. */
+export type Cell = string | T;
+export interface Pic { name: string; title: T; data: Record<string, Cell>; ask: string[]; cols: number; rows: number; widths?: number[]; note?: T }
+/** Every picture of a practice task; scripts/gen-sheetslab-art.mjs draws them into public/lec/inf8-<name>-<kk|ru|en>.svg. */
+export const PICS: Pic[] = [];
+/** The reference solutions, for the unit test only (never stored in a lesson). */
+export const SOLUTIONS: { task: string; data: Record<string, string>; solve: Record<string, string>; criteria: Crit[] }[] = [];
+
+/** One line of the marking scheme. `ref` is the formula (or value) a correct sheet has in `cell`; the engine turns it into the accepted value.
+ *  `fn` demands that the cell uses that function, `formula` that it is a formula at all (a typed-in number does not count). */
+export interface Crit { id: string; text: T; cell: string; points?: number; fn?: string; formula?: boolean; accept?: string[] }
+
+const shown = (v: string) => { const n = Number(v.replace(',', '.')); return v.trim() !== '' && !Number.isNaN(n) ? String(+n.toFixed(2)) : v.trim(); };
 export const r2 = (x: number) => Math.round(x * 100) / 100;
 
-export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string][]; slides: any[] }
+/** Practice with a picture: the student copies the table from the picture into the sheet, then the server marks every criterion and gives the points.
+ *  `solve` lists the cells a correct sheet has besides the picture's data (formulas); accepted values are computed from them. */
+export const labTask = (t: T, intro: T, o: { pic: Pic; alt: T; solve: Record<string, string>; criteria: Crit[]; sheet?: { rows?: number; cols?: number }; steps?: T[]; notes?: T }) => {
+  PICS.push(o.pic);
+  const cells: Record<string, string> = {};
+  for (const [k, v] of Object.entries(o.pic.data)) cells[k] = typeof v === 'string' ? v : v[0];
+  SOLUTIONS.push({ task: t[0], data: cells, solve: o.solve, criteria: o.criteria });
+  const get = evaluator({ ...cells, ...o.solve });
+  const total = o.criteria.reduce((n, c) => n + (c.points ?? 1), 0);
+  const crit = (i: 0 | 1 | 2) => o.criteria.map(c => ({
+    id: c.id, text: c.text[i], cell: c.cell, points: c.points ?? 1, ...(c.fn ? { fn: c.fn } : {}), ...(c.formula ? { formula: true } : {}),
+    ...(i === 0 ? { accept: c.accept || [shown(get(c.cell))] } : {}),
+  }));
+  const pic = (l: string) => `lec/inf8-${o.pic.name}-${l}.svg`;
+  return {
+    type: 'task', pageType: 'interactive', templateId: 'short-answer', kind: 'practice', title: t[0], prompt: intro[0], points: total,
+    picture: pic('kk'), pictureAlt: o.alt[0], sheet: { rows: o.sheet?.rows ?? 14, cols: o.sheet?.cols ?? 8 }, criteria: crit(0),
+    ...(o.steps ? { steps: at(o.steps, 0) } : {}), ...(o.notes ? { notes: o.notes[0] } : {}),
+    ...langs(i => ({ title: t[i], prompt: intro[i], picture: pic(['kk', 'ru', 'en'][i]), pictureAlt: o.alt[i], criteria: crit(i), ...(o.steps ? { steps: at(o.steps, i) } : {}), ...(o.notes ? { notes: o.notes[i] } : {}) })),
+  };
+};
+
+export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string, string][]; slides: any[] }

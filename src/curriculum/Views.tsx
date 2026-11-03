@@ -13,7 +13,7 @@ import type { Course, Curr, Kind, Me, Mod, Place } from './store';
 import { SHOWS, gradeOf, gradesIn, visible } from './filter';
 import type { Show } from './filter';
 import { CreateMenu } from '../ui/CreateMenu';
-import { useLang, type Lang } from '../lessons/lang';
+import { useLang, LANG_LABEL, type Lang } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 
 /** Loads the whole structure and re-reads it after every change, so the screen can never drift from the stored rows. */
@@ -536,7 +536,7 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Модульдер мен дәрістер</h1>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={flipLang} aria-label={lang === 'ru' ? 'Тілді қазақшаға ауыстыру' : 'Переключить курс на русский'} title={lang === 'ru' ? 'Қазақша' : 'Русский'} className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'ҚАЗ' : 'РУС'}</button>
+          <button type="button" onClick={flipLang} aria-label="Тіл / Язык / Language" title={LANG_LABEL[lang]} className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{LANG_LABEL[lang]}</button>
           <IconBtn label="Түсініктеме" expanded={info} controls="mod-info" onClick={() => setInfo(v => !v)}><Info size={18} aria-hidden="true" /></IconBtn>
           <CreateMenu onModule={openForm} />
         </div>

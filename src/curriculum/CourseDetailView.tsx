@@ -36,7 +36,7 @@ import { getPrefs } from '../prefs';
 import { startSession } from '../views/session';
 import * as st from './store';
 import type { Course, Kind, Me, Mod, Place } from './store';
-import { useLang } from '../lessons/lang';
+import { useLang, LANG_LABEL } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 import { fmtDate } from '../hw/format';
 
@@ -511,7 +511,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-xs font-semibold hover:bg-surface-2"
           >
             <Languages size={15} aria-hidden="true" />
-            <span>{lang === 'ru' ? 'ҚАЗ' : 'РУС'}</span>
+            <span>{LANG_LABEL[lang]}</span>
           </button>
         </div>
       </div>

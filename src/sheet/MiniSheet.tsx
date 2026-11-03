@@ -5,12 +5,12 @@ import { ChartView } from './Chart';
 
 export interface SheetCfg { rows?: number; cols?: number; cells?: Cells; fmt?: Record<string, Fmt>; charts?: ChartCfg[] }
 /** What the lesson page can ask of the sheet: the value a cell shows (formatted, like on screen) and a text copy of the whole work. */
-export interface SheetApi { get: (cells: string) => string; snapshot: () => string }
+export interface SheetApi { get: (cells: string) => string; raw: (cell: string) => string; snapshot: () => string }
 type Pos = [number, number];
 
 const T = {
   kk: { fx: 'Формула жолы', fillD: 'Төмен толтыру', fillR: 'Оңға толтыру', reset: 'Бастапқыға қайтару', sum: 'Қосынды', avg: 'Орташа', cnt: 'Саны', undo: 'Қайтару (Ctrl+Z)', bold: 'Қалың (Ctrl+B)', ital: 'Курсив (Ctrl+I)', color: 'Мәтін түсі', bg: 'Ұяшық фоны', left: 'Солға', center: 'Ортаға', right: 'Оңға', border: 'Жиек', addRow: '+ жол', addCol: '+ баған', chart: 'Диаграмма', full: 'Толық экран', close: 'Жабу', pick: 'Диаграмма үшін 2+ ұяшық белгіле', hint: 'Ұяшықты бас да жаза бер. «=» формуланы бастайды. Сүйреп белгіле, төменгі оң бұрыштағы шаршыны сүйреп толтыр.', nf: 'Пішім' },
-  ru: { fx: 'Строка формул', fillD: 'Заполнить вниз', fillR: 'Заполнить вправо', reset: 'Сбросить', sum: 'Сумма', avg: 'Среднее', cnt: 'Кол-во', undo: 'Отменить (Ctrl+Z)', bold: 'Жирный (Ctrl+B)', ital: 'Курсив (Ctrl+I)', color: 'Цвет текста', bg: 'Заливка', left: 'Влево', center: 'По центру', right: 'Вправо', border: 'Границы', addRow: '+ строка', addCol: '+ столбец', chart: 'Диаграмма', full: 'На весь экран', close: 'Закрыть', pick: 'Выделите 2+ ячеек для диаграммы', hint: 'Выберите ячейку и вводите. «=» начинает формулу. Выделяйте протяжкой, тяните квадрат в правом нижнем углу для заполнения.', nf: 'Формат' },
+  ru: { fx: 'Строка формул', fillD: 'Заполнить вниз', fillR: 'Заполнить вправо', reset: 'Сбросить', sum: 'Сумма', avg: 'Среднее', cnt: 'Кол-во', undo: 'Отменить (Ctrl+Z)', bold: 'Жирный (Ctrl+B)', ital: 'Курсив (Ctrl+I)', color: 'Цвет текста', bg: 'Заливка', left: 'Влево', center: 'По центру', right: 'Вправо', border: 'Границы', addRow: '+ строка', addCol: '+ столбец', chart: 'Диаграмма', full: 'На весь экран', close: 'Закрыть', pick: 'Выделите 2+ ячеек для диаграммы', hint: 'Выберите ячейку и вводите. «=» начинает формулу. Выделяйте протяжкой, тяните квадрат в правом нижнем углу для заполнения.', nf: 'Формат' },  en: { fx: 'Formula bar', fillD: 'Fill down', fillR: 'Fill right', reset: 'Reset', sum: 'Sum', avg: 'Average', cnt: 'Count', undo: 'Undo (Ctrl+Z)', bold: 'Bold (Ctrl+B)', ital: 'Italic (Ctrl+I)', color: 'Text colour', bg: 'Fill colour', left: 'Left', center: 'Centre', right: 'Right', border: 'Borders', addRow: '+ row', addCol: '+ column', chart: 'Chart', full: 'Full screen', close: 'Close', pick: 'Select 2+ cells for a chart', hint: 'Click a cell and type. "=" starts a formula. Drag to select; drag the square in the bottom-right corner to fill.', nf: 'Format' },
 };
 const load = (k: string): Doc | null => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch { return null; } };
 const save = (k: string, d: Doc) => { try { localStorage.setItem(k, JSON.stringify(d)); } catch { /* private mode: the sheet still works */ } };
@@ -23,7 +23,7 @@ const Btn = ({ t, on, children, active, disabled }: { t: string; on: () => void;
  *  text/fill colours, bold/italic, alignment, borders, number formats (%, $, scientific, date), undo, extra rows/columns and bar/line/pie charts.
  *  shortcut: no merge cells, no sorting/filters, no cross-sheet references, no click-to-insert references; saved per `storageKey` in this browser only. */
 export default function MiniSheet({ cfg, storageKey, lang = 'kk', readOnly = false, apiRef, onChange, tall = false }: {
-  cfg: SheetCfg; storageKey: string; lang?: 'kk' | 'ru'; readOnly?: boolean; apiRef?: React.MutableRefObject<SheetApi | null>; onChange?: () => void; tall?: boolean;
+  cfg: SheetCfg; storageKey: string; lang?: 'kk' | 'ru' | 'en'; readOnly?: boolean; apiRef?: React.MutableRefObject<SheetApi | null>; onChange?: () => void; tall?: boolean;
 }) {
   const t = T[lang];
   const start: Doc = { cells: cfg.cells || {}, fmt: cfg.fmt || {}, charts: cfg.charts || [], rows: cfg.rows || 20, cols: cfg.cols || 10 };
@@ -61,6 +61,7 @@ export default function MiniSheet({ cfg, storageKey, lang = 'kk', readOnly = fal
   useEffect(() => { // the lesson page reads answers and a copy of the work from here
     if (!apiRef) return;
     apiRef.current = {
+      raw: c => cells[c.trim().toUpperCase()] ?? '',
       get: list => list.split(',').map(x => (x.trim() ? show(x.trim().toUpperCase()) : '')).join(','),
       snapshot: () => Object.keys(cells).sort((x, y) => (parseAddr(x)![0] - parseAddr(y)![0]) || (parseAddr(x)![1] - parseAddr(y)![1])).map(k => `${k}\t${cells[k]}${cells[k].startsWith('=') ? `\t→ ${show(k)}` : ''}`).join('\n') + (charts.length ? '\n' + charts.map(c => `chart\t${c.type}\t${c.range}`).join('\n') : ''),
     };
@@ -184,7 +185,7 @@ export default function MiniSheet({ cfg, storageKey, lang = 'kk', readOnly = fal
                     style={{ color: f.c, background: inSel ? undefined : f.bg, fontWeight: f.b ? 700 : undefined, fontStyle: f.i ? 'italic' : undefined, textAlign: f.al === 'l' ? 'left' : f.al === 'c' ? 'center' : f.al === 'r' ? 'right' : undefined, borderColor: f.bd ? '#e2e8f0' : undefined, borderWidth: f.bd ? 2 : undefined }}
                     className={`relative h-7 whitespace-nowrap border px-2 ${inSel ? 'border-emerald-400/60 bg-emerald-500/15' : 'border-slate-700'} ${active ? 'outline outline-2 outline-emerald-400' : ''} ${!f.al && isNum ? 'text-right' : shown.startsWith('#') ? 'text-red-400' : ''}`}>
                     {active && edit !== null && !bar
-                      ? <input autoFocus className="absolute inset-0 w-full bg-slate-950 px-2 font-mono text-white outline-none" value={edit} onChange={ev => setEdit(ev.target.value)} data-testid="cell-editor"
+                      ? <input autoFocus className="absolute inset-0 w-full bg-slate-950 px-2 font-mono text-text outline-none" value={edit} onChange={ev => setEdit(ev.target.value)} data-testid="cell-editor"
                           onKeyDown={ev => { if (ev.key === 'Enter') { ev.preventDefault(); ev.stopPropagation(); finish(1, 0); } else if (ev.key === 'Tab') { ev.preventDefault(); ev.stopPropagation(); finish(0, 1); } else if (ev.key === 'Escape') { setEdit(null); box.current?.focus(); } }} />
                       : shown}
                     {!readOnly && r === r1 && c === c1 && edit === null && (

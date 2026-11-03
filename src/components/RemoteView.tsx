@@ -6,7 +6,7 @@ import { ShareBoard } from './ShareBoard';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import { spaced, fmt, renderSlide } from './Widgets';
-import { tr, useLang } from '../lessons/lang';
+import { tr, useLang, LANG_LABEL } from '../lessons/lang';
 import { KindBadge, kindLabel } from '../lessons/kinds';
 import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
 
@@ -333,12 +333,12 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 aria-label="Слайд тілі"
                 className="!min-h-[32px] !py-1 text-xs font-bold shrink-0"
               >
-                {lang === 'kk' ? 'ҚАЗ' : 'РУС'}
+                {LANG_LABEL[lang]}
               </Button>
             </div>
 
             {/* Large Current Slide Stage */}
-            <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="dark" className="overflow-hidden rounded-xl bg-[#0b1329] text-white shadow-md border border-border/80">
+            <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="light" className="overflow-hidden rounded-xl bg-bg text-text shadow-md border border-border/80">
               <div className="aspect-video w-full pointer-events-none select-none" inert>
                 {renderSlide(tr(slide, lang), { mode: 'preview', lang })}
               </div>
