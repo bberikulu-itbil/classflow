@@ -155,6 +155,18 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     }
   }, [popupsQueue, popupActive]);
 
+  // Look-back: when the teacher allows it (cf_sessions.student_nav) a student may open the slides already shown, never one beyond the board.
+  const cur = currentSlideData?.index ?? 0, nav = !!session?.student_nav;
+  const [viewIdx, setViewIdx] = useState<number | null>(null); // null = follow the board
+  const [past, setPast] = useState<any>(null);
+  const viewing = nav && viewIdx !== null && viewIdx < cur ? viewIdx : null;
+  useEffect(() => { setViewIdx(null); }, [cur]); // the board moved on: back to the live slide so no task is missed
+  useEffect(() => {
+    setPast(null);
+    if (viewing === null) return;
+    sb.rpc('cf_slide_at', { p_session: sid, p_index: viewing }).then(r => setPast(r.data), () => {});
+  }, [viewing, sid]);
+
   const loadDict = async () => {
     const { data } = await sb.from('cf_my_terms').select('*').order('created_at', { ascending: false });
     if (data) setMineTerms(data);
@@ -236,6 +248,21 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         </div>
       </div>
 
+      {nav && cur > 0 && (
+        <div data-testid="student-nav" className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-surface p-2 text-sm">
+          <button className={BTN} disabled={(viewing ?? cur) <= 0} onClick={() => setViewIdx((viewing ?? cur) - 1)}>◀ {pick(lang, 'Артқа', 'Назад', 'Back')}</button>
+          <span className="font-bold tabular-nums" aria-live="polite">{(viewing ?? cur) + 1} / {session.slide_count}</span>
+          <button className={BTN} disabled={viewing === null} onClick={() => setViewIdx((viewing ?? cur) + 1 >= cur ? null : (viewing ?? cur) + 1)}>{pick(lang, 'Алға', 'Вперёд', 'Next')} ▶</button>
+          {viewing !== null && <button data-testid="to-live" className={BTN_P} onClick={() => setViewIdx(null)}>{pick(lang, 'Тақтадағы слайдқа', 'К слайду на доске', 'To the board slide')}</button>}
+        </div>
+      )}
+
+      {viewing !== null ? (
+        <div data-testid="past-slide" className="flex-1">
+          <p className="mx-auto max-w-5xl px-4 pt-3 text-sm font-semibold text-text-secondary">👀 {pick(lang, 'Өткен слайд — тек қарауға. Тапсырма мен жауап тақтадағы слайдта.', 'Пройденный слайд — только просмотр. Задания и ответы — на слайде у доски.', 'An earlier slide — view only. Tasks and answers are on the board slide.')}</p>
+          {past ? renderSlide(tr(past.slide || {}, lang), { mode: 'student', lang, noOptions: true, lb: () => lbTable(leaderboard) }) : <p className="p-4 text-text-muted">{pick(lang, 'Жүктелуде...', 'Загрузка...', 'Loading...')}</p>}
+        </div>
+      ) : (<>
       <div className={slide.type === 'quiz' ? '' : 'flex-1'}>
         {slide.type === 'code' && !isScrollPage ? (
           <div className="p-3 max-w-6xl mx-auto w-full">
@@ -390,6 +417,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           </div>
         )}
       </div>
+      </>)}
 
       {popupActive && (
         <div className="fixed inset-0 z-50 bg-amber-500 text-black flex flex-col items-center justify-center text-center p-6">

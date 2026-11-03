@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X } from 'lucide-react';
 import { sb } from '../config';
 import { ShareBoard } from './ShareBoard';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
@@ -196,6 +196,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     if (!msg()) { setNote({ text: 'Алдымен хабарлама жазыңыз', bad: true }); return; }
     run(() => sb.rpc('cf_popup', { p_session: sid, p_student: student, p_message: msg() }), done);
   };
+  const toggleNav = () => run(() => sb.rpc('cf_set_nav', { p_session: sid, p_on: !session.student_nav }));
   const lockAll = () => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !session.locked }));
 
   const navBtns = (cls: string) => (
@@ -311,6 +312,18 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
             >
               {session.locked ? <Lock size={13} aria-hidden="true" /> : <LockOpen size={13} aria-hidden="true" />}
               <span>{session.locked ? 'Бұғатталған' : 'Бұғаттау'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleNav}
+              aria-pressed={!!session.student_nav}
+              title="Оқушы бастапқы беттен тақтадағы слайдқа дейін өзі қарап шыға алады"
+              className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer transition-colors ${
+                session.student_nav ? 'bg-success-soft text-success' : 'bg-surface-2 text-text hover:bg-border'
+              }`}
+            >
+              <Eye size={13} aria-hidden="true" />
+              <span>{session.student_nav ? 'Оқушы қайта қарай алады' : 'Қайта қарауға рұқсат'}</span>
             </button>
           </div>
 

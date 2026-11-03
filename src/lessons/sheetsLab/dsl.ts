@@ -31,6 +31,17 @@ export const walk = (t: T, task: T, steps: T[], result: T, o: { art?: string; no
   };
 };
 
+/** Teacher's demo sheet: ready-made texts and numbers, the teacher types the formulas on the board while the class watches (editable on the board, read-only elsewhere).
+ *  `cells` maps a cell to a plain string or to a [kk, ru, en] word; `fmt` is shared by the three languages. */
+export const demoSheet = (t: T, steps: T[], sheet: { rows: number; cols: number; cells: Record<string, string | T>; fmt?: Record<string, object> }, notes?: T) => {
+  const cells = (i: 0 | 1 | 2) => Object.fromEntries(Object.entries(sheet.cells).map(([k, v]) => [k, typeof v === 'string' ? v : v[i]]));
+  const cfg = (i: 0 | 1 | 2) => ({ rows: sheet.rows, cols: sheet.cols, cells: cells(i), fmt: sheet.fmt || {} });
+  return {
+    type: 'content', pageType: 'slide', templateId: 'explanation', kind: 'example', title: t[0], bullets: at(steps, 0), demoSheet: cfg(0), ...(notes ? { notes: notes[0] } : {}),
+    ...langs(i => ({ title: t[i], bullets: at(steps, i), demoSheet: cfg(i), ...(notes ? { notes: notes[i] } : {}) })),
+  };
+};
+
 /** Auto-checked test question (one correct option). The options show on the student's phone even before the teacher opens it. */
 export const quiz = (t: T, prompt: T, options: T[], answer: number, why: T, points = 1) => ({
   type: 'quiz', pageType: 'interactive', templateId: 'single-choice', kind: 'check', title: t[0], prompt: prompt[0], options: at(options, 0), answer, explanation: why[0], points,

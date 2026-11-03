@@ -171,7 +171,7 @@ export function designSlide(s: any) {
 /** Marks the title, content and worked-example slides of a lesson for the designed look. */
 export function markLesson<L extends { slides: any[] }>(l: L): L {
   return { ...l, slides: l.slides.map((s: any) => {
-    if (!['title', 'content', 'solution'].includes(s.type)) return s;
+    if (!['title', 'content', 'solution'].includes(s.type) || s.demoSheet) return s; // a demo sheet slide has its own page
     if (s.art && !(s.art in ART_H)) throw new Error(`unknown picture ${s.art}`);
     return { ...s, design: 'lab' };
   }) };

@@ -1,6 +1,6 @@
 // Informatics 8, textbook chapter 3, lesson 3.1: relative and absolute references (the textbook's three practices with its menu tables).
 // Texts are [kk, ru, en]; the numbers of every table are checked by replica/unit/sheetslab.test.mjs.
-import { info, labTask, quiz, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
+import { demoSheet, info, labTask, quiz, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
 
 const sub: T = ['Информатика 8-сынып · 3-тарау «Электрондық кестелер»', 'Информатика 8 класс · глава 3 «Электронные таблицы»', 'Informatics Grade 8 · Chapter 3 “Spreadsheets”'];
 const NOTE: T = ['сары «?» ұяшықтарды формуламен есепте', 'жёлтые «?» посчитай формулой', 'work out the yellow “?” cells with a formula'];
@@ -41,6 +41,12 @@ export const L1: LabLesson = {
       ['Кестеде абсолютті және салыстырмалы сілтемені қолданасың.', 'Будешь применять абсолютные и относительные ссылки в таблице.', 'Use absolute and relative references in the spreadsheet.'],
       ['Сұрақ: шығындарыңды жазып отырасың ба? Қандай қолданба немесе әдіс қолданасың?', 'Вопрос: ты записываешь свои расходы? Какими приложениями или способами пользуешься?', 'Question: do you track your expenses? Which apps or methods do you use?'],
     ], { notes: ['Сыныптан сұраңыз: «Шығынды қайда жазасыңдар — қолданба, дәптер, кесте?» Кестеде бір формуланы жазып, барлық жолға көшіруге болатынын айтып, тақырыпқа өтіңіз.', 'Спросите класс: «Где вы записываете расходы — приложение, тетрадь, таблица?» Скажите, что в таблице формулу можно записать один раз и скопировать на все строки.', 'Ask the class: “Where do you track expenses — an app, a notebook, a spreadsheet?” Point out that a sheet lets you write a formula once and copy it to every row.'] }),
+    info('explain', ['Қайталау: жол мен баған', 'Повторение: строка и столбец', 'Review: row and column'], [
+      ['Баған (Column) — тігінен орналасқан ұяшықтар. Әріппен белгіленеді: A, B, C…', 'Столбец (Column) — ячейки по вертикали. Обозначается буквой: A, B, C…', 'A column (Column) runs vertically. It is named by a letter: A, B, C…'],
+      ['Жол (Row) — көлденең орналасқан ұяшықтар. Санмен белгіленеді: 1, 2, 3…', 'Строка (Row) — ячейки по горизонтали. Обозначается числом: 1, 2, 3…', 'A row (Row) runs horizontally. It is named by a number: 1, 2, 3…'],
+      ['Ұяшық мекенжайы = баған әрпі + жол нөмірі. C4 — C бағаны мен 4-жолдың қиылысы.', 'Адрес ячейки = буква столбца + номер строки. C4 — пересечение столбца C и строки 4.', 'A cell address = column letter + row number. C4 is where column C meets row 4.'],
+      ['Аралық: B2:B6 — бір бағанда, B2:D2 — бір жолда. Формуланы көшіргенде әріп (баған) немесе сан (жол) ауысады — келесі слайдтарда соны көреміз.', 'Диапазон: B2:B6 — в одном столбце, B2:D2 — в одной строке. При копировании формулы меняется буква (столбец) или число (строка) — это мы увидим дальше.', 'A range: B2:B6 is in one column, B2:D2 in one row. When a formula is copied, the letter (column) or the number (row) shifts — we will see that next.'],
+    ], { art: 'anatomy', notes: ['Сыныпқа сұрақ: «C4 қайда тұр?», «B2:B6 қанша ұяшық?» (5). Содан кейін сілтемелерге өтіңіз.', 'Вопрос классу: «Где находится C4?», «Сколько ячеек в B2:B6?» (5). Затем переходите к ссылкам.', 'Ask the class: “Where is C4?”, “How many cells are in B2:B6?” (5). Then move on to references.'] }),
     info('explain', ['Салыстырмалы және абсолютті сілтеме', 'Относительные и абсолютные ссылки', 'Relative and absolute values'], [
       ['Сілтеменің екі түрі бар: салыстырмалы және абсолютті. Формуланы басқа ұяшыққа көшіргенде олар әртүрлі жүреді.', 'Бывает два вида ссылок: относительные и абсолютные. При копировании формулы в другие ячейки они ведут себя по-разному.', 'There are two types of cell references: relative and absolute. They behave differently when copied and filled to other cells.'],
       ['Салыстырмалы сілтеме формуланы көшіргенде өзгереді. Әдепкіде барлық сілтеме салыстырмалы.', 'Относительные ссылки меняются при копировании формулы. По умолчанию все ссылки относительные.', 'Relative references change when a formula is copied to another cell. By default, all cell references are relative.'],
@@ -61,6 +67,37 @@ export const L1: LabLesson = {
       ['$E$1 деп жазамыз: баған әрпі мен жол нөмірінің алдына $ қоямыз.', 'Записываем $E$1: знак $ ставим перед буквой столбца и перед номером строки.', 'Write $E$1: put $ before the column letter and before the row number.'],
       ['Мысалы, =B3*C3*$E$1 формуласында E1 әрқашан бір ұяшық, ал B3 мен C3 жолмен бірге жылжиды.', 'Например, в формуле =B3*C3*$E$1 ячейка E1 всегда одна и та же, а B3 и C3 сдвигаются вместе со строкой.', 'For example, in =B3*C3*$E$1 the cell E1 is always the same, while B3 and C3 move with the row.'],
     ], { code: '=B3*C3*$E$1\n=B4*C4*$E$1\n=B5*C5*$E$1' }),
+    demoSheet(['Кестемен түсіндіру', 'Объясняем на таблице', 'Let us see it in a sheet'], [
+      ['D4 ұяшығына =B4*C4 жаз, D8-ге дейін төмен тарт. B мен C жолмен бірге ауысады — бұл салыстырмалы сілтеме.', 'В D4 запиши =B4*C4 и протяни до D8. B и C сдвигаются вместе со строкой — это относительные ссылки.', 'In D4 type =B4*C4 and drag down to D8. B and C move with the row — these are relative references.'],
+      ['E4 ұяшығына =D4*$B$1 жаз, төмен тарт. $B$1 бәрінде бірдей қалады — бұл абсолютті сілтеме. E5 ішіне қарап көр.', 'В E4 запиши =D4*$B$1 и протяни вниз. $B$1 везде одинакова — это абсолютная ссылка. Загляни в E5.', 'In E4 type =D4*$B$1 and drag down. $B$1 stays the same everywhere — an absolute reference. Look inside E5.'],
+      ['Салыстыр: E4-ке =D4*B1 ($-сыз) жазып төмен тартсаң, E5-те B2 шығады да, нәтиже бұрмаланады.', 'Сравни: если в E4 записать =D4*B1 (без $) и протянуть, в E5 появится B2 и результат будет неверным.', 'Compare: if E4 is =D4*B1 (no $) and you drag down, E5 gets B2 and the result is wrong.'],
+      ['F4: =D4+E4, төмен тарт. Содан соң D9, E9, F9 ұяшықтарына =SUM(...) жаз.', 'F4: =D4+E4, протяни вниз. Затем в D9, E9, F9 запиши =SUM(...).', 'F4: =D4+E4, drag down. Then type =SUM(...) in D9, E9, F9.'],
+      ['Көбейту кестесі: B13-ке =$A13*B$12 жаз, оңға, сосын төмен тарт. $A13 — баған, B$12 — жол бекіген.', 'Таблица умножения: в B13 запиши =$A13*B$12, протяни вправо и вниз. $A13 — закреплён столбец, B$12 — строка.', 'Multiplication table: in B13 type =$A13*B$12, drag right then down. $A13 pins the column, B$12 pins the row.'],
+    ], {
+      rows: 18, cols: 7,
+      cells: {
+        A1: ['Салық мөлшері', 'Ставка налога', 'Tax rate'], B1: '10%',
+        A3: ['Тауар', 'Товар', 'Item'], B3: ['Бағасы, ₸', 'Цена, ₸', 'Price, ₸'], C3: ['Саны', 'Кол-во', 'Qty'], D3: ['Құны', 'Стоимость', 'Cost'], E3: ['Салық', 'Налог', 'Tax'], F3: ['Төлем', 'К оплате', 'To pay'],
+        A4: ['Дәптер', 'Тетрадь', 'Notebook'], B4: '150', C4: '10',
+        A5: ['Қалам', 'Ручка', 'Pen'], B5: '80', C5: '20',
+        A6: ['Өшіргіш', 'Ластик', 'Eraser'], B6: '60', C6: '15',
+        A7: ['Сызғыш', 'Линейка', 'Ruler'], B7: '120', C7: '8',
+        A8: ['Маркер', 'Маркер', 'Marker'], B8: '250', C8: '5',
+        A9: ['Барлығы', 'Итого', 'Total'],
+        A11: ['Көбейту кестесі', 'Таблица умножения', 'Multiplication table'],
+        B12: '1', C12: '2', D12: '3', E12: '4', F12: '5',
+        A13: '1', A14: '2', A15: '3', A16: '4', A17: '5',
+      },
+      fmt: {
+        A1: { b: 1 }, B1: { nf: 'pct', b: 1, bg: '#7c2d12' }, A11: { b: 1 },
+        ...Object.fromEntries(['A3', 'B3', 'C3', 'D3', 'E3', 'F3', 'A9'].map(k => [k, { b: 1, bg: '#1e3a8a' }])),
+        ...Object.fromEntries(['B12', 'C12', 'D12', 'E12', 'F12', 'A13', 'A14', 'A15', 'A16', 'A17'].map(k => [k, { b: 1, bg: '#4c1d95' }])),
+      },
+    }, [
+      'Мұғалімге: кесте дайын, тек формулаларды өзің жазасың. Тақтада кестені өңдеуге болады, оқушылар экранда көреді. «Бастапқыға қайтару» батырмасы кестені алғашқы күйіне келтіреді.\nКүтілетін нәтиже: D4:D8 = 1500, 1600, 900, 960, 1250 (D9 = 6210); E4:E8 = 150, 160, 90, 96, 125 (E9 = 621); F4:F8 = 1650, 1760, 990, 1056, 1375 (F9 = 6831). Көбейту кестесінде B13:F17 — 1-ден 25-ке дейінгі көбейтінділер.',
+      'Учителю: таблица готова, формулы вводите вы. На доске её можно редактировать, ученики смотрят на экран. Кнопка «Сбросить» возвращает исходное состояние.\nОжидаемый результат: D4:D8 = 1500, 1600, 900, 960, 1250 (D9 = 6210); E4:E8 = 150, 160, 90, 96, 125 (E9 = 621); F4:F8 = 1650, 1760, 990, 1056, 1375 (F9 = 6831). В таблице умножения B13:F17 — произведения от 1 до 25.',
+      'For the teacher: the table is ready, you type the formulas. It is editable on the board while the class watches the screen. The Reset button restores the starting table.\nExpected: D4:D8 = 1500, 1600, 900, 960, 1250 (D9 = 6210); E4:E8 = 150, 160, 90, 96, 125 (E9 = 621); F4:F8 = 1650, 1760, 990, 1056, 1375 (F9 = 6831). In the multiplication table B13:F17 hold the products 1 to 25.',
+    ]),
     walk(['Мысал: салық', 'Пример: налог', 'Example: tax'],
       ['B2:B4 ұяшықтарында бағалар: 1000, 500, 800; C2:C4 ұяшықтарында саны: 2, 4, 1; E1 ұяшығында салық мөлшері 10%. Әр жолдың салығын тап.', 'В B2:B4 цены: 1000, 500, 800; в C2:C4 количество: 2, 4, 1; в E1 ставка налога 10%. Найди налог для каждой строки.', 'B2:B4 hold prices 1000, 500, 800; C2:C4 hold quantities 2, 4, 1; E1 holds a tax rate of 10%. Find the tax for each row.'],
       [['D2 ұяшығына =B2*C2*$E$1 жаз. Нәтиже: 1000·2·0,1 = 200.', 'В D2 запиши =B2*C2*$E$1. Результат: 1000·2·0,1 = 200.', 'In D2 type =B2*C2*$E$1. Result: 1000·2·0.1 = 200.'],

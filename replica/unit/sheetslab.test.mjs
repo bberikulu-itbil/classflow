@@ -98,4 +98,19 @@ assert.deepEqual([acc(2, 'c1'), acc(2, 'c2'), acc(2, 'c4'), acc(2, 'c7')], [['0.
 assert.deepEqual([acc(3, 'c5'), acc(3, 'c6'), acc(3, 'c7')], [['177'], ['22'], ['11.8']], '3.2 canteen');
 assert.deepEqual([acc(4, 'c4'), acc(4, 'c5'), acc(4, 'c6')], [['1510'], ['151'], ['1359']], '3.3 receipt');
 assert.deepEqual([acc(5, 'c3'), acc(5, 'c4'), acc(5, 'c5'), acc(5, 'c6')], [['3'], ['68'], ['21.33'], ['25']], '3.4 olympiad');
+// The teacher's demo sheet in 3.1: same cells in 3 languages, and the formulas the slide asks for give the numbers the teacher's notes promise.
+const demo = D['inf8lab-1'].slides.filter(s => s.demoSheet);
+assert.equal(demo.length, 1, '3.1 has one demo sheet slide');
+const si = D['inf8lab-1'].slides.indexOf(demo[0]);
+assert.match(D['inf8lab-1'].slides[si - 1].title, /Абсолютті/, 'the demo sheet follows the absolute-reference slide');
+assert.match(D['inf8lab-1'].slides[si + 1].title, /Мысал: салық/, '...and comes before the tax example');
+for (const lg of LANGS) assert.deepEqual(Object.keys(demo[0][lg].demoSheet.cells), Object.keys(demo[0].demoSheet.cells), `demo sheet ${lg} has the same cells`);
+{
+  const cells = { ...demo[0].demoSheet.cells };
+  for (let r = 4; r <= 8; r++) Object.assign(cells, { ['D' + r]: `=B${r}*C${r}`, ['E' + r]: `=D${r}*$B$1`, ['F' + r]: `=D${r}+E${r}` });
+  Object.assign(cells, { D9: '=SUM(D4:D8)', E9: '=SUM(E4:E8)', F9: '=SUM(F4:F8)' });
+  for (let r = 13; r <= 17; r++) for (const c of 'BCDEF') cells[c + r] = `=$A${r}*${c}$12`;
+  const get = evaluator(cells);
+  assert.deepEqual(['D4', 'D8', 'D9', 'E4', 'E8', 'E9', 'F4', 'F8', 'F9', 'B13', 'F17'].map(a => shown(get(a))), ['1500', '1250', '6210', '150', '125', '621', '1650', '1375', '6831', '1', '25'], 'demo sheet results match the notes');
+}
 console.log('sheetslab ok:', M.length, 'lessons,', quizzes, 'quizzes,', tasks, 'picture tasks,', videos, 'video');

@@ -1,5 +1,5 @@
 import { rich } from '../lessons/spoil';
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { runPy, norm, sha256 } from '../utils/pyodide';
 import { CanvasSlide } from '../lessons/canvas';
 import { KindBadge } from '../lessons/kinds';
@@ -513,10 +513,34 @@ export function VideoBlock({ id, start, title, lang = 'kk' }: { id: string; star
 }
 
 /** The slide, with its kind badge (Түсіндіру, Мысал, Практикалық тапсырма, ...) above it when the slide has one. */
+const MiniSheet = lazy(() => import('../sheet/MiniSheet'));
+
+/** Slide with a ready-made sheet the teacher works in on the board (steps on the left); students and previews see the same table, read-only. */
+function DemoSheetSlide({ s, ctx }: { s: any; ctx: any }) {
+  const live = ctx.mode === 'board', lang: Lang = ctx.lang || 'kk';
+  return <div className={`cf-slide mx-auto w-full p-4 ${live ? 'max-w-7xl' : 'max-w-5xl'}`}>
+    <div className="mb-4 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-violet-600/25 text-2xl">🧮</span><h2 className={`${live ? 'text-5xl' : 'text-3xl'} font-black text-text`}>{s.title}</h2></div>
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <ol className="space-y-2">{(s.bullets || []).map((b: string, i: number) => (
+        <li key={i} className="flex gap-3 rounded-xl border border-slate-700 bg-slate-800/70 p-3 text-slate-100">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet-600 text-sm font-black text-white">{i + 1}</span>
+          <span className={live ? 'text-lg' : 'text-base'}>{rich(b, ctx.sp)}</span>
+        </li>))}</ol>
+      <div>
+        <Suspense fallback={null}><MiniSheet key={s.title} cfg={s.demoSheet} storageKey={`cf-demo:${s.title}`} lang={lang} readOnly={!live} tall /></Suspense>
+        {!live && <p className="mt-2 text-sm text-slate-400">{pick(lang, 'Мұғалім тақтада осы кестемен жұмыс істейді.', 'Учитель работает с этой таблицей на доске.', 'The teacher works in this table on the board.')}</p>}
+      </div>
+    </div>
+  </div>;
+}
+
 export function renderSlide(raw: any, ctx: any = {}) {
   const s = designSlide(raw); // slides marked design:'lab' are drawn as canvas pages
+  const badge = s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {pick(ctx.lang || 'kk', 'Жұппен', 'В паре', 'In a pair')}</span>}</div>;
+  // the board puts a slide's children in a row: the demo sheet needs the whole width, so the badge and the page share one column
+  if (s.demoSheet) return <div className="w-full">{badge}<DemoSheetSlide s={s} ctx={ctx} /></div>;
   return <>
-    {s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {pick(ctx.lang || 'kk', 'Жұппен', 'В паре', 'In a pair')}</span>}</div>}
+    {badge}
     {renderSlideBody(s, ctx)}
   </>;
 }
