@@ -1,6 +1,7 @@
 // Informatics 8, textbook chapter 3 "Spreadsheets": 8 lessons (3.1-3.7 and "Check yourself") in Kazakh, Russian and English.
 // They use the lesson features of migrations 038 and 041: slide kinds, practice with a picture and a marking scheme, and pair mode.
-import { L1, L2, L3, L4 } from './lessons1to4';
+import { L1 } from './lesson1';
+import { L2, L3, L4 } from './lessons1to4';
 import { L5, L6, L7, L8 } from './lessons5to8';
 import type { LabLesson } from './dsl';
 import { markLesson } from './cv';

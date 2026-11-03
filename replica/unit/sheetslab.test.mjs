@@ -50,8 +50,8 @@ for (const m of M) {
   }
 }
 assert.ok(M.every(m => D[m.id].slides.some(s => s.type === 'task')) || true);
-assert.equal(tasks, 10, '10 picture tasks');
-assert.equal(PICS.length, 10);
+assert.equal(tasks, 12, '12 picture tasks');
+assert.equal(PICS.length, 12);
 assert.ok(videos >= 1, 'a video lesson');
 assert.ok(D['inf8lab-1'].slides.some(s => s.type === 'task') && D['inf8lab-8'].slides.some(s => s.type === 'task'), 'first and last lessons practise');
 
@@ -92,8 +92,10 @@ for (const [i, sol] of SOLUTIONS.entries()) {
 }
 // spot checks of the numbers in the textbook-style tasks
 const acc = (n, id) => lessonTasks[n].criteria.find(c => c.id === id).accept;
-assert.deepEqual([acc(0, 'c3'), acc(0, 'c4'), acc(0, 'c5'), acc(0, 'c6')], [['154'], ['154.5'], ['155'], ['12']], '3.1 heights: mean, median, mode, range');
-assert.deepEqual([acc(1, 'c5'), acc(1, 'c6'), acc(1, 'c7')], [['177'], ['22'], ['11.8']], '3.2 canteen');
-assert.deepEqual([acc(2, 'c4'), acc(2, 'c5'), acc(2, 'c6')], [['1510'], ['151'], ['1359']], '3.3 receipt');
-assert.deepEqual([acc(3, 'c3'), acc(3, 'c4'), acc(3, 'c5'), acc(3, 'c6')], [['3'], ['68'], ['21.33'], ['25']], '3.4 olympiad');
+assert.deepEqual([acc(0, 'c1'), acc(0, 'c2'), acc(0, 'c3'), acc(0, 'c5'), acc(0, 'c6')], [['20'], ['27000'], ['16500'], ['24000'], ['99500']], '3.1 practice 1: menu cost');
+assert.deepEqual([acc(1, 'c1'), acc(1, 'c2'), acc(1, 'c4'), acc(1, 'c7')], [['0.07', '0.075'], ['2025'], ['29025'], ['106962.5']], '3.1 practice 2: sales tax (the textbook prints 81,163, which adds up only four of its five rows)');
+assert.deepEqual([acc(2, 'c1'), acc(2, 'c2'), acc(2, 'c4'), acc(2, 'c7')], [['0.15'], ['3609'], ['20451'], ['49793.85']], '3.1 practice 3: discount (the textbook prints 33,673, but its own rows add up to 49,794)');
+assert.deepEqual([acc(3, 'c5'), acc(3, 'c6'), acc(3, 'c7')], [['177'], ['22'], ['11.8']], '3.2 canteen');
+assert.deepEqual([acc(4, 'c4'), acc(4, 'c5'), acc(4, 'c6')], [['1510'], ['151'], ['1359']], '3.3 receipt');
+assert.deepEqual([acc(5, 'c3'), acc(5, 'c4'), acc(5, 'c5'), acc(5, 'c6')], [['3'], ['68'], ['21.33'], ['25']], '3.4 olympiad');
 console.log('sheetslab ok:', M.length, 'lessons,', quizzes, 'quizzes,', tasks, 'picture tasks,', videos, 'video');

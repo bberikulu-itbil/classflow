@@ -1,73 +1,9 @@
-// Informatics 8, textbook chapter 3 "Spreadsheets": lessons 3.1-3.4. Texts are [kk, ru, en]; the numbers of every table are checked by replica/unit/sheetslab.test.mjs.
+// Informatics 8, textbook chapter 3 "Spreadsheets": lessons 3.2-3.4 (3.1 is in lesson1.ts). Texts are [kk, ru, en]; the numbers of every table are checked by replica/unit/sheetslab.test.mjs.
 import { info, labTask, quiz, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
 
 const sub: T = ['Информатика 8-сынып · 3-тарау «Электрондық кестелер»', 'Информатика 8 класс · глава 3 «Электронные таблицы»', 'Informatics Grade 8 · Chapter 3 “Spreadsheets”'];
 const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
 const NOTE: T = ['сары «?» ұяшықтарды формуламен есепте', 'жёлтые «?» посчитай формулой', 'work out the yellow “?” cells with a formula'];
-
-export const L1: LabLesson = {
-  id: 'inf8lab-1',
-  title: ['3.1 Статистикалық деректер', '3.1 Статистические данные', '3.1 Statistical data'],
-  summary: ['Статистика деген не, деректердің түрлері және төрт негізгі көрсеткіш: орташа, медиана, мода, ауытқу аралығы. Оларды кестеде есептеу.', 'Что такое статистика, виды данных и четыре основных показателя: среднее, медиана, мода, размах. Как считать их в таблице.', 'What statistics is, kinds of data and the four main measures: mean, median, mode and range. How to work them out in a spreadsheet.'],
-  objectives: [['Деректердің түрлерін ажырату', 'Различать виды данных', 'Tell the kinds of data apart'], ['Орташа, медиана, мода, аралықты табу', 'Находить среднее, медиану, моду, размах', 'Find the mean, median, mode and range'], ['AVERAGE, MEDIAN, MODE, MAX, MIN функцияларын қолдану', 'Использовать функции AVERAGE, MEDIAN, MODE, MAX, MIN', 'Use AVERAGE, MEDIAN, MODE, MAX, MIN']],
-  terms: [
-    ['statistics', 'Статистика — деректерді жинау, өңдеу және талдау ғылымы', 'Статистика — наука о сборе, обработке и анализе данных', 'Statistics — collecting, processing and analysing data'],
-    ['mean', 'Орташа мән — барлық сандардың қосындысын олардың санына бөлгенге тең', 'Среднее — сумма всех чисел, делённая на их количество', 'Mean — the sum of all numbers divided by how many there are'],
-    ['median', 'Медиана — өсу ретімен тізілген сандардың дәл ортасындағы мән', 'Медиана — значение посередине упорядоченного ряда чисел', 'Median — the middle value of the numbers put in order'],
-    ['mode', 'Мода — ең жиі кездесетін мән', 'Мода — самое часто встречающееся значение', 'Mode — the value that occurs most often'],
-    ['range', 'Ауытқу аралығы — ең үлкен мен ең кіші мәннің айырмасы', 'Размах — разность наибольшего и наименьшего значений', 'Range — the difference between the largest and the smallest value'],
-  ],
-  slides: [
-    titleSlide(['3.1 Статистикалық деректер', '3.1 Статистические данные', '3.1 Statistical data'], sub),
-    info('explain', ['Статистика және деректер', 'Статистика и данные', 'Statistics and data'], [
-      ['Статистика — деректерді жинау, өңдеу және талдау. Мысалы: сынып оқушыларының бойы, ауа райы, сауда сатылымы.', 'Статистика — это сбор, обработка и анализ данных. Например: рост учеников класса, погода, продажи в магазине.', 'Statistics means collecting, processing and analysing data. For example: pupils’ heights, the weather, shop sales.'],
-      ['Сандық деректер — өлшеуге болады (бой, жас, баға). Санаттық деректер — топқа бөлінеді (түс, сынып, қала).', 'Числовые данные можно измерить (рост, возраст, цена). Категориальные делятся на группы (цвет, класс, город).', 'Numerical data can be measured (height, age, price). Categorical data falls into groups (colour, class, city).'],
-      ['Деректерді кестеге жазамыз: әр баған — бір сипаттама, әр жол — бір нысан.', 'Данные записывают в таблицу: каждый столбец — одна характеристика, каждая строка — один объект.', 'We record data in a table: each column is one feature, each row is one item.'],
-    ], { art: 'stats', notes: ['Алдымен сыныптан сұрайық: «Біздің сыныптағы оқушылардың орташа бойын қалай білуге болады?» Жауаптарын тыңдап, статистика сөзіне келіңіз.', 'Сначала спросите класс: «Как узнать средний рост учеников нашего класса?» Выслушайте ответы и подведите к слову «статистика».', 'Ask first: “How could we find the average height in our class?” Listen to the answers, then introduce the word statistics.'] }),
-    info('explain', ['Төрт негізгі көрсеткіш', 'Четыре основных показателя', 'Four main measures'], [
-      ['Орташа = барлық сандардың қосындысы ÷ сандардың саны.', 'Среднее = сумма всех чисел ÷ количество чисел.', 'Mean = sum of all numbers ÷ how many numbers.'],
-      ['Медиана — сандарды өсу ретімен тізгендегі ортаңғы мән (екі ортаңғы болса — олардың орташасы).', 'Медиана — число в середине упорядоченного ряда (если середин две — их среднее).', 'Median — the middle number once they are in order (with two middle ones, take their mean).'],
-      ['Мода — ең жиі кездесетін мән. Ауытқу аралығы = ең үлкен − ең кіші.', 'Мода — самое частое значение. Размах = наибольшее − наименьшее.', 'Mode — the most frequent value. Range = largest − smallest.'],
-    ], { code: 'Data: 2 5 5 7 11\nmean   = 30 / 5 = 6\nmedian = 5\nmode   = 5\nrange  = 11 - 2 = 9' }),
-    info('explain', ['Кестедегі функциялар', 'Функции в таблице', 'Spreadsheet functions'], [
-      ['Деректерді бір бағанға жазып, формулаларды басқа ұяшыққа енгіземіз.', 'Данные записывают в один столбец, а формулы вводят в другие ячейки.', 'Put the data in one column and type the formulas in other cells.'],
-      ['AVERAGE — орташа, MEDIAN — медиана, MODE — мода. Аралық үшін MAX және MIN-ді азайтамыз.', 'AVERAGE — среднее, MEDIAN — медиана, MODE — мода. Для размаха вычитаем MIN из MAX.', 'AVERAGE gives the mean, MEDIAN the median, MODE the mode. For the range, subtract MIN from MAX.'],
-      ['Формула әрқашан «=» белгісінен басталады. Диапазонды (B2:B9) тінтуірмен сүйреп белгілеуге болады.', 'Формула всегда начинается со знака «=». Диапазон (B2:B9) можно выделить мышью.', 'A formula always starts with “=”. You can select a range (B2:B9) by dragging.'],
-    ], { code: '=AVERAGE(B2:B9)\n=MEDIAN(B2:B9)\n=MODE(B2:B9)\n=MAX(B2:B9)-MIN(B2:B9)' }),
-    walk(['Мысал: бір аптаның температурасы', 'Пример: температура за неделю', 'Example: a week of temperatures'],
-      ['7 күндегі температура: 4, 6, 6, 3, 8, 9, 6 °C. Орташа, медиана, мода және аралықты тап.', 'Температура за 7 дней: 4, 6, 6, 3, 8, 9, 6 °C. Найди среднее, медиану, моду и размах.', 'Temperatures over 7 days: 4, 6, 6, 3, 8, 9, 6 °C. Find the mean, median, mode and range.'],
-      [['Қосындысы 4+6+6+3+8+9+6 = 42, күн саны 7: орташа 42 ÷ 7.', 'Сумма 4+6+6+3+8+9+6 = 42, дней 7: среднее 42 ÷ 7.', 'The sum is 4+6+6+3+8+9+6 = 42 over 7 days: mean 42 ÷ 7.'],
-       ['Өсу ретімен тіземіз: 3, 4, 6, 6, 6, 8, 9 — ортасында 6.', 'Упорядочим: 3, 4, 6, 6, 6, 8, 9 — посередине 6.', 'Sort: 3, 4, 6, 6, 6, 8, 9 — the middle is 6.'],
-       ['6 санын үш рет кездестірдік — бұл мода.', 'Число 6 встречается три раза — это мода.', 'The number 6 occurs three times — that is the mode.'],
-       ['Аралық: 9 − 3.', 'Размах: 9 − 3.', 'Range: 9 − 3.']],
-      ['Орташа 6 °C, медиана 6 °C, мода 6 °C, аралық 6 °C.', 'Среднее 6 °C, медиана 6 °C, мода 6 °C, размах 6 °C.', 'Mean 6 °C, median 6 °C, mode 6 °C, range 6 °C.']),
-    quiz(['Медиана', 'Медиана', 'Median'], ['3, 9, 4, 7, 5 сандарының медианасы қандай?', 'Чему равна медиана чисел 3, 9, 4, 7, 5?', 'What is the median of 3, 9, 4, 7, 5?'],
-      [['4', '4', '4'], ['5', '5', '5'], ['7', '7', '7'], ['9', '9', '9']], 1,
-      ['Өсу ретімен: 3, 4, 5, 7, 9. Ортасында — 5.', 'По порядку: 3, 4, 5, 7, 9. Посередине — 5.', 'In order: 3, 4, 5, 7, 9. The middle one is 5.']),
-    labTask(['Практика: оқушылардың бойы', 'Практика: рост учеников', 'Practice: pupils’ heights'],
-      ['Суреттегі кестені өз кестеңе енгіз. Сосын орташа, медиана, мода және аралықты ФОРМУЛАМЕН есепте.', 'Перенеси таблицу с рисунка в свою таблицу. Затем посчитай среднее, медиану, моду и размах ФОРМУЛАМИ.', 'Copy the table from the picture into your sheet. Then work out the mean, median, mode and range with FORMULAS.'],
-      {
-        pic: pic('t31', ['Сынып оқушыларының бойы (см)', 'Рост учеников класса (см)', 'Pupils’ heights (cm)'],
-          { A1: ['Оқушы', 'Ученик', 'Pupil'], B1: ['Бой, см', 'Рост, см', 'Height, cm'], A2: ['Айдар', 'Айдар', 'Aidar'], B2: '150', A3: ['Дана', 'Дана', 'Dana'], B3: '155', A4: ['Ерлан', 'Ерлан', 'Erlan'], B4: '148', A5: ['Мадина', 'Мадина', 'Madina'], B5: '160',
-            A6: ['Нұрлан', 'Нурлан', 'Nurlan'], B6: '155', A7: ['Аружан', 'Аружан', 'Aruzhan'], B7: '152', A8: ['Тимур', 'Тимур', 'Timur'], B8: '158', A9: ['Асем', 'Асем', 'Assem'], B9: '154',
-            A11: ['Орташа', 'Среднее', 'Mean'], B11: '?', A12: ['Медиана', 'Медиана', 'Median'], B12: '?', A13: ['Мода', 'Мода', 'Mode'], B13: '?', A14: ['Аралық', 'Размах', 'Range'], B14: '?' },
-          ['B11', 'B12', 'B13', 'B14'], 2, 14, [150, 150], NOTE),
-        alt: ['8 оқушының бойы кестесі, төменде орташа, медиана, мода, аралық үшін бос ұяшықтар', 'Таблица роста 8 учеников, ниже пустые ячейки для среднего, медианы, моды, размаха', 'Table of 8 heights with empty cells below for the mean, median, mode and range'],
-        solve: { B11: '=AVERAGE(B2:B9)', B12: '=MEDIAN(B2:B9)', B13: '=MODE(B2:B9)', B14: '=MAX(B2:B9)-MIN(B2:B9)' },
-        criteria: [
-          { id: 'c1', text: ['Деректер енгізілген: B2 = 150', 'Данные введены: B2 = 150', 'Data entered: B2 = 150'], cell: 'B2' },
-          { id: 'c2', text: ['Соңғы мән енгізілген: B9 = 154', 'Последнее значение введено: B9 = 154', 'Last value entered: B9 = 154'], cell: 'B9' },
-          { id: 'c3', text: ['B11 — орташа (AVERAGE функциясымен)', 'B11 — среднее (функцией AVERAGE)', 'B11 — the mean (with AVERAGE)'], cell: 'B11', fn: 'AVERAGE', points: 2 },
-          { id: 'c4', text: ['B12 — медиана (MEDIAN функциясымен)', 'B12 — медиана (функцией MEDIAN)', 'B12 — the median (with MEDIAN)'], cell: 'B12', fn: 'MEDIAN', points: 2 },
-          { id: 'c5', text: ['B13 — мода (MODE функциясымен)', 'B13 — мода (функцией MODE)', 'B13 — the mode (with MODE)'], cell: 'B13', fn: 'MODE', points: 2 },
-          { id: 'c6', text: ['B14 — ауытқу аралығы (формуламен)', 'B14 — размах (формулой)', 'B14 — the range (with a formula)'], cell: 'B14', formula: true, points: 2 },
-        ],
-      }),
-    quiz(['Мода', 'Мода', 'Mode'], ['Қай көрсеткіш деректердегі ең жиі кездесетін мәнді көрсетеді?', 'Какой показатель показывает самое частое значение в данных?', 'Which measure shows the value that occurs most often?'],
-      [['Орташа мән', 'Среднее', 'Mean'], ['Медиана', 'Медиана', 'Median'], ['Мода', 'Мода', 'Mode'], ['Ауытқу аралығы', 'Размах', 'Range']], 2,
-      ['Мода — ең жиі кездесетін мән. Кестеде оны MODE функциясы табады.', 'Мода — самое частое значение. В таблице её находит функция MODE.', 'The mode is the most frequent value. In a sheet the MODE function finds it.']),
-  ],
-};
 
 export const L2: LabLesson = {
   id: 'inf8lab-2',
