@@ -537,8 +537,7 @@ function renderSlideBody(s: any, ctx: any = {}) {
           )}
           {s.prompt && <section className="rounded-2xl border border-blue-500/40 bg-blue-950/30 p-4"><div className="mb-2 text-2xl">💬</div><p className={`${big ? 'text-3xl' : 'text-xl'} whitespace-pre-wrap text-slate-200`}>{s.prompt}</p></section>}
           {s.starter && <section><h2 className="mb-3 text-lg font-bold text-white">💻 Код мысалы</h2><pre className={`${big ? 'text-xl' : 'text-sm'} overflow-auto rounded-xl bg-[#0F172A] p-4 text-[#E2E8F5] font-mono`}>{s.starter}</pre></section>}
-          {s.notes && <section className="rounded-xl border border-amber-500/40 bg-amber-950/50 p-4 text-amber-200"><b>⚠️ Ескертпе:</b> {s.notes}</section>}
-          {!s.bullets?.length && !s.prompt && !s.starter && !s.notes && <p className="text-slate-400">Бұл бетке мазмұн қосылмаған.</p>}
+          {!s.bullets?.length && !s.prompt && !s.starter && <p className="text-slate-400">Бұл бетке мазмұн қосылмаған.</p>}
         </div>
       </article>
     );
