@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { addr, colName, evaluator, fill, literal, parseAddr, shiftFormula, type Cells } from './engine';
 import { formatValue, looksDate, NF_LABEL, type ChartCfg, type Doc, type Fmt, type NF } from './format';
 import { ChartView } from './Chart';
+import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowRightToLine, BarChart3, Baseline, Bold, Columns3, Grid3x3, Italic, LineChart, Maximize2, Minimize2, PaintBucket, PieChart, Plus, RotateCcw, Rows3, Undo2 } from 'lucide-react';
 
 export interface SheetCfg { rows?: number; cols?: number; cells?: Cells; fmt?: Record<string, Fmt>; charts?: ChartCfg[] }
 /** What the lesson page can ask of the sheet: the value a cell shows (formatted, like on screen) and a text copy of the whole work. */
@@ -16,8 +17,17 @@ const load = (k: string): Doc | null => { try { const s = localStorage.getItem(k
 const save = (k: string, d: Doc) => { try { localStorage.setItem(k, JSON.stringify(d)); } catch { /* private mode: the sheet still works */ } };
 
 const Btn = ({ t, on, children, active, disabled }: { t: string; on: () => void; children: React.ReactNode; active?: boolean; disabled?: boolean }) =>
-  <button type="button" title={t} aria-label={t} disabled={disabled} onMouseDown={e => e.preventDefault()} onClick={on}
-    className={`min-w-[2rem] rounded px-2 py-1 text-sm font-semibold disabled:opacity-40 ${active ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-100 hover:bg-slate-600'}`}>{children}</button>;
+  <button type="button" title={t} aria-label={t} aria-pressed={active} disabled={disabled} onMouseDown={e => e.preventDefault()} onClick={on}
+    className={`inline-flex h-8 min-w-[2rem] items-center justify-center gap-0.5 rounded-lg px-1.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 disabled:cursor-not-allowed disabled:opacity-35 ${active ? 'bg-emerald-600 text-white shadow-inner' : 'text-slate-200 hover:bg-slate-700'}`}>{children}</button>;
+/** A group of tools on one rounded strip. */
+const Group = ({ children }: { children: React.ReactNode }) => <div className="flex items-center gap-0.5 rounded-xl bg-slate-800 p-1 ring-1 ring-slate-700">{children}</div>;
+const IC = 17; // icon size
+/** Colour tool: an icon with the chosen colour under it; the real colour input covers the whole button. */
+const Swatch = ({ t, icon, value, empty, on }: { t: string; icon: React.ReactNode; value?: string; empty: string; on: (v: string) => void }) =>
+  <label title={t} className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-200 transition-colors hover:bg-slate-700 focus-within:outline focus-within:outline-2 focus-within:outline-emerald-400">
+    {icon}<span aria-hidden="true" className="absolute bottom-1 h-1 w-4 rounded-full ring-1 ring-slate-500" style={{ background: value || empty }} />
+    <input type="color" aria-label={t} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={value || empty} onChange={ev => on(ev.target.value)} />
+  </label>;
 
 /** A real small spreadsheet for lessons: free typing, formulas and functions, ranges, copy/paste with reference shifting, fill down/right and drag,
  *  text/fill colours, bold/italic, alignment, borders, number formats (%, $, scientific, date), undo, extra rows/columns and bar/line/pie charts.
@@ -139,26 +149,40 @@ export default function MiniSheet({ cfg, storageKey, lang = 'kk', readOnly = fal
   return (
     <div data-testid="minisheet" className={`rounded-2xl border border-emerald-400/40 bg-slate-900 p-2 text-sm text-slate-100 ${full ? 'fixed inset-0 z-50 flex flex-col overflow-auto rounded-none' : ''}`} onPointerMove={onMove} onPointerUp={onUp}>
       {!readOnly && (
-        <div className="flex flex-wrap items-center gap-1 pb-2" data-testid="sheet-toolbar">
-          <Btn t={t.undo} on={undo}>↶</Btn>
-          <Btn t={t.bold} on={() => style(f => ({ b: f.b ? undefined : 1 }))} active={!!af.b}><b>B</b></Btn>
-          <Btn t={t.ital} on={() => style(f => ({ i: f.i ? undefined : 1 }))} active={!!af.i}><i>I</i></Btn>
-          <label title={t.color} className="flex cursor-pointer items-center gap-1 rounded bg-slate-700 px-2 py-1 hover:bg-slate-600"><span className="font-bold" style={{ color: af.c || '#fff', textDecoration: 'underline' }}>A</span>
-            <input type="color" aria-label={t.color} className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0" value={af.c || '#ffffff'} onChange={ev => style({ c: ev.target.value })} /></label>
-          <label title={t.bg} className="flex cursor-pointer items-center gap-1 rounded bg-slate-700 px-2 py-1 hover:bg-slate-600"><span>🎨</span>
-            <input type="color" aria-label={t.bg} className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0" value={af.bg || '#0f172a'} onChange={ev => style({ bg: ev.target.value })} /></label>
-          <Btn t={t.left} on={() => style({ al: 'l' })} active={af.al === 'l'}>⇤</Btn><Btn t={t.center} on={() => style({ al: 'c' })} active={af.al === 'c'}>↔</Btn><Btn t={t.right} on={() => style({ al: 'r' })} active={af.al === 'r'}>⇥</Btn>
-          <Btn t={t.border} on={() => style(f => ({ bd: f.bd ? undefined : 1 }))} active={!!af.bd}>▦</Btn>
-          <select aria-label={t.nf} title={t.nf} className="rounded bg-slate-700 px-1 py-1" value={af.nf || 'gen'} onChange={ev => style({ nf: ev.target.value === 'gen' ? undefined : (ev.target.value as NF) })}>
-            {Object.entries(NF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <span className="mx-1 h-5 w-px bg-slate-600" />
-          <Btn t={t.fillD} on={fillDown} disabled={r1 === r0}>↓</Btn><Btn t={t.fillR} on={fillRight} disabled={c1 === c0}>→</Btn>
-          <Btn t={t.addRow} on={() => commit({ ...doc, rows: R + 5 })}>{t.addRow}</Btn><Btn t={t.addCol} on={() => commit({ ...doc, cols: Math.min(26, C + 2) })}>{t.addCol}</Btn>
-          <span className="mx-1 h-5 w-px bg-slate-600" />
-          <Btn t={`${t.chart}: bar`} on={() => addChart('bar')}>📊</Btn><Btn t={`${t.chart}: line`} on={() => addChart('line')}>📈</Btn><Btn t={`${t.chart}: pie`} on={() => addChart('pie')}>🥧</Btn>
-          <Btn t={full ? t.close : t.full} on={() => setFull(!full)} active={full}>{full ? '✕' : '⛶'}</Btn>
-          <Btn t={t.reset} on={() => { hist.current = []; commit(start); }}>⟲</Btn>
+        <div className="flex flex-wrap items-center gap-1.5 pb-2" data-testid="sheet-toolbar">
+          <Group><Btn t={t.undo} on={undo}><Undo2 size={IC} aria-hidden="true" /></Btn></Group>
+          <Group>
+            <Btn t={t.bold} on={() => style(f => ({ b: f.b ? undefined : 1 }))} active={!!af.b}><Bold size={IC} aria-hidden="true" /></Btn>
+            <Btn t={t.ital} on={() => style(f => ({ i: f.i ? undefined : 1 }))} active={!!af.i}><Italic size={IC} aria-hidden="true" /></Btn>
+            <Swatch t={t.color} icon={<Baseline size={IC} aria-hidden="true" />} value={af.c} empty="#ffffff" on={v => style({ c: v })} />
+            <Swatch t={t.bg} icon={<PaintBucket size={IC} aria-hidden="true" />} value={af.bg} empty="#0f172a" on={v => style({ bg: v })} />
+          </Group>
+          <Group>
+            <Btn t={t.left} on={() => style({ al: 'l' })} active={af.al === 'l'}><AlignLeft size={IC} aria-hidden="true" /></Btn>
+            <Btn t={t.center} on={() => style({ al: 'c' })} active={af.al === 'c'}><AlignCenter size={IC} aria-hidden="true" /></Btn>
+            <Btn t={t.right} on={() => style({ al: 'r' })} active={af.al === 'r'}><AlignRight size={IC} aria-hidden="true" /></Btn>
+            <Btn t={t.border} on={() => style(f => ({ bd: f.bd ? undefined : 1 }))} active={!!af.bd}><Grid3x3 size={IC} aria-hidden="true" /></Btn>
+          </Group>
+          <Group>
+            <select aria-label={t.nf} title={t.nf} className="h-8 cursor-pointer rounded-lg bg-transparent px-1.5 text-xs font-semibold text-slate-100 outline-none hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-emerald-400" value={af.nf || 'gen'} onChange={ev => style({ nf: ev.target.value === 'gen' ? undefined : (ev.target.value as NF) })}>
+              {Object.entries(NF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </Group>
+          <Group>
+            <Btn t={t.fillD} on={fillDown} disabled={r1 === r0}><ArrowDownToLine size={IC} aria-hidden="true" /></Btn>
+            <Btn t={t.fillR} on={fillRight} disabled={c1 === c0}><ArrowRightToLine size={IC} aria-hidden="true" /></Btn>
+            <Btn t={t.addRow} on={() => commit({ ...doc, rows: R + 5 })}><Rows3 size={IC} aria-hidden="true" /><Plus size={11} aria-hidden="true" /></Btn>
+            <Btn t={t.addCol} on={() => commit({ ...doc, cols: Math.min(26, C + 2) })}><Columns3 size={IC} aria-hidden="true" /><Plus size={11} aria-hidden="true" /></Btn>
+          </Group>
+          <Group>
+            <Btn t={`${t.chart}: bar`} on={() => addChart('bar')}><BarChart3 size={IC} aria-hidden="true" /></Btn>
+            <Btn t={`${t.chart}: line`} on={() => addChart('line')}><LineChart size={IC} aria-hidden="true" /></Btn>
+            <Btn t={`${t.chart}: pie`} on={() => addChart('pie')}><PieChart size={IC} aria-hidden="true" /></Btn>
+          </Group>
+          <Group>
+            <Btn t={full ? t.close : t.full} on={() => setFull(!full)} active={full}>{full ? <Minimize2 size={IC} aria-hidden="true" /> : <Maximize2 size={IC} aria-hidden="true" />}</Btn>
+            <Btn t={t.reset} on={() => { hist.current = []; commit(start); }}><RotateCcw size={IC} aria-hidden="true" /></Btn>
+          </Group>
           {msg && <span className="text-amber-300">{msg}</span>}
         </div>
       )}
