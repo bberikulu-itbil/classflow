@@ -349,9 +349,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
             </div>
 
             {slide.notes && (
-              <p className="rounded-lg bg-warning-soft p-2.5 text-xs text-warning font-medium">
-                <b>Ескертпе:</b> {slide.notes}
-              </p>
+              <section aria-label="Мұғалім сөзі" data-testid="teacher-notes" className="rounded-xl border border-warning/50 bg-warning-soft p-3">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-warning">Мұғалім сөзі · тек сізге көрінеді</h3>
+                <p className="mt-1 whitespace-pre-wrap text-base leading-relaxed text-text">{slide.notes}</p>
+              </section>
             )}
 
             {/* Next Slide (Compact Preview Peek) */}

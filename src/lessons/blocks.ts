@@ -49,7 +49,7 @@ export function fieldsOf(s: any): Field[] {
       break;
     default: if (s?.title !== undefined) out.push(f('title', 'Тақырып', 'Мәтін', 'text', 'title'));
   }
-  if (s?.type && s.type !== 'solution' && s.type !== 'title') out.push(f('notes', 'Мұғалімге ескертпе (оқушыға көрінбейді)', 'Ескертпе', 'area', 'notes'));
+  if (s?.type) out.push(f('notes', 'Мұғалім сөзі: не айту керек (тек Remote-та көрінеді, оқушыға көрінбейді)', 'Ескертпе', 'area', 'notes'));
   return out;
 }
 

@@ -318,7 +318,6 @@ export function toCanvas(s: any) {
     });
   }
   if (s.prompt && s.type !== 'code') addText(s.prompt, 70, 145, 820, 120, 26);
-  if (s.notes) addText(`Ескертпе: ${s.notes}`, 70, 420, 820, 70, 20, { color: '#B45309' });
   if (typeof s.img === 'string' && imgOk(s.img)) blocks.push(norm({ kind: 'image', id: newId(), src: s.img, alt: s.alt || title, x: 610, y: 150, w: 280, h: 260 })!);
   if (!blocks.length) addText(title || 'Жаңа слайд', 70, 210, 820, 100, 32, { align: 'center' });
   return { type: 'canvas', title, bg: bgOf(s), blocks: blocks.map(slim), pageType: 'slide', templateId: 'canvas-blank', ...(s.notes ? { notes: s.notes } : {}), ...(s.ru ? { ru: s.ru } : {}) };
