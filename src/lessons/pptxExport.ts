@@ -8,7 +8,7 @@ const x = (v: number) => (v / W) * PW;
 const y = (v: number) => (v / H) * PH;
 
 function interactive(slide: any) {
-  return slide?.pageType === 'interactive' || ['quiz', 'task', 'matching', 'flashcards', 'logic', 'leaderboard'].includes(slide?.type);
+  return slide?.pageType === 'interactive' || ['quiz', 'task', 'matching', 'flashcards', 'logic', 'sim', 'leaderboard'].includes(slide?.type);
 }
 
 function legacyBlocks(slide: any): CBlock[] {

@@ -5,6 +5,7 @@ import { CanvasSlide } from '../lessons/canvas';
 import { KindBadge } from '../lessons/kinds';
 import { designSlide } from '../lessons/sheetsLab/cv';
 import { pick, type Lang } from '../lessons/lang';
+import { Sim } from './Sims';
 
 export const BTN = 'px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold transition cursor-pointer';
 export const BTN_P = 'px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition cursor-pointer';
@@ -678,6 +679,12 @@ function renderSlideBody(s: any, ctx: any = {}) {
         s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
         s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
         <LogicGate gate={s.gate} />
+      );
+    case 'sim':
+      return wrap(
+        s.title && <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black mb-5 text-text`}>{s.title}</h2>,
+        s.prompt && <p className={`${big ? 'text-3xl' : 'text-xl'} mb-4 whitespace-pre-wrap text-slate-200`}>{R(s.prompt)}</p>,
+        <Sim kind={s.sim} formula={s.formula} />
       );
     case 'leaderboard':
       return wrap(

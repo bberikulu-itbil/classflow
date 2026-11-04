@@ -291,7 +291,7 @@ export const canvasPage = (title: string, layout?: string) => ({ type: 'canvas',
 /** Educational pages can become a canvas page; interactive and source-only pages keep their own player. */
 export const canConvert = (s: any) => {
   if (!s || s.type === 'canvas' || s.type === 'presentation' || s.pageType === 'presentation' || s.pageType === 'interactive') return false;
-  if (['quiz', 'task', 'matching', 'flashcards', 'logic'].includes(s.type)) return false;
+  if (['quiz', 'task', 'matching', 'flashcards', 'logic', 'sim'].includes(s.type)) return false;
   return ['title', 'content', 'code', 'solution', 'leaderboard'].includes(s.type) || s.pageType === 'slide' || s.pageType === 'scroll';
 };
 

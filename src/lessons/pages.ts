@@ -50,7 +50,7 @@ export function pageOf(s: any): { pageType: PageType; templateId: string } {
   const legacy: Record<string, [PageType, string]> = {
     title: ['slide', 'title'], content: ['slide', 'explanation'], solution: ['scroll', 'theory'],
     quiz: ['interactive', 'single-choice'], task: ['interactive', 'short-answer'], code: ['interactive', 'code-task'], matching: ['interactive', 'matching'],
-    flashcards: ['interactive', ''], logic: ['interactive', ''], leaderboard: ['slide', 'summary'], canvas: ['slide', 'canvas-blank'], presentation: ['slide', 'canvas-blank'],
+    flashcards: ['interactive', ''], logic: ['interactive', ''], sim: ['interactive', ''], leaderboard: ['slide', 'summary'], canvas: ['slide', 'canvas-blank'], presentation: ['slide', 'canvas-blank'],
   };
   const [t, id] = legacy[s?.type] || ['slide', ''];
   return { pageType: PAGE_TYPES.some(p => p.id === s?.pageType) ? s.pageType : t, templateId: typeof s?.templateId === 'string' ? s.templateId : id };
