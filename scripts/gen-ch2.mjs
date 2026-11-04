@@ -297,3 +297,5 @@ writeFileSync('supabase/046_informatics_10_chapter2.sql', sqlOf(rows, true));
 import { mkdirSync } from 'node:fs';
 const dir = process.argv[2];
 if (dir) { mkdirSync(dir, { recursive: true }); rows.forEach((r, i) => writeFileSync(`${dir}/part${i}.sql`, sqlOf([r], false))); writeFileSync(`${dir}/part26.sql`, sqlOf([], true)); }
+
+export const LESSONS = { "2.1": L21, "2.2": L22, "2.3": L23, "2.4": L24, "2.5": L25 };
