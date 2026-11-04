@@ -259,7 +259,7 @@ export const EN = {
   'Үй тапсырмасы: Literacy (39 б.): AND, OR, NOT вентильдері қашан true береді; Logicly-де схеманы қалай құруға болатынын түсіндір. Қосымша: XOR-ды AND, OR, NOT арқылы жаз.': 'Homework: Literacy (p. 39): when do the AND, OR and NOT gates give true; explain how to build a circuit in Logicly. Extra: write XOR using AND, OR and NOT.',
   // ---- new interactive slides (gen-ch2-sim.mjs)
   'Екілік санды өзің жина': 'Build a binary number yourself',
-  'Шамдарды бас: әр разрядтың салмағы қосылады. Содан кейін «Тапсырма» батырмасын бас да, берілген санды екілік жүйемен жина.': 'Click the lamps: the value of every place is added up. Then press "Task" and write the given number in binary.',
+  'Шамдарды бас: әр разрядтың салмағы қосылады. Содан кейін төмендегі сұраққа жауабыңды жазып, «Тексеру» батырмасын бас.': 'Click the lamps: the value of every place is added up. Then write your answer to the question below and press "Check".',
   'Екілік қосуды өз көзіңмен көр': 'See binary addition with your own eyes',
   'A және B сандарының разрядтарын бас. Қай жерде тасымал (қызғылт сары) пайда болатынын бақыла.': 'Click the bits of A and B. Watch where a carry (orange) appears.',
   'Логикалық элементті сына': 'Try a logic gate',
