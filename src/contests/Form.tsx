@@ -5,7 +5,7 @@ import * as st from './store';
 import type { Form, Me } from './store';
 
 const STEPS: Form['status'][] = ['draft', 'rules_locked', 'published'];
-const BACK = '#exams/catalog';
+const BACK = '#contests/catalog';
 
 function Check({ id, checked, onChange, children }: { id: string; checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return <label htmlFor={id} className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-surface-2"><input id={id} type="checkbox" className="h-5 w-5 accent-[var(--accent)]" checked={checked} onChange={e => onChange(e.target.checked)} />{children}</label>;

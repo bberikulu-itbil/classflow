@@ -65,7 +65,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:vocab:link': c => <VocabLink me={c.me} />,
   'teacher:vocab:test': c => <VocabTest me={c.me} />,
   'teacher:vocab:share': c => <VocabShare me={c.me} />,
-  'teacher:exams:catalog': c => <ContestCatalog me={c.me} role="teacher" />,
+  'teacher:contests:catalog': c => <ContestCatalog me={c.me} role="teacher" />,
   'student:contests:catalog': c => <ContestCatalog me={c.me} role="student" />,
   'student:grades:feedback': () => <StudentFeedback />,
   'student:vocab:mine': c => <StudentVocab me={c.me} />,
