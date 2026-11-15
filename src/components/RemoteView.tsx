@@ -9,6 +9,7 @@ import { spaced, fmt, renderSlide } from './Widgets';
 import { tr, useLang, LANG_LABEL } from '../lessons/lang';
 import { KindBadge, kindLabel } from '../lessons/kinds';
 import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
+import { coalesce } from '../utils/coalesce';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', sim: 'Симулятор', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
@@ -67,20 +68,22 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [ending, setEnding] = useState(false);
   const [share, setShare] = useState(false);
   const autoTRef = useRef<any>(null);
+  const privAt = useRef(0);
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
   const refresh = async () => {
     try {
+      const needPriv = Date.now() - privAt.current > 60000; // the lesson's slides are 25-60 KB: not on every refresh
       const [sRes, pPriv, pParts, lbRes, gsRes] = await Promise.all([
         sb.from('cf_sessions').select('*').eq('id', sid).single(),
-        sb.from('cf_session_private').select('slides').eq('session_id', sid).maybeSingle(),
+        needPriv ? sb.from('cf_session_private').select('slides').eq('session_id', sid).maybeSingle() : Promise.resolve(null),
         sb.from('cf_participants').select('*').eq('session_id', sid).order('full_name'),
         sb.rpc('cf_leaderboard', { p_session: sid }),
         sb.rpc('cf_group_scores', { p_session: sid }),
       ]);
       if (sRes.data) setSession(sRes.data);
-      setPriv(pPriv.data?.slides || []);
+      if (pPriv) { setPriv(pPriv.data?.slides || []); privAt.current = Date.now(); }
       if (pParts.data) setParts(pParts.data);
       if (lbRes.data) setLeaderboard(lbRes.data);
       if (gsRes.data) setGroupScores(gsRes.data);
@@ -118,9 +121,9 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   useEffect(() => {
     refresh();
     const ch = sb.channel('cf-remote-' + sid);
-    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_submissions', 'cf_scores', 'cf_pairs'].forEach(tb => {
-      ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, () => refresh());
-    });
+    const fast = coalesce(refresh, 150), slow = coalesce(refresh, 1200); // many students' answers and heartbeats arrive as one refresh
+    ['cf_sessions', 'cf_tasks', 'cf_pairs'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, fast));
+    ['cf_participants', 'cf_submissions', 'cf_scores'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, slow));
     ch.subscribe();
     const iv = setInterval(refresh, 8000);
     return () => { sb.removeChannel(ch); clearInterval(iv); clearTimeout(autoTRef.current); };
@@ -146,6 +149,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
       await switchSessionLesson(sid, target.id);
       setSwitchAsk(null);
       setNote({ text: `«${target.title}» сабағына ауыстырылды`, bad: false });
+      privAt.current = 0;
       await refresh();
     } catch (e) {
       setNote({ text: e instanceof Error ? e.message : 'Ауысу қатесі', bad: true });
@@ -155,9 +159,12 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   };
 
   const total = session?.slide_count || 0, cur = session?.current_slide || 0;
+  // students who have not answered the open task: moving on closes it, so ask first (slow students must not lose their turn by accident)
+  const waiting = parts.filter(p => !subs.some(x => x.student_id === p.student_id));
   const goSlide = async (i: number) => {
     const idx = Math.max(0, Math.min(total - 1, i));
     if (idx === cur) return;
+    if (task?.status === 'open' && idx > cur && waiting.length && !window.confirm(`${waiting.length} оқушы әлі тапсырмаған (${waiting.slice(0, 5).map(p => p.full_name.split(' ')[0]).join(', ')}). Келесі слайдқа өтсең, тапсырма жабылады. Өтесің бе?`)) return;
     await run(() => sb.rpc('cf_goto', { p_session: sid, p_index: idx }));
   };
   /** One place for every action: shows the server's refusal instead of failing silently, then re-reads. */
@@ -463,6 +470,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm"><span>Тапсырды</span><b>{subs.length} / {parts.length}</b></div>
                   <div role="progressbar" aria-label="Тапсырған оқушылар" aria-valuemin={0} aria-valuemax={parts.length} aria-valuenow={subs.length} className="h-1.5 rounded bg-surface-2"><div className="h-1.5 rounded bg-success" style={{ width: Math.round((subs.length / Math.max(1, parts.length)) * 100) + '%' }} /></div>
+                  {open && waiting.length > 0 && <p className="text-xs text-text-secondary break-words">Әлі тапсырмаған: {waiting.slice(0, 10).map(p => p.full_name.split(' ')[0]).join(', ')}{waiting.length > 10 ? ` +${waiting.length - 10}` : ''}</p>}
                 </div>
               )}
               <div className="flex flex-wrap gap-2">

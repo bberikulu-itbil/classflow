@@ -12,6 +12,7 @@ import { DrawBar, DrawLayer, type Pen, type Stroke } from '../board/Draw';
 import { ConvBody, TimerBody, useTimer } from '../board/Tools';
 import { ShareBoard } from './ShareBoard';
 import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
+import { coalesce } from '../utils/coalesce';
 
 // clock() is a hook; as its own component the hook count no longer changes when a task appears
 const TaskClock = ({ task }: { task: any }) => <>{clock(task)}</>;
@@ -72,9 +73,9 @@ export function BoardView({ sid }: { sid: string }) {
   useEffect(() => {
     refresh();
     const ch = sb.channel('cf-board-' + sid);
-    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_submissions', 'cf_scores'].forEach(tb => {
-      ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, () => refresh());
-    });
+    const fast = coalesce(refresh, 150), slow = coalesce(refresh, 1500);
+    ['cf_sessions', 'cf_tasks'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, fast));
+    ['cf_participants', 'cf_submissions', 'cf_scores'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, slow));
     ch.subscribe();
     const iv = setInterval(refresh, 8000);
     return () => {

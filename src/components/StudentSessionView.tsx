@@ -7,6 +7,7 @@ import { LevelsPanel, cellAnswer, type LvTask, type LvSub, type Pair } from './L
 import type { SheetApi } from '../sheet/MiniSheet';
 import { tr, useLang, pick, LANG_LABEL } from '../lessons/lang';
 import { CriteriaPanel, criteriaAnswer, type Criterion } from './CriteriaPanel';
+import { coalesce } from '../utils/coalesce';
 
 export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   const [lang, flipLang] = useLang();
@@ -125,9 +126,10 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     refresh();
 
     const ch = sb.channel('student-session-' + sid);
-    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_scores', 'cf_submissions', 'cf_pairs'].forEach(tb => {
-      ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, () => refresh());
-    });
+    // slide / task / lock changes show at once; scores and answers (a burst of events when the whole class submits) are batched
+    const fast = coalesce(refresh, 100, 400), slow = coalesce(refresh, 2000, 2500);
+    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_pairs'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, fast));
+    ['cf_scores', 'cf_submissions'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, slow));
 
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cf_commands', filter: `session_id=eq.${sid}` }, e => {
       const c = e.new;
@@ -353,6 +355,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         ) : mySub ? (
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700 space-y-2">
             <div className="font-bold text-emerald-400">✓ Жауап жіберілді</div>
+            {task.status === 'open' && <div className="text-sm text-slate-400">{pick(lang, 'Басқалар аяқтағанша күт.', 'Подожди, пока закончат остальные.', 'Wait while the others finish.')}</div>}
             {mySub.points != null && <div>Ұпай: {mySub.points}/{task.points}</div>}
             {mySub.feedback && <div className="text-slate-300">{mySub.feedback}</div>}
             {task.reveal && (
