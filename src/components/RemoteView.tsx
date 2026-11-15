@@ -13,7 +13,7 @@ import { coalesce } from '../utils/coalesce';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', sim: 'Симулятор', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
-const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
+const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }, { key: 'ask', label: 'Сұрақтар' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
 
 /** Remaining (limited) or elapsed time of an open task, ticking every second. */
@@ -57,6 +57,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [groupScores, setGroupScores] = useState<any[]>([]);
   const [tab, setTab] = useState('class');
+  const [asks, setAsks] = useState<any[]>([]); // «Түсінбедім» questions of this session
+  const loadAsks = () => sb.from('cf_questions').select('*').eq('session_id', sid).order('created_at', { ascending: false }).then(r => { if (r.data) setAsks(r.data); }, () => {});
   const [className, setClassName] = useState('');
   const [msgInput, setMsgInput] = useState('');
   const [gradingPoints, setGradingPoints] = useState<{ [subId: string]: string }>({});
@@ -124,6 +126,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     const fast = coalesce(refresh, 150), slow = coalesce(refresh, 1200); // many students' answers and heartbeats arrive as one refresh
     ['cf_sessions', 'cf_tasks', 'cf_pairs'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, fast));
     ['cf_participants', 'cf_submissions', 'cf_scores'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, slow));
+    loadAsks();
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'cf_questions', filter: `session_id=eq.${sid}` }, () => loadAsks());
     ch.subscribe();
     const iv = setInterval(refresh, 8000);
     return () => { sb.removeChannel(ch); clearInterval(iv); clearTimeout(autoTRef.current); };
@@ -161,6 +165,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const total = session?.slide_count || 0, cur = session?.current_slide || 0;
   // students who have not answered the open task: moving on closes it, so ask first (slow students must not lose their turn by accident)
   const waiting = parts.filter(p => !subs.some(x => x.student_id === p.student_id));
+  const openAsks = asks.filter(q => !q.resolved).length;
   const goSlide = async (i: number) => {
     const idx = Math.max(0, Math.min(total - 1, i));
     if (idx === cur) return;
@@ -483,7 +488,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
         </section>
 
         <section aria-label="Сынып" className="min-w-0 space-y-3">
-          <Tabs id="remote" label="Сынып бөлімдері" tabs={TABS.map(t => t.key === 'class' && hands.length ? { ...t, label: `Сынып · ${hands.length}` } : t)} value={tab} onChange={setTab} />
+          <Tabs id="remote" label="Сынып бөлімдері" tabs={TABS.map(t => t.key === 'class' && hands.length ? { ...t, label: `Сынып · ${hands.length}` } : t.key === 'ask' && openAsks ? { ...t, label: `Сұрақтар · ${openAsks}` } : t)} value={tab} onChange={setTab} />
           <div id="remote-panel" role="tabpanel" aria-labelledby={`remote-tab-${tab}`} tabIndex={0} className="space-y-2">
             {tab === 'class' && (
               <>
@@ -596,6 +601,20 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
               </>
             ))}
 
+            {tab === 'ask' && (asks.length === 0 ? <p className="text-sm text-text-muted">Әзірге сұрақ жоқ. Оқушы «Түсінбедім» арқылы жазғанда осында шығады.</p> : (
+              <ul data-testid="asks" className="space-y-2">
+                {asks.map(q => (
+                  <li key={q.id} className={`flex items-start gap-3 rounded-xl border border-border p-3 ${q.resolved ? 'opacity-60' : 'bg-surface'}`}>
+                    <span className="shrink-0 rounded-full bg-bg px-2.5 py-1 text-sm font-bold tabular-nums">{q.slide_index + 1}-слайд</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold">{parts.find(p => p.student_id === q.student_id)?.full_name || 'Оқушы'}</div>
+                      <div className="whitespace-pre-wrap break-words">{q.body}</div>
+                    </div>
+                    <Button variant="secondary" onClick={() => sb.rpc('cf_resolve_question', { p_id: q.id, p_on: !q.resolved }).then(loadAsks, () => {})}>{q.resolved ? 'Қайтару' : 'Жауап бердім'}</Button>
+                  </li>
+                ))}
+              </ul>
+            ))}
             {tab === 'score' && (
               <>
                 <div className="grid grid-cols-2 gap-2">

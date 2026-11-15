@@ -8,6 +8,12 @@ import type { SheetApi } from '../sheet/MiniSheet';
 import { tr, useLang, pick, LANG_LABEL } from '../lessons/lang';
 import { CriteriaPanel, criteriaAnswer, type Criterion } from './CriteriaPanel';
 import { coalesce } from '../utils/coalesce';
+import { Icon } from './Icons';
+import { LessonMap } from './LessonMap';
+import { AskPanel } from './AskPanel';
+
+const TOP = 'inline-flex h-10 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-text transition hover:bg-bg cursor-pointer';
+const KIND_NAME: Record<string, [string, string, string]> = { info: ['Ақпарат', 'Информация', 'Information'], example: ['Мысал', 'Пример', 'Example'], practice: ['Практика', 'Практика', 'Practice'], check: ['Өзіңді тексер', 'Проверь себя', 'Check yourself'] };
 
 export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   const [lang, flipLang] = useLang();
@@ -169,6 +175,12 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     sb.rpc('cf_slide_at', { p_session: sid, p_index: viewing }).then(r => setPast(r.data), () => {});
   }, [viewing, sid]);
 
+  // Lesson map: the kind of every slide (no content), reloaded when the teacher switches the lesson
+  const [kinds, setKinds] = useState<string[]>([]);
+  useEffect(() => {
+    sb.rpc('cf_slide_kinds', { p_session: sid }).then(r => setKinds(Array.isArray(r.data) ? r.data : []), () => {});
+  }, [sid, session?.lesson_id, session?.slide_count]);
+
   const loadDict = async () => {
     const { data } = await sb.from('cf_my_terms').select('*').order('created_at', { ascending: false });
     if (data) setMineTerms(data);
@@ -211,51 +223,39 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   return (
     <div data-theme="light" className="min-h-screen bg-bg text-text flex flex-col">
       {bannerShow && <div className="bg-red-600 text-center font-bold p-2">{bannerText}</div>}
-      <div className="flex items-center justify-between p-2 border-b border-slate-800 text-sm">
-        <b>{session.title}</b>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 text-sm sm:px-5">
+        <b className="min-w-0 truncate">{session.title}</b>
         <div className="flex items-center gap-2">
-          <button className={BTN} onClick={flipLang} aria-label="Тіл / Язык">{LANG_LABEL[lang]}</button>
-          <span className="text-amber-400 font-bold">⭐ {mineRow ? mineRow.points : 0}</span>
+          <span data-testid="my-points" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-amber-100 px-3 font-bold text-amber-900"><Icon n="star" />{mineRow ? mineRow.points : 0}<span className="hidden sm:inline">{pick(lang, 'ұпай', 'балл', 'pts')}</span></span>
+          <button className={TOP} onClick={flipLang} aria-label={pick(lang, 'Тілді ауыстыру', 'Сменить язык', 'Change language')}><Icon n="globe" />{LANG_LABEL[lang]}</button>
           <button
-            className={BTN + ' !bg-amber-700 !text-white'}
+            className={TOP + (mePart && mePart.hand ? ' !border-amber-600 !bg-amber-100 !text-amber-900' : '')}
+            aria-pressed={!!(mePart && mePart.hand)}
+            aria-label={pick(lang, 'Қол көтеру', 'Поднять руку', 'Raise hand')}
             onClick={async () => {
               await sb.rpc('cf_set_hand', { p_session: sid, p_on: !(mePart && mePart.hand) });
               refresh();
             }}
           >
-            {mePart && mePart.hand ? '✋ түсірем' : '✋'}
+            <Icon n="hand" /><span className="hidden sm:inline">{mePart && mePart.hand ? pick(lang, 'Қолды түсіру', 'Опустить руку', 'Lower hand') : pick(lang, 'Қол көтеру', 'Поднять руку', 'Raise hand')}</span>
           </button>
-          <button
-            className={BTN}
-            onClick={() => {
-              setDictOpen(true);
-              loadDict();
-            }}
-          >
-            📖
+          <button className={TOP} aria-label={pick(lang, 'Сөздік', 'Словарь', 'Glossary')} onClick={() => { setDictOpen(true); loadDict(); }}>
+            <Icon n="book" /><span className="hidden sm:inline">{pick(lang, 'Сөздік', 'Словарь', 'Glossary')}</span>
           </button>
           {fullscreenNeeded ? (
-            <button
-              className={BTN_P}
-              onClick={() => {
-                setFullscreenNeeded(false);
-                document.documentElement.requestFullscreen().catch(() => {});
-              }}
-            >
-              ⛶ Focus
+            <button className={TOP + ' !border-blue-700 !bg-blue-700 !text-white'} onClick={() => { setFullscreenNeeded(false); document.documentElement.requestFullscreen().catch(() => {}); }}>
+              <Icon n="shield" />Focus
             </button>
           ) : (
-            <span className="text-xs font-semibold text-emerald-400 bg-emerald-950 px-2.5 py-1.5 rounded-full">🛡 Focus қосулы</span>
+            <span className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-emerald-100 px-3 text-xs font-semibold text-emerald-900"><Icon n="shield" /><span className="hidden sm:inline">{pick(lang, 'Focus қосулы', 'Focus включён', 'Focus on')}</span></span>
           )}
         </div>
-      </div>
+      </header>
 
-      {nav && cur > 0 && (
+      <LessonMap kinds={kinds} count={session.slide_count || 0} cur={cur} viewing={viewing} nav={nav} lang={lang} onPick={setViewIdx} />
+      {viewing !== null && (
         <div data-testid="student-nav" className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-surface p-2 text-sm">
-          <button className={BTN} disabled={(viewing ?? cur) <= 0} onClick={() => setViewIdx((viewing ?? cur) - 1)}>◀ {pick(lang, 'Артқа', 'Назад', 'Back')}</button>
-          <span className="font-bold tabular-nums" aria-live="polite">{(viewing ?? cur) + 1} / {session.slide_count}</span>
-          <button className={BTN} disabled={viewing === null} onClick={() => setViewIdx((viewing ?? cur) + 1 >= cur ? null : (viewing ?? cur) + 1)}>{pick(lang, 'Алға', 'Вперёд', 'Next')} ▶</button>
-          {viewing !== null && <button data-testid="to-live" className={BTN_P} onClick={() => setViewIdx(null)}>{pick(lang, 'Тақтадағы слайдқа', 'К слайду на доске', 'To the board slide')}</button>}
+          <button data-testid="to-live" className={TOP + ' !border-blue-700 !bg-blue-700 !text-white'} onClick={() => setViewIdx(null)}>{pick(lang, 'Тақтадағы слайдқа', 'К слайду на доске', 'To the board slide')}</button>
         </div>
       )}
 
@@ -421,6 +421,8 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         )}
       </div>
       </>)}
+
+      {!locked && !popupActive && !dictOpen && <AskPanel sid={sid} me={me} slide={viewing ?? cur} kind={pick(lang, ...(KIND_NAME[kinds[viewing ?? cur]] || KIND_NAME.info))} lang={lang} />}
 
       {popupActive && (
         <div className="fixed inset-0 z-50 bg-amber-500 text-black flex flex-col items-center justify-center text-center p-6">
