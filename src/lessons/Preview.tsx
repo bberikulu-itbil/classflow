@@ -8,6 +8,7 @@ import { spCtx, useSpoilers } from './spoil';
 
 import { isRoboticsLessonId, loadRoboticsLesson } from './robotics';
 import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from './spreadsheets';
+import { isDatabasesLessonId, loadDatabasesLesson } from './databases';
 
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
 const label = (s: any, i: number, lang: 'kk' | 'ru') => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
@@ -30,6 +31,10 @@ export function LessonPreview({ id }: { id: string }) {
       const sp = await loadSpreadsheetsLesson(id);
       if (sp) return sp as Row;
     }
+    if (isDatabasesLessonId(id)) {
+      const db = await loadDatabasesLesson(id);
+      if (db) return db as Row;
+    }
     const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides').eq('id', id).maybeSingle();
     if (error) {
       if (isRoboticsLessonId(id)) {
@@ -40,6 +45,10 @@ export function LessonPreview({ id }: { id: string }) {
         const sp = await loadSpreadsheetsLesson(id);
         if (sp) return sp as Row;
       }
+      if (isDatabasesLessonId(id)) {
+        const db = await loadDatabasesLesson(id);
+        if (db) return db as Row;
+      }
       throw new Error(error.message);
     }
     if (!data && isRoboticsLessonId(id)) {
@@ -49,6 +58,10 @@ export function LessonPreview({ id }: { id: string }) {
     if (!data && isSpreadsheetsLessonId(id)) {
       const sp = await loadSpreadsheetsLesson(id);
       if (sp) return sp as Row;
+    }
+    if (!data && isDatabasesLessonId(id)) {
+      const db = await loadDatabasesLesson(id);
+      if (db) return db as Row;
     }
     return data as Row | null;
   }, [id]);

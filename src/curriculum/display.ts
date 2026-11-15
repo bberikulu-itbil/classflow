@@ -13,19 +13,23 @@ const MODULE_KK: Record<string, string> = {
   'Двумерные массивы': 'Екіөлшемді массивтер',
   'Рекурсия': 'Рекурсия',
   'Spreadsheets': 'Электрондық кестелер',
+  'Database basics': 'Деректер қорының негіздері',
 };
 
 const COURSE_KK: Record<string, string> = {
   'ACMP: Язык программирования C++': 'ACMP: C++ бағдарламалау тілі',
   'Informatics 8th grade': 'Информатика 8-сынып',
+  'Informatics 9th grade': 'Информатика 9-сынып',
 };
 
 const COURSE_RU: Record<string, string> = {
   'Informatics 8th grade': 'Информатика 8 класс',
+  'Informatics 9th grade': 'Информатика 9 класс',
 };
 
 const MODULE_RU: Record<string, string> = {
   'Spreadsheets': 'Электронные таблицы',
+  'Database basics': 'Основы баз данных',
 };
 
 export const courseTitle = (course: Course, lang: Lang) =>

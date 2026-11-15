@@ -3,6 +3,7 @@ import { loadLessonData } from '../lessons/data';
 import { currentQuarter } from '../lessons/model';
 import { ROBOTICS_LESSONS } from '../lessons/robotics';
 import { SPREADSHEETS_COURSE, SPREADSHEETS_MODULE, SPREADSHEETS_LESSONS_META } from '../lessons/spreadsheets';
+import { DATABASES_COURSE, DATABASES_MODULE, DATABASES_LESSONS_META } from '../lessons/databases';
 
 export interface Course {
   id: string;
@@ -57,33 +58,51 @@ const demoSeed = (): Store => ({
     { id: 'k1', title: 'Информатика 7', subject: 'Информатика', grade: 7 },
     { id: 'k2', title: 'Робототехника', subject: 'Робототехника', grade: null },
     { id: SPREADSHEETS_COURSE.id, title: SPREADSHEETS_COURSE.title, subject: SPREADSHEETS_COURSE.subject, grade: SPREADSHEETS_COURSE.grade },
+    { id: DATABASES_COURSE.id, title: DATABASES_COURSE.title, subject: DATABASES_COURSE.subject, grade: DATABASES_COURSE.grade },
   ],
   modules: [
     { id: 'm1', course_id: 'k1', title: 'Алгоритмдер', position: 0, kind: 'lesson', quarter: currentQuarter(), grade: 7 },
     { id: 'm2', course_id: 'k1', title: 'Бағдарламалау негіздері', position: 1, kind: 'lesson', quarter: null, grade: 7 },
     { id: 'm3', course_id: 'k2', title: 'Робототехника', position: 0, kind: 'course', quarter: null, grade: null },
     { id: SPREADSHEETS_MODULE.id, course_id: SPREADSHEETS_MODULE.course_id, title: SPREADSHEETS_MODULE.title, position: 0, kind: SPREADSHEETS_MODULE.kind as Kind, quarter: SPREADSHEETS_MODULE.quarter, grade: SPREADSHEETS_MODULE.grade },
+    { id: DATABASES_MODULE.id, course_id: DATABASES_MODULE.course_id, title: DATABASES_MODULE.title, position: 0, kind: DATABASES_MODULE.kind as Kind, quarter: DATABASES_MODULE.quarter, grade: DATABASES_MODULE.grade },
   ],
   places: [
     { lesson_id: 'l1', module_id: 'm1', position: 0 },
     { lesson_id: 'l2', module_id: 'm1', position: 1 },
     ...['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7'].map((lesson_id, position) => ({ lesson_id, module_id: 'm3', position })),
     ...SPREADSHEETS_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: SPREADSHEETS_MODULE.id, position })),
+    ...DATABASES_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: DATABASES_MODULE.id, position })),
   ],
 });
 function readLocal(me: Me): Store {
   try {
     const v = JSON.parse(localStorage.getItem(key(me)) || 'null');
     if (v && Array.isArray(v.courses) && Array.isArray(v.modules) && Array.isArray(v.places)) {
-      const storedCourses = v.courses;
-      const storedMods = v.modules.map((m: Partial<Mod> & { id: string }) => ({ kind: 'lesson', quarter: null, grade: null, ...m }));
-      const storedPlaces = v.places;
-      const hasCourse = storedCourses.some((x: Course) => x.id === SPREADSHEETS_COURSE.id || x.title === SPREADSHEETS_COURSE.title);
-      const courses = hasCourse ? storedCourses : [...storedCourses, SPREADSHEETS_COURSE];
-      const hasMod = storedMods.some((m: Mod) => m.id === SPREADSHEETS_MODULE.id || m.title === SPREADSHEETS_MODULE.title);
-      const modules = hasMod ? storedMods : [...storedMods, SPREADSHEETS_MODULE];
-      const staticPlaces: Place[] = SPREADSHEETS_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: SPREADSHEETS_MODULE.id, position }));
-      const places = [...storedPlaces, ...staticPlaces.filter(sp => !storedPlaces.some((dp: Place) => dp.lesson_id === sp.lesson_id))];
+      let courses = [...v.courses];
+      let modules = v.modules.map((m: Partial<Mod> & { id: string }) => ({ kind: 'lesson', quarter: null, grade: null, ...m }));
+      let places = [...v.places];
+
+      // Ensure SPREADSHEETS_COURSE & module are present
+      if (!courses.some((x: Course) => x.id === SPREADSHEETS_COURSE.id || x.title === SPREADSHEETS_COURSE.title)) {
+        courses.push(SPREADSHEETS_COURSE);
+      }
+      if (!modules.some((m: Mod) => m.id === SPREADSHEETS_MODULE.id || m.title === SPREADSHEETS_MODULE.title)) {
+        modules.push(SPREADSHEETS_MODULE);
+      }
+      const spPlaces: Place[] = SPREADSHEETS_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: SPREADSHEETS_MODULE.id, position }));
+      places = [...places, ...spPlaces.filter(sp => !places.some((dp: Place) => dp.lesson_id === sp.lesson_id))];
+
+      // Ensure DATABASES_COURSE & module are present
+      if (!courses.some((x: Course) => x.id === DATABASES_COURSE.id || x.title === DATABASES_COURSE.title)) {
+        courses.push(DATABASES_COURSE);
+      }
+      if (!modules.some((m: Mod) => m.id === DATABASES_MODULE.id || m.title === DATABASES_MODULE.title)) {
+        modules.push(DATABASES_MODULE);
+      }
+      const dbPlaces: Place[] = DATABASES_LESSONS_META.map((l, position) => ({ lesson_id: l.id, module_id: DATABASES_MODULE.id, position }));
+      places = [...places, ...dbPlaces.filter(db => !places.some((dp: Place) => dp.lesson_id === db.lesson_id))];
+
       return { courses, modules, places };
     }
   } catch { /* unreadable: start empty */ }
@@ -97,12 +116,13 @@ export async function loadLessons(meId: string): Promise<Les[]> {
   if (DEMO) {
     const base = (await loadLessonData(meId)).lessons.map(l => {
       const sp = SPREADSHEETS_LESSONS_META.find(s => s.id === l.id);
+      const db = DATABASES_LESSONS_META.find(d => d.id === l.id);
       const rb = ROBOTICS_LESSONS.find(r => r.id === l.id);
       return {
         id: l.id,
         title: l.title,
-        title_kk: sp?.title_kk || rb?.title_kk || l.title,
-        title_ru: sp?.title_ru || rb?.title_ru || l.title,
+        title_kk: sp?.title_kk || db?.title_kk || rb?.title_kk || l.title,
+        title_ru: sp?.title_ru || db?.title_ru || rb?.title_ru || l.title,
         subject: l.subject,
       };
     });
@@ -138,7 +158,14 @@ export async function loadLessons(meId: string): Promise<Les[]> {
     title_ru: s.title_ru,
     subject: s.subject,
   }));
-  const staticLessons = [...robLessons, ...spreadsheetsLessons];
+  const databasesLessons: Les[] = DATABASES_LESSONS_META.map(d => ({
+    id: d.id,
+    title: d.title,
+    title_kk: d.title_kk,
+    title_ru: d.title_ru,
+    subject: d.subject,
+  }));
+  const staticLessons = [...robLessons, ...spreadsheetsLessons, ...databasesLessons];
   return [...fromDb, ...staticLessons.filter(s => !fromDb.some(d => d.id === s.id))];
 }
 
@@ -164,36 +191,70 @@ export async function loadCurr(me: Me): Promise<Curr> {
       const dbCourses = (c.data as Course[]).map(enrichCourse);
 
       // Ensure SPREADSHEETS_COURSE is always available even if RLS or ownership hides it
-      const staticCourse = enrichCourse({
+      const staticSpCourse = enrichCourse({
         id: SPREADSHEETS_COURSE.id,
         title: SPREADSHEETS_COURSE.title,
         subject: SPREADSHEETS_COURSE.subject,
         grade: SPREADSHEETS_COURSE.grade,
       });
-      const existingCourse = dbCourses.find(x => x.id === staticCourse.id || x.title === staticCourse.title);
-      const effectiveCourses = existingCourse ? dbCourses : [...dbCourses, staticCourse];
-      const targetCourseId = existingCourse ? existingCourse.id : staticCourse.id;
+      const existingSpCourse = dbCourses.find(x => x.id === staticSpCourse.id || x.title === staticSpCourse.title);
+      let effectiveCourses = existingSpCourse ? dbCourses : [...dbCourses, staticSpCourse];
+      const targetSpCourseId = existingSpCourse ? existingSpCourse.id : staticSpCourse.id;
 
-      const staticModule: Mod = {
+      const staticSpModule: Mod = {
         id: SPREADSHEETS_MODULE.id,
-        course_id: targetCourseId,
+        course_id: targetSpCourseId,
         title: SPREADSHEETS_MODULE.title,
         position: SPREADSHEETS_MODULE.position,
         kind: SPREADSHEETS_MODULE.kind as Kind,
         quarter: SPREADSHEETS_MODULE.quarter,
         grade: SPREADSHEETS_MODULE.grade,
       };
-      const existingModule = mods.find(x => x.id === staticModule.id || (x.title === staticModule.title && x.course_id === targetCourseId));
-      const effectiveModules = existingModule ? mods : [...mods, staticModule];
-      const targetModuleId = existingModule ? existingModule.id : staticModule.id;
+      const existingSpModule = mods.find(x => x.id === staticSpModule.id || (x.title === staticSpModule.title && x.course_id === targetSpCourseId));
+      let effectiveModules = existingSpModule ? mods : [...mods, staticSpModule];
+      const targetSpModuleId = existingSpModule ? existingSpModule.id : staticSpModule.id;
+
+      // Ensure DATABASES_COURSE is always available
+      const staticDbCourse = enrichCourse({
+        id: DATABASES_COURSE.id,
+        title: DATABASES_COURSE.title,
+        subject: DATABASES_COURSE.subject,
+        grade: DATABASES_COURSE.grade,
+      });
+      const existingDbCourse = effectiveCourses.find(x => x.id === staticDbCourse.id || x.title === staticDbCourse.title);
+      if (!existingDbCourse) {
+        effectiveCourses = [...effectiveCourses, staticDbCourse];
+      }
+      const targetDbCourseId = existingDbCourse ? existingDbCourse.id : staticDbCourse.id;
+
+      const staticDbModule: Mod = {
+        id: DATABASES_MODULE.id,
+        course_id: targetDbCourseId,
+        title: DATABASES_MODULE.title,
+        position: DATABASES_MODULE.position,
+        kind: DATABASES_MODULE.kind as Kind,
+        quarter: DATABASES_MODULE.quarter,
+        grade: DATABASES_MODULE.grade,
+      };
+      const existingDbModule = effectiveModules.find(x => x.id === staticDbModule.id || (x.title === staticDbModule.title && x.course_id === targetDbCourseId));
+      if (!existingDbModule) {
+        effectiveModules = [...effectiveModules, staticDbModule];
+      }
+      const targetDbModuleId = existingDbModule ? existingDbModule.id : staticDbModule.id;
 
       const dbPlaces = (p.data as Place[]) || [];
-      const staticPlaces: Place[] = SPREADSHEETS_LESSONS_META.map((l, position) => ({
+      const staticSpPlaces: Place[] = SPREADSHEETS_LESSONS_META.map((l, position) => ({
         lesson_id: l.id,
-        module_id: targetModuleId,
+        module_id: targetSpModuleId,
         position,
       }));
-      const effectivePlaces = [...dbPlaces, ...staticPlaces.filter(sp => !dbPlaces.some(dp => dp.lesson_id === sp.lesson_id))];
+      const staticDbPlaces: Place[] = DATABASES_LESSONS_META.map((l, position) => ({
+        lesson_id: l.id,
+        module_id: targetDbModuleId,
+        position,
+      }));
+      const allStaticPlaces = [...staticSpPlaces, ...staticDbPlaces];
+      const effectivePlaces = [...dbPlaces, ...allStaticPlaces.filter(sp => !dbPlaces.some(dp => dp.lesson_id === sp.lesson_id))];
 
       return { courses: effectiveCourses, modules: order(effectiveModules), places: order(effectivePlaces), lessons, local: false, kindCol: !noKindCol };
     }

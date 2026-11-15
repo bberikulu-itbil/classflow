@@ -13,6 +13,7 @@ import { CanvasEditor } from '../lessons/CanvasEditor';
 import { canConvert, toCanvas } from '../lessons/canvas';
 import { isRoboticsLessonId, loadRoboticsLesson } from '../lessons/robotics';
 import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from '../lessons/spreadsheets';
+import { isDatabasesLessonId, loadDatabasesLesson } from '../lessons/databases';
 
 type Mode = 'manual' | 'ai';
 type PageType = 'slide' | 'scroll' | 'interactive';
@@ -263,6 +264,27 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           setGrade(String(sp.plan?.grade || '8'));
           setDuration(sp.plan?.duration || '45 минут');
           const loadedSlides = parseSlides(sp.slides);
+          const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
+          setSlides(nextSlides);
+          const firstCanvas = nextSlides.findIndex(slide => slide.type === 'canvas' || canConvert(slide));
+          setCanvasEditorIndex(firstCanvas >= 0 ? firstCanvas : 0);
+        }
+        setLoading(false);
+      });
+      return;
+    }
+    if (isDatabasesLessonId(route.lessonId)) {
+      setLoading(true);
+      loadDatabasesLesson(route.lessonId).then(db => {
+        if (db) {
+          setTitle(db.title);
+          setSubject(db.subject);
+          setTerms(parseTerms(db.terms));
+          setSummary(db.plan?.summary || '');
+          setObjectives(Array.isArray(db.plan?.objectives) ? db.plan.objectives.join('\n') : '');
+          setGrade(String(db.plan?.grade || '9'));
+          setDuration(db.plan?.duration || '45 минут');
+          const loadedSlides = parseSlides(db.slides);
           const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
           setSlides(nextSlides);
           const firstCanvas = nextSlides.findIndex(slide => slide.type === 'canvas' || canConvert(slide));
