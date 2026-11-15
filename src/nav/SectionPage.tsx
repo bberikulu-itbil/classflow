@@ -15,6 +15,7 @@ import { VocabBase, VocabLink, VocabTest, VocabShare } from '../vocab/Teacher';
 import { StudentVocab, StudentCards, StudentQuiz } from '../vocab/Student';
 import { ProfileCard } from '../components/ProfileView';
 import { ContestCatalog } from '../contests/Catalog';
+import { RoomsView, RequestsView } from '../rooms/Rooms';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
   if (section.subs.length < 2) return null; // one screen: a tab strip with one tab says nothing
@@ -67,6 +68,8 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:vocab:test': c => <VocabTest me={c.me} />,
   'teacher:vocab:share': c => <VocabShare me={c.me} />,
   'teacher:contests:catalog': c => <ContestCatalog me={c.me} role="teacher" />,
+  'teacher:rooms:list': c => <RoomsView me={c.me} />,
+  'teacher:rooms:requests': c => <RequestsView me={c.me} />,
   'student:contests:catalog': c => <ContestCatalog me={c.me} role="student" />,
   'student:grades:feedback': () => <StudentFeedback />,
   'student:vocab:mine': c => <StudentVocab me={c.me} />,

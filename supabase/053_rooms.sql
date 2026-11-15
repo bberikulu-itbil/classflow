@@ -1,4 +1,3 @@
--- NOT APPLIED YET: waiting for the Supabase confirmation. Remove this line once applied.
 -- Кабинеттер: кабинет, оның жабдығы, жабдықты/кабинетті алдын ала брондау (сұрау).
 -- Reuses: profiles, schools(tz), my_school(), is_staff(), is_deputy(), notify() (as in 052).
 --   cf_rooms / cf_room_items   : a room (STEM, informatics ...) and what is in it. kind 'laptop' = a laptop students may take.
