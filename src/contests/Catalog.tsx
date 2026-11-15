@@ -1,23 +1,25 @@
-import React, { Suspense, lazy, useMemo, useState } from 'react';
-import { Archive, Bookmark, BookmarkCheck, CalendarDays, ChartGantt, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Archive, Bookmark, BookmarkCheck, CalendarDays, ChartGantt, ChevronDown, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, useLoad } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import * as st from './store';
 import type { Contest, Data, Me, Stage } from './store';
 import { DetailDialog } from './DetailDialog';
 import type { Role } from './DetailDialog';
-import { AppChip, Chip, ContestIcon, canEdit, catName, isPast, monthKey, monthLabel, range } from './ui';
+import { AppChip, Chip, ContestIcon, canEdit, catName, monthLabel, occRange, occurrences } from './ui';
+import type { Occ } from './ui';
 import { Timeline } from './Timeline';
 
 export type { Role };
 const MapView = lazy(() => import('./MapView'));
 const DAYS = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб', 'Жк'];
 
-function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data; me: Me; saved: boolean; onSave: () => void; onOpen: () => void }) {
+function ContestCard({ o, d, me, saved, onSave, onOpen }: { o: Occ; d: Data; me: Me; saved: boolean; onSave: () => void; onOpen: () => void }) {
+  const c = o.c;
   const stages = d.stages.filter(s => s.contest_id === c.id);
   const nCats = d.categories.filter(x => x.contest_id === c.id).length;
   const top = st.levelsOf(c, stages).sort((x, y) => st.LEVELS.findIndex(l => l[0] === y) - st.LEVELS.findIndex(l => l[0] === x))[0];
-  const meta = c.location ?? [stages.length ? `${stages.length} кезең` : '', nCats ? `${nCats} санат` : ''].filter(Boolean).join(' · ');
+  const meta = o.label ? (o.i >= 0 ? `${o.label} · ${o.i + 1}/${o.n} кезең` : `Күні жоқ кезең: ${o.label}`) : c.location ?? [stages.length ? `${stages.length} кезең` : '', nCats ? `${nCats} санат` : ''].filter(Boolean).join(' · ');
   return (
     <article className={`flex h-full flex-col overflow-hidden rounded-xl border border-border ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
       <div className="relative h-28 shrink-0">
@@ -30,13 +32,13 @@ function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data;
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="truncate text-sm text-text-secondary">{range(c)}</p>
+        <p className="truncate text-sm text-text-secondary">{occRange(o)}</p>
         <h3 className="line-clamp-2 min-h-[3.5rem] text-lg font-semibold leading-7">{c.title}</h3>
         <div className="flex h-6 gap-1 overflow-hidden [&>*]:shrink-0 [&>*]:whitespace-nowrap">
           <Chip>{st.fieldName(c.field)}</Chip>{top && <Chip>{st.nameOf(st.LEVELS, top)}</Chip>}
           {c.is_online && <Chip tone="accent">Онлайн</Chip>}
         </div>
-        <p className="flex h-5 items-center gap-1 truncate text-sm text-text-secondary">{meta && <>{c.location && <MapPin size={14} aria-hidden="true" className="shrink-0" />}<span className="truncate">{meta}</span></>}</p>
+        <p className="flex h-5 items-center gap-1 truncate text-sm text-text-secondary">{meta && <>{!o.label && c.location && <MapPin size={14} aria-hidden="true" className="shrink-0" />}<span className={`truncate ${o.label ? 'font-medium text-on-accent-soft' : ''}`} title={meta}>{meta}</span></>}</p>
         <div className="mt-auto flex gap-2 pt-1">
           {c.status === 'published' && (
             <Button variant="secondary" onClick={onSave} aria-pressed={saved} aria-label={saved ? 'Сақталған, алып тастау' : 'Сақтау'}>{saved ? <BookmarkCheck size={18} aria-hidden="true" /> : <Bookmark size={18} aria-hidden="true" />}</Button>
@@ -49,17 +51,16 @@ function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data;
   );
 }
 
-function Calendar({ items, d, month, setMonth, onOpen }: { items: Contest[]; d: Data; month: string; setMonth: (m: string) => void; onOpen: (id: string) => void }) {
+function Calendar({ occs, month, setMonth, onOpen }: { occs: Occ[]; month: string; setMonth: (m: string) => void; onOpen: (id: string) => void }) {
   const [y, m] = month.split('-').map(Number);
   const first = new Date(y, m - 1, 1);
   const lead = (first.getDay() + 6) % 7; // Monday first
   const days = new Date(y, m, 0).getDate();
   const byDay = useMemo(() => {
     const map = new Map<string, { c: Contest; label: string }[]>();
-    const add = (iso: string | null, c: Contest, label: string) => { if (iso && iso.startsWith(month)) map.set(iso, [...(map.get(iso) ?? []), { c, label }]); };
-    for (const c of items) { add(c.starts_on, c, c.title); for (const s of d.stages.filter(s => s.contest_id === c.id)) if (s.on_date !== c.starts_on) add(s.on_date, c, `${c.title}: ${s.name}`); }
+    for (const o of occs) if (o.from && o.from.startsWith(month)) map.set(o.from, [...(map.get(o.from) ?? []), { c: o.c, label: o.label ? `${o.c.title}: ${o.label}` : o.c.title }]);
     return map;
-  }, [items, d.stages, month]);
+  }, [occs, month]);
   const shift = (n: number) => { const t = new Date(y, m - 1 + n, 1); setMonth(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`); };
   const cells = [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
   return (
@@ -134,13 +135,38 @@ function Sel({ label, v, set, opts, all }: { label: string; v: string; set: (s: 
   return <div className="min-w-[7rem] flex-1"><select aria-label={label} className={ctl} value={v} onChange={e => set(e.target.value)}><option value="">{all}</option>{opts.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select></div>;
 }
 
+/** Several values at once: a button with a checklist under it (closes on outside click or Escape). */
+function MultiSel({ label, v, set, opts, all }: { label: string; v: string[]; set: (s: string[]) => void; opts: [string, string][]; all: string }) {
+  const box = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const off = (e: Event) => { const el = box.current; if (el?.open && (e.type === 'keydown' ? (e as KeyboardEvent).key === 'Escape' : !el.contains(e.target as Node))) el.open = false; };
+    document.addEventListener('mousedown', off); document.addEventListener('keydown', off);
+    return () => { document.removeEventListener('mousedown', off); document.removeEventListener('keydown', off); };
+  }, []);
+  return (
+    <details ref={box} className="relative min-w-[7rem] flex-1">
+      <summary aria-label={label} className={ctl + ' flex cursor-pointer list-none items-center justify-between gap-1 [&::-webkit-details-marker]:hidden'}>
+        <span className="truncate">{v.length ? `${label}: ${v.length}` : all}</span><ChevronDown size={16} aria-hidden="true" className="shrink-0 text-text-muted" />
+      </summary>
+      <div role="group" aria-label={label} className="absolute left-0 z-30 mt-1 max-h-72 w-64 overflow-auto rounded-lg border border-border bg-surface p-1 shadow-pop">
+        {opts.map(o => (
+          <label key={o[0]} className="flex min-h-[40px] cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-surface-2">
+            <input type="checkbox" className="h-4 w-4 shrink-0" checked={v.includes(o[0])} onChange={() => set(v.includes(o[0]) ? v.filter(x => x !== o[0]) : [...v, o[0]])} />{o[1]}
+          </label>
+        ))}
+        {v.length > 0 && <button type="button" onClick={() => set([])} className="mt-1 min-h-[40px] w-full cursor-pointer rounded-md px-2 text-left text-sm font-medium text-on-accent-soft hover:bg-surface-2">Таңдауды тазалау</button>}
+      </div>
+    </details>
+  );
+}
+
 export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
   const { data: d, error, loading, reload } = useLoad(() => st.loadAll(me), [me.id]);
   const tabs = role === 'teacher'
     ? [{ key: 'catalog', label: 'Каталог' }, { key: 'saved', label: 'Сақталғандар' }, { key: 'apps', label: 'Өтінімдер' }, { key: 'mine', label: 'Менің сайыстарым' }]
     : [{ key: 'catalog', label: 'Каталог' }, { key: 'saved', label: 'Сақталғандар' }, { key: 'apps', label: 'Менің өтінімдерім' }];
   const [tab, setTab] = useState('catalog'), [view, setView] = useState<'list' | 'cal' | 'time' | 'map'>('list'), [arch, setArch] = useState(false);
-  const [q, setQ] = useState(''), [field, setField] = useState(''), [cat, setCat] = useState(''), [level, setLevel] = useState(''), [grade, setGrade] = useState(''), [kind, setKind] = useState(''), [sort, setSort] = useState('date');
+  const [q, setQ] = useState(''), [field, setField] = useState<string[]>([]), [cat, setCat] = useState<string[]>([]), [level, setLevel] = useState(''), [grade, setGrade] = useState(''), [kind, setKind] = useState(''), [sort, setSort] = useState('date');
   const [month, setMonth] = useState(st.todayIso().slice(0, 7)), [open, setOpen] = useState<string | null>(null), [note, setNote] = useState(''), [msg, setMsg] = useState('');
 
   const act = async (fn: () => Promise<unknown>, done: string) => {
@@ -148,28 +174,32 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
     try { await fn(); setNote(done); reload(); } catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); }
   };
   const inTab = useMemo(() => (d ? d.contests.filter(c => tab === 'mine' ? c.author_id === me.id : tab === 'saved' ? d.saves.includes(c.id) : c.status === 'published') : []), [d, tab, me.id]);
-  const past = useMemo(() => new Set(d ? inTab.filter(c => isPast(c, d.stages.filter(s => s.contest_id === c.id))).map(c => c.id) : []), [d, inTab]);
-  const base = useMemo(() => inTab.filter(c => past.has(c.id) === arch), [inTab, past, arch]);
+  const split = tab !== 'mine'; // a contest's own page lists it once; everywhere else each dated stage is its own showing
   // the filters offer only what exists in the data: known fields first, then the teachers' own names
   const fieldOpts = useMemo<[string, string][]>(() => {
-    const used = [...new Set(base.map(c => c.field))];
+    const used = [...new Set(inTab.map(c => c.field))];
     return [...st.FIELDS.filter(f => used.includes(f[0])), ...used.filter(u => !st.FIELDS.some(f => f[0] === u)).sort((a, b) => a.localeCompare(b, 'kk')).map((u): [string, string] => [u, u])];
-  }, [base]);
+  }, [inTab]);
   const catOpts = useMemo<[string, string][]>(() => {
-    const ids = new Set(base.map(c => c.id));
+    const ids = new Set(inTab.map(c => c.id));
     return [...new Set((d?.categories ?? []).filter(x => ids.has(x.contest_id ?? '')).map(x => x.name))].sort((a, b) => a.localeCompare(b, 'kk')).map((n): [string, string] => [n, n]);
-  }, [d, base]);
-  const list = useMemo(() => {
+  }, [d, inTab]);
+  const all = useMemo(() => {
     if (!d) return [];
     const needle = q.trim().toLowerCase();
     const catsOf = (id: string) => d.categories.filter(x => x.contest_id === id);
-    const out = base.filter(c => (!needle || `${c.title} ${c.organizer ?? ''} ${c.location ?? ''} ${catsOf(c.id).map(x => x.name).join(' ')}`.toLowerCase().includes(needle)) && (!field || c.field === field)
-      && (!cat || catsOf(c.id).some(x => x.name === cat)) && (!level || st.levelsOf(c, d.stages.filter(s => s.contest_id === c.id)).includes(level))
+    const keep = inTab.filter(c => (!needle || `${c.title} ${c.organizer ?? ''} ${c.location ?? ''} ${catsOf(c.id).map(x => x.name).join(' ')}`.toLowerCase().includes(needle)) && (!field.length || field.includes(c.field))
+      && (!cat.length || catsOf(c.id).some(x => cat.includes(x.name))) && (!level || st.levelsOf(c, d.stages.filter(s => s.contest_id === c.id)).includes(level))
       && (!kind || c.kind === kind) && (!grade || ((!c.grades.length || c.grades.includes(Number(grade))))));
-    const asc = out.sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'kk') : (a.starts_on ?? '9999').localeCompare(b.starts_on ?? '9999'));
-    return arch && sort !== 'title' ? asc.reverse() : asc;
-  }, [d, base, q, field, cat, level, grade, kind, sort, arch]);
-  const groups = useMemo(() => { const m = new Map<string, Contest[]>(); for (const c of list) m.set(monthKey(c), [...(m.get(monthKey(c)) ?? []), c]); return [...m]; }, [list]);
+    return keep.flatMap(c => occurrences(c, d.stages.filter(s => s.contest_id === c.id), split));
+  }, [d, inTab, q, field, cat, level, grade, kind, split]);
+  const pastCount = all.filter(o => o.past).length;
+  const occs = useMemo(() => {
+    const out = all.filter(o => o.past === arch).sort((a, b) => sort === 'title' ? a.c.title.localeCompare(b.c.title, 'kk') || (a.from ?? '9999').localeCompare(b.from ?? '9999') : (a.from ?? '9999').localeCompare(b.from ?? '9999') || a.c.title.localeCompare(b.c.title, 'kk'));
+    return arch && sort !== 'title' ? out.reverse() : out;
+  }, [all, arch, sort]);
+  const list = useMemo(() => [...new Map(occs.map(o => [o.c.id, o.c])).values()], [occs]);
+  const groups = useMemo(() => { const m = new Map<string, Occ[]>(); for (const o of occs) { const k = o.from ? o.from.slice(0, 7) : ''; m.set(k, [...(m.get(k) ?? []), o]); } return [...m]; }, [occs]);
   const opened = d?.contests.find(c => c.id === open);
   const pending = d ? d.apps.filter(a => a.status === 'pending' && a.teacher_id === me.id) : [];
   const showInbox = role === 'teacher' && tab !== 'apps' && pending.length > 0;
@@ -195,8 +225,8 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
                   <div className="relative min-w-[9rem] flex-[2]">
                     <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-3 text-text-muted" />
                     <input type="search" aria-label="Іздеу" className={ctl + ' pl-8'} value={q} onChange={e => setQ(e.target.value)} placeholder="Іздеу" /></div>
-                  <Sel label="Сала" v={field} set={setField} opts={fieldOpts} all="Сала" />
-                  <Sel label="Санат" v={cat} set={setCat} opts={catOpts} all="Санат" />
+                  <MultiSel label="Сала" v={field} set={setField} opts={fieldOpts} all="Сала" />
+                  <MultiSel label="Санат" v={cat} set={setCat} opts={catOpts} all="Санат" />
                   <Sel label="Деңгей" v={level} set={setLevel} opts={st.LEVELS} all="Деңгей" />
                   <Sel label="Сынып" v={grade} set={setGrade} opts={[5, 6, 7, 8, 9, 10, 11].map(n => [String(n), `${n} сынып`])} all="Сынып" />
                   <Sel label="Түрі" v={kind} set={setKind} opts={[['own', 'ClassFlow ішінде'], ['external', 'Сыртқы сайыс']]} all="Түрі" />
@@ -210,12 +240,12 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
                     ))}
                   </div>
                   <div className="flex items-center gap-3">
-                    <button type="button" aria-pressed={arch} onClick={() => setArch(!arch)} className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium ${arch ? 'border-accent bg-accent-soft text-on-accent-soft' : 'border-border text-text-secondary hover:text-text'}`}><Archive size={16} aria-hidden="true" />Архив{past.size > 0 && <span className="text-xs">({past.size})</span>}</button>
-                    <p className="text-sm text-text-secondary" aria-live="polite">{list.length} сайыс</p>
+                    <button type="button" aria-pressed={arch} onClick={() => setArch(!arch)} className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium ${arch ? 'border-accent bg-accent-soft text-on-accent-soft' : 'border-border text-text-secondary hover:text-text'}`}><Archive size={16} aria-hidden="true" />Архив{pastCount > 0 && <span className="text-xs">({pastCount})</span>}</button>
+                    <p className="text-sm text-text-secondary" aria-live="polite">{list.length} сайыс{occs.length !== list.length && ` · ${occs.length} іс-шара`}</p>
                   </div>
                 </div>
-                {view === 'cal' ? <Calendar items={list} d={d} month={month} setMonth={setMonth} onOpen={setOpen} />
-                  : view === 'time' ? (list.length ? <Timeline items={list} d={d} onOpen={setOpen} /> : <EmptyState text={emptyText} />)
+                {view === 'cal' ? <Calendar occs={occs} month={month} setMonth={setMonth} onOpen={setOpen} />
+                  : view === 'time' ? (list.length ? <Timeline occs={occs} onOpen={setOpen} /> : <EmptyState text={emptyText} />)
                   : view === 'map' ? (
                     <div className="space-y-2">
                       <Suspense fallback={<Skeleton rows={4} />}><MapView items={list} onOpen={setOpen} /></Suspense>
@@ -228,8 +258,8 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
                   : groups.map(([k, items]) => (
                     <section key={k || 'none'} aria-label={monthLabel(k)} className="space-y-2">
                       <h2 className="text-base font-semibold text-text-secondary">{monthLabel(k)}</h2>
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{items.map(c => <ContestCard key={c.id} c={c} d={d} me={me} saved={d.saves.includes(c.id)} onOpen={() => setOpen(c.id)}
-                        onSave={() => act(() => st.setSaved(me, c.id, !d.saves.includes(c.id)), '')} />)}</div>
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{items.map(o => <ContestCard key={o.key} o={o} d={d} me={me} saved={d.saves.includes(o.c.id)} onOpen={() => setOpen(o.c.id)}
+                        onSave={() => act(() => st.setSaved(me, o.c.id, !d.saves.includes(o.c.id)), '')} />)}</div>
                     </section>
                   ))}
               </>

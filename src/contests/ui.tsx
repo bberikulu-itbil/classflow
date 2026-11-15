@@ -1,7 +1,7 @@
 import React from 'react';
 import { Atom, BookOpen, Bot, Brain, Calculator, Code2, Cpu, Dna, FlaskConical, Globe, GraduationCap, Landmark, Languages, Leaf, Medal, Palette, Rocket, Trophy } from 'lucide-react';
 import * as st from './store';
-import type { App, Contest, Data } from './store';
+import type { App, Contest, Data, Stage } from './store';
 
 export const MONTHS = ['Қаңтар', 'Ақпан', 'Наурыз', 'Сәуір', 'Мамыр', 'Маусым', 'Шілде', 'Тамыз', 'Қыркүйек', 'Қазан', 'Қараша', 'Желтоқсан'];
 export const dmy = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return `${d} ${MONTHS[m - 1].toLowerCase()}${y === new Date().getFullYear() ? '' : ' ' + y}`; };
@@ -44,3 +44,17 @@ export function span(c: Contest, stages: { on_date: string | null }[]) {
 }
 /** Past = every known date is before today and no stage is still without a date. No dates at all: stays active. */
 export const isPast = (c: Contest, stages: { on_date: string | null }[]) => { const s = span(c, stages); return !!s.to && !s.openStage && s.to < st.todayIso(); };
+
+/** One showing of a contest: a dated stage, the undated stages together, or the whole contest. The same contest can appear several times; all open one page. */
+export interface Occ { key: string; c: Contest; label: string | null; from: string | null; to: string | null; past: boolean; i: number; n: number }
+export const occRange = (o: Occ) => !o.from ? 'Күні белгісіз' : !o.to || o.to === o.from ? dmy(o.from) : `${dmy(o.from)} – ${dmy(o.to)}`;
+/** split: every dated stage is its own showing (passed stages go to the archive one by one); otherwise one showing per contest. */
+export function occurrences(c: Contest, stages: Stage[], split: boolean): Occ[] {
+  const today = st.todayIso();
+  const dated = split ? stages.filter(x => x.on_date).sort((a, b) => (a.on_date as string).localeCompare(b.on_date as string)) : [];
+  if (!dated.length) { const sp = span(c, stages); return [{ key: c.id, c, label: null, from: sp.from, to: sp.to, past: isPast(c, stages), i: 0, n: 1 }]; }
+  const out: Occ[] = dated.map(x => ({ key: `${c.id}:${x.id ?? x.name}`, c, label: x.name, from: x.on_date, to: x.on_date, past: (x.on_date as string) < today, i: stages.indexOf(x), n: stages.length }));
+  const und = stages.filter(x => !x.on_date);
+  if (und.length) out.push({ key: `${c.id}:?`, c, label: und.map(x => x.name).join(' · '), from: null, to: null, past: false, i: -1, n: stages.length });
+  return out;
+}
