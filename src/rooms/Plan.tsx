@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Copy, LayoutGrid, RotateCw, Trash2 } from 'lucide-react';
 import { Button, Field, inputCls } from '../ui';
 import * as st from './store';
@@ -12,7 +12,7 @@ const clamp = (n: number, a: number, b: number) => Math.min(Math.max(n, a), Math
 const pts = (poly: { x: number; y: number }[]) => poly.map(p => `${(p.x * S).toFixed(1)},${(p.y * S).toFixed(1)}`).join(' ');
 const typeCol = (t: ElType) => { const h = st.EL_TYPES[t].hue; return { fill: `hsl(${h} 80% 92%)`, line: `hsl(${h} 55% 38%)`, text: `hsl(${h} 60% 20%)` }; };
 
-interface On { down?: (e: React.PointerEvent, el: El) => void; key?: (e: React.KeyboardEvent, el: El) => void; size?: (e: React.PointerEvent, el: El) => void; wall?: (w: Wall) => void; pick?: (el: El) => void; bg?: () => void }
+interface On { down?: (e: React.PointerEvent, el: El) => void; focus?: (el: El) => void; size?: (e: React.PointerEvent, el: El) => void; wall?: (w: Wall) => void; pick?: (el: El) => void; bg?: () => void }
 
 /** One drawing for both the read-only view and the editor. An element can be linked to an equipment item. */
 function Svg({ layout, sel, items, svgRef, on, ghost, draw }: { layout: Layout; sel?: string; items: Item[]; svgRef?: React.Ref<SVGSVGElement>; on?: On; ghost?: { x1: number; y1: number; x2: number; y2: number } | null; draw?: boolean }) {
@@ -30,7 +30,7 @@ function Svg({ layout, sel, items, svgRef, on, ghost, draw }: { layout: Layout; 
         {(layout.walls ?? []).map(w => {
           const geo = wallGeo(w), c = wallColor(w), len = st.wallLen(w), th = st.thOf(w), act = !!on?.wall;
           return (
-            <g key={w.id} role={act ? 'button' : 'img'} aria-label={`Қабырға: ${len} см`} tabIndex={act ? 0 : undefined} style={{ cursor: act ? 'pointer' : 'default', outline: 'none' }} onPointerDown={act ? ev => { ev.stopPropagation(); on!.wall!(w); } : undefined}>
+            <g key={w.id} role={act ? 'button' : 'img'} aria-label={`Қабырға: ${len} см`} tabIndex={act ? 0 : undefined} style={{ cursor: act ? 'pointer' : 'default', outline: 'none' }} onPointerDown={act ? ev => { ev.stopPropagation(); on!.wall!(w); } : undefined} onFocus={act ? () => on!.wall!(w) : undefined}>
               <title>Қабырға · {len} см, қалыңдығы {th} см, биіктігі {st.wzOf(w)} см</title>
               <polygon points={pts(geo.quad(0, geo.L))} fill={hsl(c)} stroke={sel === w.id ? 'var(--color-accent)' : hsl(c, -38)} strokeWidth={sel === w.id ? 2.5 : 1} />
               {(w.ops ?? []).map(o => <polygon key={o.id} points={pts(geo.quad(o.at, o.at + o.wd, th + 2))} fill={o.k === 'door' ? hsl(opColor(o), 30) : '#cdeefa'} stroke={o.k === 'door' ? hsl(opColor(o), -10) : '#2b7a99'} strokeWidth="1.2"><title>{o.k === 'door' ? 'Есік' : 'Терезе'} · {o.wd} см</title></polygon>)}
@@ -44,7 +44,7 @@ function Svg({ layout, sel, items, svgRef, on, ghost, draw }: { layout: Layout; 
           return (
             <g key={e.id} role={act ? 'button' : 'img'} aria-label={`${st.EL_TYPES[e.t].name}: ${name}${item ? ` (${item.name})` : ''}`} tabIndex={act ? 0 : undefined}
               style={{ cursor: on?.down ? 'grab' : item && on?.pick ? 'pointer' : 'default', outline: 'none' }}
-              onPointerDown={on?.down ? ev => on.down!(ev, e) : undefined} onKeyDown={on?.key ? ev => on.key!(ev, e) : undefined}
+              onPointerDown={on?.down ? ev => on.down!(ev, e) : undefined} onFocus={on?.focus ? () => on.focus!(e) : undefined}
               onClick={!on?.down && item ? () => on?.pick?.(e) : undefined} onKeyUp={!on?.down && item ? ev => { if (ev.key === 'Enter') on?.pick?.(e); } : undefined}>
               <title>{name} · {e.w}×{e.h}×{st.zOf(e)} см{item ? ` — ${item.name}, ${item.qty} дана` : ''}</title>
               <svg x={e.x * S} y={e.y * S} width={pw} height={ph}>
@@ -113,6 +113,8 @@ export function PlanEditor({ layout, items, set }: { layout: Layout | null; item
   const ref = useRef<SVGSVGElement>(null), drag = useRef<Drag>(null), start = useRef<{ x: number; y: number } | null>(null);
   const [sel, setSel] = useState(''), [rows, setRows] = useState('3'), [cols, setCols] = useState('4'), [chairs, setChairs] = useState(true), [d3, setD3] = useState(false);
   const [tool, setTool] = useState<'sel' | 'wall'>('sel'), [ghost, setGhost] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null), [msg, setMsg] = useState('');
+  const kb = useRef<(e: KeyboardEvent) => void>(() => {});
+  useEffect(() => { const f = (e: KeyboardEvent) => kb.current(e); window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f); }, []);
   if (!layout) return <div className="space-y-2"><h3 className="font-semibold">Кабинет схемасы</h3><p className="text-sm text-text-secondary">Схема әлі жоқ: кабинет өлшемін енгізіп, қабырға, парта, компьютер, тақта қойып сызыңыз.</p><Button variant="secondary" onClick={() => set(st.blankLayout())}><LayoutGrid size={16} aria-hidden="true" />Схема сызу</Button></div>;
   const g = layout.grid ?? 50, walls = layout.walls ?? [], W = layout.w, H = layout.h;
   const setEls = (els: El[]) => set({ ...layout, els });
@@ -154,14 +156,20 @@ export function PlanEditor({ layout, items, set }: { layout: Layout | null; item
     }
     start.current = null; setGhost(null);
   };
-  const key = (ev: React.KeyboardEvent, e: El) => {
-    const s = Math.max(g, 1), d = { ArrowLeft: [-s, 0], ArrowRight: [s, 0], ArrowUp: [0, -s], ArrowDown: [0, s] }[ev.key];
-    if (d) { ev.preventDefault(); upd(e.id, fit(e, e.x + d[0], e.y + d[1])); } else if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); setEls(layout.els.filter(x => x.id !== e.id)); setSel(''); }
-  };
   const perimeter = () => { const t = 20, a = t / 2, ps: [number, number][] = [[a, a], [W - a, a], [W - a, H - a], [a, H - a]]; setWalls([...walls, ...ps.map(([x1, y1], i) => ({ id: uid(), x1, y1, x2: ps[(i + 1) % 4][0], y2: ps[(i + 1) % 4][1], th: t }))]); setMsg(''); };
   const cur = layout.els.find(e => e.id === sel), curW = walls.find(w => w.id === sel);
   const rotate = (e: El) => { const w = e.h, h = e.w, n = fit({ ...e, w, h }, e.x, e.y); upd(e.id, { w: Math.min(w, W), h: Math.min(h, H), ...n, r: ((e.r ?? 0) + 1) % 4 }); };
   const copy = (e: El) => { const n = { ...e, id: uid(), ...fit(e, e.x + Math.max(g, 20), e.y + Math.max(g, 20)) }; setEls([...layout.els, n]); setSel(n.id); };
+  const copyW = (w: Wall) => { const dx = Math.min(30, W - Math.max(w.x1, w.x2)), dy = Math.min(30, H - Math.max(w.y1, w.y2)), n: Wall = { ...w, id: uid(), x1: w.x1 + dx, x2: w.x2 + dx, y1: w.y1 + dy, y2: w.y2 + dy, ops: w.ops?.map(o => ({ ...o, id: uid() })) }; setWalls([...walls, n]); setSel(n.id); };
+  const delSel = () => { if (cur) setEls(layout.els.filter(x => x.id !== cur.id)); else if (curW) setWalls(walls.filter(w => w.id !== curW.id)); setSel(''); };
+  kb.current = ev => { // works after a mouse click too: the drawing keeps no focus; typing in a field is left alone
+    if (d3 || (ev.target as HTMLElement).closest('input,select,textarea,[contenteditable="true"]')) return;
+    const mod = ev.ctrlKey || ev.metaKey, k = ev.key;
+    if (mod && k.toLowerCase() === 'd') { ev.preventDefault(); if (cur) copy(cur); else if (curW) copyW(curW); }
+    else if ((k === 'Delete' || k === 'Backspace') && (cur || curW)) { ev.preventDefault(); delSel(); }
+    else if (k === 'Escape') { setSel(''); setTool('sel'); }
+    else if (cur && k.startsWith('Arrow')) { ev.preventDefault(); const s = Math.max(g, 1) * (ev.shiftKey ? 10 : 1), d = { ArrowLeft: [-s, 0], ArrowRight: [s, 0], ArrowUp: [0, -s], ArrowDown: [0, s] }[k]; if (d) upd(cur.id, fit(cur, cur.x + d[0], cur.y + d[1])); }
+  };
   const setOps = (w: Wall, ops: Opening[]) => updW(w.id, { ops });
   const combo = (w: Wall, kinds: ('door' | 'window')[], replace: boolean) => {
     if (replace) { const o = spread(kinds, st.wallLen(w)); if (!o) return setMsg('Қабырға тым қысқа: есік/терезе сыймайды'); setMsg(''); return setOps(w, o); }
@@ -192,9 +200,9 @@ export function PlanEditor({ layout, items, set }: { layout: Layout | null; item
       {msg && <p role="status" className="text-sm text-danger">{msg}</p>}
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-text-secondary">{sizeText(layout)}</p><ModeSwitch v={d3} set={setD3} /></div>
       {d3 ? <Plan3D layout={layout} items={items} /> : <div onPointerDown={wrapDown} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
-        <Svg layout={layout} sel={sel} items={items} svgRef={ref} ghost={ghost} draw={tool === 'wall'} on={{ down, key, size, wall: w => { setSel(w.id); setTool('sel'); }, bg: () => setSel('') }} />
+        <Svg layout={layout} sel={sel} items={items} svgRef={ref} ghost={ghost} draw={tool === 'wall'} on={{ down, focus: e => setSel(e.id), size, wall: w => { setSel(w.id); setTool('sel'); }, bg: () => setSel('') }} />
       </div>}
-      <p className="text-xs text-text-secondary">Затты тышқанмен немесе саусақпен жылжытыңыз, таңдалған заттың бұрышындағы нүктені сүйреп өлшемін өзгертіңіз. Пернетақтамен: бағыттар — жылжыту, Delete — өшіру. Дәл өлшемді төмендегі өрістерге см-мен жазыңыз.</p>
+      <p className="text-xs text-text-secondary">Затты тышқанмен немесе саусақпен жылжытыңыз, таңдалған заттың бұрышындағы нүктені сүйреп өлшемін өзгертіңіз. Пернетақтамен: бағыттар — жылжыту (Shift — 10 есе), Delete — өшіру, Ctrl/Cmd + D — көшірме, Esc — таңдауды алу. Дәл өлшемді төмендегі өрістерге см-мен жазыңыз.</p>
       {cur && (
         <div className="space-y-2 rounded-lg border border-border p-3">
           <p className="text-sm font-semibold">{st.EL_TYPES[cur.t].name}</p>
@@ -238,7 +246,7 @@ export function PlanEditor({ layout, items, set }: { layout: Layout | null; item
                 <div className="flex flex-wrap items-end gap-3"><ColorPick label="Түсі" compact value={o.c} onChange={c => updO(curW, o.id, { c })} /><Button variant="ghost" onClick={() => setOps(curW, (curW.ops ?? []).filter(x => x.id !== o.id))}><Trash2 size={16} aria-hidden="true" />Өшіру</Button></div>
               </div>))}
           </div>
-          <Button variant="ghost" onClick={() => { setWalls(walls.filter(w => w.id !== curW.id)); setSel(''); }}><Trash2 size={16} aria-hidden="true" />Қабырғаны өшіру</Button>
+          <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => copyW(curW)}><Copy size={16} aria-hidden="true" />Көшіру</Button><Button variant="ghost" onClick={delSel}><Trash2 size={16} aria-hidden="true" />Қабырғаны өшіру</Button></div>
         </div>)}
       {!cur && !curW && <p className="text-sm text-text-secondary">Өзгерту үшін схемадағы зат немесе қабырғаны басыңыз.</p>}
     </div>
