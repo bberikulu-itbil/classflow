@@ -66,6 +66,7 @@ function StageList({ stages }: { stages: Stage[] }) {
                 {s.location && <span className="inline-flex items-center gap-1"><MapPin size={12} aria-hidden="true" />{s.location}</span>}
                 {s.format && <span>{s.format}</span>}
               </p>
+              {s.who && <p className="text-text-secondary">Кім қатыса алады: {s.who}</p>}
               {s.advance && <p className="text-text-secondary">Келесіге өту: {s.advance}</p>}
             </div>
           </li>

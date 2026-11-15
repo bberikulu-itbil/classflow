@@ -41,7 +41,7 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
   const remove = async () => {
     try { await st.deleteContest(f.id!); window.location.hash = BACK.slice(1); } catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); setAsk(false); }
   };
-  const stageSet = (i: number, k: 'name' | 'on_date' | 'format' | 'advance' | 'level' | 'location', v: string) => set('stages', f.stages.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
+  const stageSet = (i: number, k: 'name' | 'on_date' | 'format' | 'advance' | 'level' | 'location' | 'who', v: string) => set('stages', f.stages.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
   const catSet = (i: number, p: Partial<st.Category>) => set('categories', f.categories.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const published = f.status === 'published';
   const otherField = !st.FIELDS.some(x => x[0] === f.field);
@@ -132,12 +132,13 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
             <Field label="Күні">{x => <input id={x} type="date" className={inputCls} value={s.on_date ?? ''} onChange={e => stageSet(i, 'on_date', e.target.value)} />}</Field>
             <Field label="Деңгейі">{x => <select id={x} className={inputCls} value={s.level ?? ''} onChange={e => stageSet(i, 'level', e.target.value)}><option value="">Көрсетілмеген</option>{st.LEVELS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
             <Field label="Орны">{x => <input id={x} className={inputCls} maxLength={200} value={s.location ?? ''} onChange={e => stageSet(i, 'location', e.target.value)} />}</Field>
+            <Field label="Кім қатыса алады">{x => <input id={x} className={inputCls} maxLength={300} placeholder="Мысалы: облыстағы кез келген команда" value={s.who ?? ''} onChange={e => stageSet(i, 'who', e.target.value)} />}</Field>
             <Field label="Формат">{x => <input id={x} className={inputCls} maxLength={120} placeholder="Онлайн / қатысып" value={s.format ?? ''} onChange={e => stageSet(i, 'format', e.target.value)} />}</Field>
             <Field label="Келесіге өту шарты">{x => <input id={x} className={inputCls} maxLength={200} value={s.advance ?? ''} onChange={e => stageSet(i, 'advance', e.target.value)} />}</Field>
             <Button variant="ghost" className="justify-self-start" onClick={() => set('stages', f.stages.filter((_, j) => j !== i))} aria-label={`Кезең ${i + 1} өшіру`}><Trash2 size={18} aria-hidden="true" />Өшіру</Button>
           </div>
         ))}
-        <Button variant="secondary" onClick={() => set('stages', [...f.stages, { name: '', on_date: null, format: null, advance: null, level: null, location: null }])}><Plus size={16} aria-hidden="true" />Кезең қосу</Button>
+        <Button variant="secondary" onClick={() => set('stages', [...f.stages, { name: '', on_date: null, format: null, advance: null, level: null, location: null, who: null }])}><Plus size={16} aria-hidden="true" />Кезең қосу</Button>
       </section>
 
       <section className="space-y-2">

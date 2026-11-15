@@ -30,7 +30,7 @@ export interface Contest {
   location: string | null; map_url: string | null; lat: number | null; lng: number | null; is_online: boolean; age_min: number | null; age_max: number | null; team_size: string | null;
   fee_text: string | null; travel_text: string | null; toolset: string | null; cover_url: string | null; icon: string | null;
 }
-export interface Stage { id?: string; contest_id?: string; pos?: number; name: string; on_date: string | null; format: string | null; advance: string | null; level: string | null; location: string | null }
+export interface Stage { id?: string; contest_id?: string; pos?: number; name: string; on_date: string | null; format: string | null; advance: string | null; level: string | null; location: string | null; who: string | null }
 /** A part of a contest (FLL, Drone Soccer ...) with its own rules. */
 export interface Category { id?: string; contest_id?: string; pos?: number; name: string; rules_url: string | null; rules_text: string; grades: number[] }
 export interface App { id: string; contest_id: string; student_id: string; teacher_id: string; message: string; status: 'pending' | 'approved' | 'rejected'; rules_version: number; created_at: string; category_id?: string | null }
@@ -76,7 +76,7 @@ const mk = (id: string, o: Partial<Contest>): Contest => ({
   location: null, map_url: null, lat: null, lng: null, is_online: false, age_min: null, age_max: null, team_size: null, fee_text: null, travel_text: null, toolset: null, cover_url: null, icon: null, ...o,
 });
 const stg = (contest_id: string, rows: [string, string | null, string?, string?][]): Stage[] =>
-  rows.map((r, i) => ({ id: `${contest_id}-s${i}`, contest_id, pos: i, name: r[0], on_date: r[1], format: r[2] ?? null, advance: r[3] ?? null, level: null, location: null }));
+  rows.map((r, i) => ({ id: `${contest_id}-s${i}`, contest_id, pos: i, name: r[0], on_date: r[1], format: r[2] ?? null, advance: r[3] ?? null, level: null, location: null, who: null }));
 const ym = (add: number, day: number) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + add); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; };
 let demo: Data | null = null;
 const seed = (): Data => ({
@@ -90,7 +90,7 @@ const seed = (): Data => ({
   ],
   stages: [
     ...stg('d1', [['KBO1', ym(0, 20), 'Онлайн'], ['KBO2', ym(1, 14), 'Онлайн', 'Алғашқы 30 %'], ['KBO3', ym(2, 10), 'Қатысып']]),
-    ...stg('d2', [['Қалалық', ym(1, 12)], ['Облыстық', ym(2, 20)], ['Республикалық', ym(3, 25)], ['Халықаралық', ym(4, 5)]]).map((x, i) => ({ ...x, level: ['city', 'region', 'republic', 'international'][i], location: ['Қостанай [мысал]', null, 'Астана [мысал]', null][i] })),
+    ...stg('d2', [['Қалалық', ym(1, 12)], ['Облыстық', ym(2, 20)], ['Республикалық', ym(3, 25)], ['Халықаралық', ym(4, 5)]]).map((x, i) => ({ ...x, level: ['city', 'region', 'republic', 'international'][i], location: ['Қостанай [мысал]', null, 'Астана [мысал]', null][i], who: ['Кез келген команда', 'Облыстағы кез келген команда', 'Квота алған командалар', null][i] })),
     ...stg('d4', [['Іріктеу', ym(0, 25), 'Онлайн, ClassFlow', 'Алғашқы 5']]),
   ],
   categories: [
@@ -179,7 +179,7 @@ export async function saveContest(me: Me, f: Form, opts: { lock?: boolean; publi
     team_size: blank(f.team_size), fee_text: blank(f.fee_text), travel_text: blank(f.travel_text), toolset: blank(f.toolset), cover_url: blank(f.cover_url), icon: blank(f.icon),
   };
   const status = opts.publish === true ? 'published' : opts.publish === false ? 'draft' : f.status;
-  const stages = f.stages.map((s, i) => ({ pos: i, name: s.name.trim(), on_date: s.on_date || null, format: blank(s.format ?? ''), advance: blank(s.advance ?? ''), level: s.level || null, location: blank(s.location ?? '') }));
+  const stages = f.stages.map((s, i) => ({ pos: i, name: s.name.trim(), on_date: s.on_date || null, format: blank(s.format ?? ''), advance: blank(s.advance ?? ''), level: s.level || null, location: blank(s.location ?? ''), who: blank(s.who ?? '') }));
   const cats = f.categories.map((c, i) => ({ id: c.id, pos: i, name: c.name.trim(), rules_url: blank(c.rules_url ?? ''), rules_text: c.rules_text, grades: c.grades }));
   const teacher_ids = f.teacher_only && !f.teacher_ids.length ? [me.id] : f.teacher_ids;
   if (DEMO) {
