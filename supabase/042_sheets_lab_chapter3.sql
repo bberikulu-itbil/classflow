@@ -40,7 +40,8 @@ begin
   ) as t(title, subject, position, plan, terms, slides)
   loop
     select cl.lesson_id into v_lesson from public.cf_curr_lessons cl where cl.module_id = v_module and cl.position = v_spec.position limit 1;
-    if v_lesson is null then select id into v_lesson from public.cf_lessons where school_id = v_school and title = v_spec.title limit 1; end if;
+    -- by title only a lesson that sits in no module: a lesson of another module with the same title is somebody else's work and must not be overwritten
+    if v_lesson is null then select l.id into v_lesson from public.cf_lessons l where l.school_id = v_school and l.title = v_spec.title and not exists (select 1 from public.cf_curr_lessons x where x.lesson_id = l.id) limit 1; end if;
     if v_lesson is null then
       insert into public.cf_lessons (school_id, owner_id, title, subject, plan, slides, terms)
       values (v_school, v_owner, v_spec.title, v_spec.subject, v_spec.plan, v_spec.slides, v_spec.terms) returning id into v_lesson;

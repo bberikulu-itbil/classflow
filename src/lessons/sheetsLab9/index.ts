@@ -11,7 +11,7 @@ export const SHEETS9_LESSONS: LabLesson[] = [L1, L2, L3, L4, L5, L6, L7, L8].map
 
 /** The course is created by the SQL generator when missing; one module for the second quarter. */
 export const SHEETS9_COURSE = { title: 'Informatics 9th grade', subject: 'Информатика', grade: 9 };
-export const SHEETS9_MODULE = { title: 'Деректер қоры (2-тарау)', title_kk: 'Деректер қоры (2-тарау)', title_ru: 'Базы данных (глава 2)', position: 0, kind: 'lesson', quarter: 2, grade: 9 };
+export const SHEETS9_MODULE = { title: 'Деректер қоры (2-тарау)', title_kk: 'Деректер қоры (2-тарау)', title_ru: 'Базы данных (глава 2)', position: 1, kind: 'lesson', quarter: 2, grade: 9 };
 
 export const SHEETS9_LESSONS_DATA: Record<string, { id: string; title: string; subject: string; plan: any; terms: any[]; slides: any[] }> = Object.fromEntries(
   SHEETS9_LESSONS.map(l => [l.id, {
