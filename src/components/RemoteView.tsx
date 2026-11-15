@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
 import { sb } from '../config';
 import { ShareBoard } from './ShareBoard';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
@@ -10,10 +10,21 @@ import { tr, useLang, LANG_LABEL } from '../lessons/lang';
 import { KindBadge, kindLabel } from '../lessons/kinds';
 import { loadSessionNavigation, switchSessionLesson, type SessionNavigation, type LessonTarget } from '../views/sessionNav';
 import { coalesce } from '../utils/coalesce';
+import { Icon } from './Icons';
+import { LessonMap, kindOf } from './LessonMap';
+import { StageClock } from './StageClock';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', sim: 'Симулятор', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
-const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }, { key: 'ask', label: 'Сұрақтар' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
+const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }];
+// opened from the «Қосымша» menu; the open one shows as a fourth tab
+const EXTRA = [{ key: 'ask', label: 'Сұрақтар' }, { key: 'pairs', label: 'Жұптар' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
+const RULES = [
+  { key: 'nav', name: 'Қайта қарауға рұқсат', hint: 'Оқушы өткен слайдтарды өз экранында ашады' },
+  { key: 'ask', name: '«Түсінбедім» сұрақтары', hint: 'Оқушы слайдқа сұрақ жаза алады' },
+  { key: 'hand', name: 'Қол көтеру', hint: 'Өшірсеңіз, оқушыда батырма жасырылады' },
+  { key: 'lock', name: 'Экрандарды бұғаттау', hint: 'Барлық оқушының экраны жабылады' },
+];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
 
 /** Remaining (limited) or elapsed time of an open task, ticking every second. */
@@ -57,6 +68,9 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [groupScores, setGroupScores] = useState<any[]>([]);
   const [tab, setTab] = useState('class');
+  const [pickId, setPickId] = useState(''); // the student whose actions are open in the class grid
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [planStages, setPlanStages] = useState<{ k: string; min: number }[]>([]);
   const [asks, setAsks] = useState<any[]>([]); // «Түсінбедім» questions of this session
   const loadAsks = () => sb.from('cf_questions').select('*').eq('session_id', sid).order('created_at', { ascending: false }).then(r => { if (r.data) setAsks(r.data); }, () => {});
   const [className, setClassName] = useState('');
@@ -134,7 +148,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   }, [sid]);
   useEffect(() => { if (tab === 'att') refresh(); }, [tab]);
   // the class roster (also students who did not log in) for choosing a pair partner
-  useEffect(() => { if (tab === 'class' && !roster.length) sb.rpc('cf_attendance', { p_session: sid }).then(r => { if (r.data) setRoster(r.data); }, () => {}); }, [tab]);
+  useEffect(() => { if (tab === 'pairs' && !roster.length) sb.rpc('cf_attendance', { p_session: sid }).then(r => { if (r.data) setRoster(r.data); }, () => {}); }, [tab]);
 
   useEffect(() => {
     let alive = true;
@@ -145,6 +159,12 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
       console.warn('Remote lesson navigation unavailable', err);
     });
     return () => { alive = false; };
+  }, [session?.lesson_id]);
+
+  // planned minutes of the lesson's stages, for the teacher's stage clock
+  useEffect(() => {
+    setPlanStages([]);
+    if (session?.lesson_id) sb.from('cf_lessons').select('plan').eq('id', session.lesson_id).maybeSingle().then(r => setPlanStages(Array.isArray(r.data?.plan?.stages) ? r.data.plan.stages : []), () => {});
   }, [session?.lesson_id]);
 
   const doSwitch = async (target: LessonTarget) => {
@@ -210,6 +230,25 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   };
   const toggleNav = () => run(() => sb.rpc('cf_set_nav', { p_session: sid, p_on: !session.student_nav }));
   const lockAll = () => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !session.locked }));
+  // allow_ask / allow_hand come with migration 063: without the column the rule counts as on
+  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : session.allow_hand !== false;
+  const setRule = (k: string, on: boolean) => k === 'nav' ? toggleNav() : k === 'lock' ? lockAll() : run(() => sb.rpc('cf_set_rule', { p_session: sid, p_rule: k, p_on: on }));
+  const subsDone = new Set(subs.map(x => x.student_id)).size;
+  /** What the class grid shows beside a name: the level reached (L1-L3), ✓ answered, … still working. */
+  const markOf = (id: string) => {
+    const mine = subs.filter(x => x.student_id === id);
+    if (lvTasks.length) {
+      const lv = Math.max(0, ...mine.filter(x => x.is_correct).map(x => lvTasks.find(t => t.id === x.task_id)?.level || 0));
+      return lv ? `L${lv}` : open ? '…' : '';
+    }
+    return !task ? '' : mine.length ? '✓' : open ? '…' : '';
+  };
+  // one list of everything that needs the teacher now: hands, open questions, students who left the page
+  const attention = [
+    ...hands.map(p => ({ key: 'h' + p.student_id, name: p.full_name, text: 'Қол көтерді', tone: 'bg-warning-soft', icon: <Hand size={16} aria-hidden="true" />, label: 'Көрдім', act: () => { run(() => sb.rpc('cf_clear_hand', { p_session: sid, p_student: p.student_id })); } })),
+    ...asks.filter(q => !q.resolved).map(q => ({ key: 'q' + q.id, name: `${nameOf(q.student_id)} · ${q.slide_index + 1}-слайд`, text: q.body, tone: 'bg-accent/10', icon: <Icon n="help" size={16} />, label: 'Жауап бердім', act: () => { sb.rpc('cf_resolve_question', { p_id: q.id, p_on: true }).then(loadAsks, () => {}); } })),
+    ...parts.filter(p => p.presence === 'away').map(p => ({ key: 'a' + p.student_id, name: p.full_name, text: `Беттен шықты${p.away_count ? ` · ${p.away_count} рет` : ''}`, tone: 'bg-danger-soft', icon: <Eye size={16} aria-hidden="true" />, label: 'Хабар', act: () => send(p.student_id, 'Жіберілді') })),
+  ];
 
   const navBtns = (cls: string) => (
     <div className={cls}>
@@ -219,7 +258,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   );
 
   return (
-    <div className="min-h-screen bg-bg text-text pb-28 lg:pb-6">
+    <div className="min-h-screen bg-bg text-text pb-44 sm:pb-28">
       <header className="border-b lg:sticky lg:top-0 lg:z-10 border-border bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 lg:px-4">
           <a href="#" className="min-h-[44px] inline-flex items-center text-xl font-black" aria-label="ClassFlow: басты бет"><Logo /></a>
@@ -231,7 +270,30 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
           <span className="rounded-md bg-surface-2 px-3 py-2 text-sm whitespace-nowrap"><span className="text-text-secondary">Код </span><b className="font-mono tracking-wider">{spaced(session.join_code)}</b></span>
           <a href={`#board/${sid}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Monitor size={16} aria-hidden="true" />Тақта<span className="sr-only"> (жаңа терезеде)</span></a>
           <button type="button" onClick={() => setShare(true)} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Share2 size={16} aria-hidden="true" />Бөлісу</button>
+          <div className="relative">
+            <button type="button" data-testid="rules-open" onClick={() => setRulesOpen(v => !v)} aria-expanded={rulesOpen} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold cursor-pointer hover:bg-border">
+              <SlidersHorizontal size={16} aria-hidden="true" />Ережелер<span className="rounded-full bg-accent px-1.5 text-xs text-on-accent">{RULES.filter(r => ruleOn(r.key)).length}</span>
+            </button>
+            {rulesOpen && (
+              <div role="dialog" aria-label="Сабақ ережелері" data-testid="rules" className="absolute right-0 z-30 mt-1 w-80 max-w-[90vw] space-y-1 rounded-xl border border-border bg-surface p-2 shadow-pop">
+                {RULES.map(r => {
+                  const on = ruleOn(r.key);
+                  return (
+                    <button key={r.key} type="button" role="switch" aria-checked={on} onClick={() => setRule(r.key, !on)} className={`flex min-h-[52px] w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left cursor-pointer ${on ? 'bg-success-soft' : 'hover:bg-surface-2'}`}>
+                      <span className="min-w-0 flex-1"><b className="block text-sm font-semibold">{r.name}</b><span className="text-xs text-text-secondary">{r.hint}</span></span>
+                      <span aria-hidden="true" className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 ${on ? 'justify-end bg-success' : 'justify-start bg-text-muted'}`}><span className="h-5 w-5 rounded-full bg-white" /></span>
+                    </button>
+                  );
+                })}
+                <p className="px-2 pt-1 text-xs text-text-muted">Бірден әсер етеді.</p>
+              </div>
+            )}
+          </div>
           <Button variant="danger" onClick={() => setEnding(true)} aria-expanded={ending}><Square size={14} aria-hidden="true" />Аяқтау</Button>
+        </div>
+        <div className="mx-auto max-w-6xl">
+          <LessonMap all kinds={priv.map(kindOf)} count={total} cur={cur} viewing={null} nav lang={lang} onPick={i => { if (i !== null) goSlide(i); }} />
+          <StageClock stages={planStages} slides={priv} log={session.slide_log} startedAt={session.started_at} cur={cur} />
         </div>
         {share && <ShareBoard sid={sid} onClose={() => setShare(false)} />}
         {ending && (
@@ -289,206 +351,44 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
         )}
 
         <section aria-label="Слайдты басқару" className="space-y-3 min-w-0">
-          {/* Compact Stats Strip */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-2 sm:p-2.5 shadow-sm text-xs">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 font-semibold text-text">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                <span>{onlineCount}/{parts.length} онлайн</span>
-              </span>
-              {task && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2.5 py-1 font-semibold text-text">
-                  <span>Тапсырды: <b>{subs.length}/{parts.length}</b></span>
-                </span>
-              )}
-              {hands.length > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-warning-soft text-warning px-2.5 py-1 font-bold animate-pulse">
-                  <Hand size={13} />
-                  <span>{hands.length} қол</span>
-                </span>
-              )}
-              {warns > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-danger-soft text-danger px-2.5 py-1 font-semibold">
-                  <span>{warns} ескерту</span>
-                </span>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={lockAll}
-              aria-pressed={!!session.locked}
-              className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer transition-colors ${
-                session.locked ? 'bg-danger-soft text-danger' : 'bg-surface-2 text-text hover:bg-border'
-              }`}
-            >
-              {session.locked ? <Lock size={13} aria-hidden="true" /> : <LockOpen size={13} aria-hidden="true" />}
-              <span>{session.locked ? 'Бұғатталған' : 'Бұғаттау'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleNav}
-              aria-pressed={!!session.student_nav}
-              title="Оқушы бастапқы беттен тақтадағы слайдқа дейін өзі қарап шыға алады"
-              className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer transition-colors ${
-                session.student_nav ? 'bg-success-soft text-success' : 'bg-surface-2 text-text hover:bg-border'
-              }`}
-            >
-              <Eye size={13} aria-hidden="true" />
-              <span>{session.student_nav ? 'Оқушы қайта қарай алады' : 'Қайта қарауға рұқсат'}</span>
-            </button>
-          </div>
-
-          {/* Current Slide (Large) & Next Slide (Compact Peek) */}
           <Card className="space-y-3">
-            {/* Header: Slide Number & Language */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="rounded-lg bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent whitespace-nowrap">
-                  Слайд {cur + 1} / {total}
-                </span>
-                <h2 className="text-sm font-bold text-text truncate">
-                  {slide.title || TYPE[slide.type] || 'Слайд'}
-                </h2>
+              <div className="flex min-w-0 items-center gap-2">
                 <KindBadge kind={slide.kind} lang={lang} className="!px-2 !py-0.5 !text-xs whitespace-nowrap" />
+                <h2 className="truncate text-base font-bold text-text">{slide.title || TYPE[slide.type] || 'Слайд'}</h2>
               </div>
-              <Button
-                variant="secondary"
-                onClick={flipLang}
-                aria-label="Слайд тілі"
-                className="!min-h-[32px] !py-1 text-xs font-bold shrink-0"
-              >
-                {LANG_LABEL[lang]}
-              </Button>
+              <Button variant="secondary" onClick={flipLang} aria-label="Слайд тілі" className="!min-h-[36px] !py-1 text-xs font-bold shrink-0">{LANG_LABEL[lang]}</Button>
             </div>
-
             {/* Large Current Slide Stage */}
             <div role="region" aria-label="Қазіргі слайдтың көрінісі" data-theme="light" className="overflow-hidden rounded-xl bg-bg text-text shadow-md border border-border/80">
               <div className="aspect-video w-full pointer-events-none select-none" inert>
                 {renderSlide(tr(slide, lang), { mode: 'preview', lang })}
               </div>
             </div>
-
-            <div role="progressbar" aria-label="Сабақ барысы" aria-valuemin={1} aria-valuemax={total} aria-valuenow={cur + 1} className="h-1.5 rounded-full bg-surface-2">
-              <div className="h-1.5 rounded-full bg-accent transition-all duration-300" style={{ width: pct + '%' }} />
-            </div>
-
             {slide.notes && (
               <section aria-label="Мұғалім сөзі" data-testid="teacher-notes" className="rounded-xl border border-warning/50 bg-warning-soft p-3">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-warning">Мұғалім сөзі · тек сізге көрінеді</h3>
                 <p className="mt-1 whitespace-pre-wrap text-base leading-relaxed text-text">{slide.notes}</p>
               </section>
             )}
-
-            {/* Next Slide (Compact Preview Peek) */}
-            {next ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => goSlide(cur + 1)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') goSlide(cur + 1); }}
-                aria-label={`Келесі слайдқа өту: ${next.title || TYPE[next.type] || 'Слайд'}`}
-                className="group flex items-center gap-3 rounded-xl border border-border/80 bg-surface-2/60 hover:bg-surface-2 p-2 sm:p-2.5 shadow-sm transition-all cursor-pointer active:scale-[0.99]"
-              >
-                {/* Next slide as it will look */}
-                <div className="w-36 sm:w-52 shrink-0 overflow-hidden rounded-lg bg-[#0b1329] border border-border/80 shadow-inner" data-testid="next-slide-preview">
-                  <Thumb>{renderSlide(tr(next, lang), { mode: 'preview', lang })}</Thumb>
-                </div>
-
-                {/* Info on the right */}
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-accent uppercase tracking-wider">
-                    <span>Келесі</span>
-                    <span>·</span>
-                    <span>{cur + 2} / {total}</span>
-                  </div>
-                  <p className="text-sm font-bold text-text truncate group-hover:text-accent transition-colors">
-                    {next.title || TYPE[next.type] || 'Слайд'}
-                  </p>
-                  {slideText(next) && (
-                    <p className="text-xs text-text-secondary truncate line-clamp-1">
-                      {slideText(next)}
-                    </p>
-                  )}
-                </div>
-
-                <ArrowRight size={18} className="text-text-secondary group-hover:text-accent transition-colors shrink-0 mr-1" />
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-surface-2 p-3 text-xs text-text-secondary border border-border/60">
-                <span>Бұл — дәрістің соңғы слайды.</span>
-                {(lessonNav?.nextLesson || lessonNav?.nextModule) && (
-                  <Button
-                    variant="primary"
-                    onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}
-                    className="!min-h-[34px] !py-1 text-xs font-bold gap-1.5"
-                  >
-                    <span>{lessonNav.nextLesson ? `Келесі дәріс: ${lessonNav.nextLesson.title}` : `Келесі модуль: ${lessonNav.nextModule!.moduleTitle}`}</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Desktop navigation buttons */}
-            <div className="hidden lg:grid grid-cols-2 gap-2 pt-1">
-              <Button
-                variant="secondary"
-                className="h-12 text-sm font-bold"
-                disabled={cur <= 0}
-                onClick={() => goSlide(cur - 1)}
-              >
-                <ArrowLeft size={18} aria-hidden="true" />
-                <span>Артқа</span>
-              </Button>
-              {cur >= total - 1 && (lessonNav?.nextLesson || lessonNav?.nextModule) ? (
-                <Button
-                  variant="primary"
-                  className="h-12 text-sm font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                  onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}
-                >
-                  <span>Келесі сабаққа өту</span>
-                  <ArrowRight size={18} aria-hidden="true" />
-                </Button>
-              ) : (
-                <Button
-                  className="h-12 text-sm font-bold"
-                  disabled={cur >= total - 1}
-                  onClick={() => goSlide(cur + 1)}
-                >
-                  <span>Келесі</span>
-                  <ArrowRight size={18} aria-hidden="true" />
-                </Button>
-              )}
-            </div>
-            <p className="hidden text-xs text-text-muted lg:block">Пернетақтада ← және → слайдты ауыстырады.</p>
           </Card>
-
-          {(isTask || task) && (
-            <Card className="space-y-3" aria-label="Тапсырма">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="font-semibold">Тапсырма {open ? <span className="ml-2 text-sm font-normal text-success">ашық</span> : task ? <span className="ml-2 text-sm font-normal text-text-secondary">жабылған</span> : null}</h2>
-                {open && task.time_limit ? <Countdown task={task} /> : null}
-              </div>
-              {task && <p className="text-sm text-text-secondary break-words">{lvTasks.length ? `L1–L${Math.max(...lvTasks.map(x => x.level))}: ${lvTasks.length} тапсырма` : task.prompt}</p>}
-              {task && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm"><span>Тапсырды</span><b>{subs.length} / {parts.length}</b></div>
-                  <div role="progressbar" aria-label="Тапсырған оқушылар" aria-valuemin={0} aria-valuemax={parts.length} aria-valuenow={subs.length} className="h-1.5 rounded bg-surface-2"><div className="h-1.5 rounded bg-success" style={{ width: Math.round((subs.length / Math.max(1, parts.length)) * 100) + '%' }} /></div>
-                  {open && waiting.length > 0 && <p className="text-xs text-text-secondary break-words">Әлі тапсырмаған: {waiting.slice(0, 10).map(p => p.full_name.split(' ')[0]).join(', ')}{waiting.length > 10 ? ` +${waiting.length - 10}` : ''}</p>}
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {open ? <Button variant="danger" onClick={() => run(() => sb.rpc('cf_close_task', { p_task: task.id }))}><Square size={14} aria-hidden="true" />Тапсырманы жабу</Button>
-                  : isTask && <Button onClick={() => run(() => sb.rpc('cf_open_task', { p_session: sid, p_index: cur }))}><Play size={14} aria-hidden="true" />Тапсырма жіберу</Button>}
-                {task && <Button variant="secondary" onClick={() => setTab('subs')}>Жауаптарды көру</Button>}
-              </div>
-            </Card>
-          )}
         </section>
 
         <section aria-label="Сынып" className="min-w-0 space-y-3">
-          <Tabs id="remote" label="Сынып бөлімдері" tabs={TABS.map(t => t.key === 'class' && hands.length ? { ...t, label: `Сынып · ${hands.length}` } : t.key === 'ask' && openAsks ? { ...t, label: `Сұрақтар · ${openAsks}` } : t)} value={tab} onChange={setTab} />
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1"><Tabs id="remote" label="Сынып бөлімдері" tabs={EXTRA.some(t => t.key === tab) ? [...TABS, EXTRA.find(t => t.key === tab)!] : TABS} value={tab} onChange={setTab} /></div>
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap pb-3 text-sm font-semibold" title="Онлайн оқушылар"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />{onlineCount}/{parts.length}</span>
+            <details className="relative">
+              <summary className="inline-flex min-h-[44px] list-none items-center gap-1.5 rounded-md px-3 text-sm font-semibold cursor-pointer hover:bg-surface-2"><MoreHorizontal size={16} aria-hidden="true" />Қосымша{openAsks ? <span className="rounded-full bg-warning px-1.5 text-xs font-bold text-bg">{openAsks}</span> : null}</summary>
+              <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-border bg-surface p-1.5 shadow-pop">
+                {EXTRA.map(t => (
+                  <button key={t.key} type="button" onClick={e => { setTab(t.key); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }} className="flex min-h-[44px] w-full items-center justify-between rounded-md px-3 text-left text-sm cursor-pointer hover:bg-surface-2">
+                    {t.label}{t.key === 'ask' && openAsks ? <b className="text-warning">{openAsks}</b> : null}
+                  </button>
+                ))}
+              </div>
+            </details>
+          </div>
           <div id="remote-panel" role="tabpanel" aria-labelledby={`remote-tab-${tab}`} tabIndex={0} className="space-y-2">
             {tab === 'class' && (
               <>
@@ -496,6 +396,50 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                   <input aria-label="Хабарлама (оқушыларға қалқымалы терезе)" className={inputCls} placeholder="Хабарлама оқушыларға" value={msgInput} maxLength={200} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(null, 'Барлығына жіберілді'); }} />
                   <Button variant="secondary" onClick={() => send(null, 'Барлығына жіберілді')}><Bell size={16} aria-hidden="true" />Барлығына</Button>
                 </div>
+                {attention.length > 0 && (
+                  <div data-testid="attention" className="space-y-1.5 rounded-xl border border-border bg-surface p-2.5">
+                    <p className="flex items-center justify-between px-1 text-sm font-semibold">Назар керек<span className="rounded-full bg-warning px-2 text-xs font-bold text-bg">{attention.length}</span></p>
+                    {attention.map(a => (
+                      <div key={a.key} className={`flex items-center gap-2 rounded-lg p-2 ${a.tone}`}>
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface">{a.icon}</span>
+                        <div className="min-w-0 flex-1 text-sm"><b className="break-words">{a.name}</b><div className="break-words text-text-secondary">{a.text}</div></div>
+                        <Button variant="secondary" onClick={a.act}>{a.label}</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {parts.length === 0 && <EmptyState icon="👥" text={`Әзірге ешкім қосылған жоқ. Оқушыларға код: ${spaced(session.join_code)}`} />}
+                <ul data-testid="students" className="grid grid-cols-2 gap-1.5">
+                  {parts.map(p => {
+                    const sel = pickId === p.student_id, m = markOf(p.student_id);
+                    return (
+                      <li key={p.student_id} className={sel ? 'col-span-2' : ''}>
+                        <button type="button" aria-expanded={sel} onClick={() => setPickId(sel ? '' : p.student_id)}
+                          className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg border px-2.5 text-left text-sm cursor-pointer ${p.presence === 'away' ? 'border-danger bg-danger-soft' : 'border-border bg-surface hover:bg-surface-2'}`}>
+                          <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ${p.presence === 'online' ? 'bg-success' : p.presence === 'away' ? 'bg-danger' : 'bg-text-muted'}`} />
+                          <span className="min-w-0 flex-1 truncate font-medium">{p.full_name}</span>
+                          {p.locked && <Lock size={14} className="shrink-0 text-danger" aria-label="бұғатталған" />}
+                          {m && <span className={`shrink-0 text-xs font-bold ${m === '…' ? 'text-text-secondary' : 'text-success'}`}>{m}</span>}
+                        </button>
+                        {sel && (
+                          <div className="mt-1 flex items-center gap-1 rounded-lg bg-surface-2 p-1 pl-3">
+                            <p className="min-w-0 flex-1 truncate text-xs text-text-secondary">
+                          {pairs.find(q => q.host_id === p.student_id) ? `👥 ${pairs.find(q => q.host_id === p.student_id).partner_name} · ` : pairs.find(q => q.partner_id === p.student_id) ? `👥 ${pairs.find(q => q.partner_id === p.student_id).host_name}-мен бір экран · ` : ''}{PRESENCE[p.presence] || p.presence}{p.att === 'late' ? ' · кешікті' : ''}{p.locked ? ' · бұғатталған' : ''}{p.away_count > 0 ? ` · ${p.away_count}× шықты, ${fmt(p.away_seconds)}` : ''}
+                            </p>
+                      <IconBtn label={`${p.full_name}: ${p.locked ? 'бұғатты ашу' : 'бұғаттау'}`} tone={p.locked ? 'text-danger' : ''} onClick={() => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: p.student_id, p_locked: !p.locked }))}>{p.locked ? <Lock size={18} aria-hidden="true" /> : <LockOpen size={18} aria-hidden="true" />}</IconBtn>
+                      <IconBtn label={`${p.full_name}: хабарлама жіберу`} onClick={() => send(p.student_id, 'Жіберілді')}><Bell size={18} aria-hidden="true" /></IconBtn>
+                      <IconBtn label={`${p.full_name}: +1 ұпай`} onClick={() => run(() => sb.rpc('cf_award', { p_session: sid, p_student: p.student_id, p_group: null, p_points: 1, p_reason: 'Белсенділік' }))}><Plus size={18} aria-hidden="true" /></IconBtn>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-xs text-text-muted">Атын бассаңыз: бұғаттау, хабар, +1 ұпай. L1–L3 — жеткен деңгейі, … — әлі тапсырмаған.</p>
+              </>
+            )}
+
+            {tab === 'pairs' && (
                 <div data-testid="pairs" className="space-y-2 rounded-lg border border-border bg-surface p-2">
                   <p className="px-1 text-sm font-semibold">👥 Жұптар <span className="font-normal text-text-secondary">— бір компьютер, екі оқушы</span></p>
                   {pairs.map(q => (
@@ -516,35 +460,6 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                     <Button variant="secondary" disabled={!pf.host || !pf.partner} onClick={() => { run(() => sb.rpc('cf_pair_set', { p_session: sid, p_host: pf.host, p_partner: pf.partner }), 'Жұп қосылды'); setPf({ host: '', partner: '' }); }}><Plus size={16} aria-hidden="true" />Жұп қосу</Button>
                   </div>
                 </div>
-                {hands.length > 0 && (
-                  <div className="rounded-lg bg-warning-soft p-2 space-y-1">
-                    <p className="px-1 text-sm font-semibold text-warning">Қол көтергендер</p>
-                    {hands.map(p => (
-                      <div key={p.student_id} className="flex items-center justify-between gap-2 px-1">
-                        <span className="font-medium break-words">{p.full_name}</span>
-                        <Button variant="secondary" onClick={() => run(() => sb.rpc('cf_clear_hand', { p_session: sid, p_student: p.student_id }))} aria-label={`${p.full_name}: қолын түсіру`}><Hand size={16} aria-hidden="true" />Түсіру</Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {parts.length === 0 && <EmptyState icon="👥" text={`Әзірге ешкім қосылған жоқ. Оқушыларға код: ${spaced(session.join_code)}`} />}
-                <ul className="space-y-1.5">
-                  {parts.map(p => (
-                    <li key={p.student_id} className={`flex items-center gap-1 rounded-lg border bg-surface p-1.5 pl-3 ${p.presence === 'away' ? 'border-danger' : 'border-border'}`}>
-                      <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ${p.presence === 'online' ? 'bg-success' : p.presence === 'away' ? 'bg-danger' : 'bg-text-muted'}`} />
-                      <div className="ml-2 min-w-0 flex-1">
-                        <p className="truncate font-medium">{p.full_name}</p>
-                        <p className="truncate text-xs text-text-secondary">
-                          {pairs.find(q => q.host_id === p.student_id) ? `👥 ${pairs.find(q => q.host_id === p.student_id).partner_name} · ` : pairs.find(q => q.partner_id === p.student_id) ? `👥 ${pairs.find(q => q.partner_id === p.student_id).host_name}-мен бір экран · ` : ''}{PRESENCE[p.presence] || p.presence}{p.att === 'late' ? ' · кешікті' : ''}{p.locked ? ' · бұғатталған' : ''}{p.away_count > 0 ? ` · ${p.away_count}× шықты, ${fmt(p.away_seconds)}` : ''}
-                        </p>
-                      </div>
-                      <IconBtn label={`${p.full_name}: ${p.locked ? 'бұғатты ашу' : 'бұғаттау'}`} tone={p.locked ? 'text-danger' : ''} onClick={() => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: p.student_id, p_locked: !p.locked }))}>{p.locked ? <Lock size={18} aria-hidden="true" /> : <LockOpen size={18} aria-hidden="true" />}</IconBtn>
-                      <IconBtn label={`${p.full_name}: хабарлама жіберу`} onClick={() => send(p.student_id, 'Жіберілді')}><Bell size={18} aria-hidden="true" /></IconBtn>
-                      <IconBtn label={`${p.full_name}: +1 ұпай`} onClick={() => run(() => sb.rpc('cf_award', { p_session: sid, p_student: p.student_id, p_group: null, p_points: 1, p_reason: 'Белсенділік' }))}><Plus size={18} aria-hidden="true" /></IconBtn>
-                    </li>
-                  ))}
-                </ul>
-              </>
             )}
 
             {tab === 'subs' && (!task ? <EmptyState icon="✅" text="Белсенді тапсырма жоқ. Тест не тапсырма слайдында «Тапсырма жіберу» батырмасын басыңыз." /> : lvTasks.length ? (
@@ -672,43 +587,36 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
         </section>
       </main>
 
-      {/* phone: ergonomic thumb-friendly navigation bar with prominent buttons */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md p-2.5 shadow-[0_-4px_24px_rgba(0,0,0,0.18)] lg:hidden">
-        <div className="mx-auto flex max-w-md items-center gap-2">
-          <button
-            type="button"
-            disabled={cur <= 0}
-            onClick={() => goSlide(cur - 1)}
-            className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface-2 text-sm font-bold text-text transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
-          >
-            <ArrowLeft size={18} aria-hidden="true" />
-            <span>Артқа</span>
-          </button>
-
-          <div className="flex h-14 min-w-[72px] flex-col items-center justify-center rounded-xl border border-border/80 bg-surface px-2">
-            <span className="text-xs font-bold tabular-nums text-text">{cur + 1} / {total}</span>
-            <span className="text-[10px] text-text-muted">слайд</span>
+      {/* one action bar for every screen: back, the task of this slide, next */}
+      <div data-testid="action-bar" className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 p-2.5 shadow-[0_-4px_24px_rgba(0,0,0,0.18)] backdrop-blur-md">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 items-center gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+          <div className="order-first col-span-2 min-w-0 sm:order-2 sm:col-span-1">
+            {open ? (
+              <div className="flex min-h-[56px] items-center gap-3 rounded-xl border border-success bg-success-soft px-3 py-1.5">
+                <div className="shrink-0 text-sm font-bold text-success">Тапсырма ашық{task.time_limit ? <div><Countdown task={task} /></div> : null}</div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex justify-between gap-2 text-xs font-semibold"><span className="whitespace-nowrap">Тапсырды {subsDone} / {parts.length}</span>{waiting.length > 0 && <span className="truncate text-text-secondary">Қалды: {waiting.slice(0, 3).map(p => p.full_name.split(' ')[0]).join(', ')}{waiting.length > 3 ? ` +${waiting.length - 3}` : ''}</span>}</div>
+                  <div role="progressbar" aria-label="Тапсырған оқушылар" aria-valuemin={0} aria-valuemax={parts.length} aria-valuenow={subsDone} className="h-1.5 rounded bg-surface-2"><div className="h-1.5 rounded bg-success" style={{ width: (parts.length ? (subsDone / parts.length) * 100 : 0) + '%' }} /></div>
+                </div>
+                <Button variant="danger" onClick={() => run(() => sb.rpc('cf_close_task', { p_task: task.id }))}><Square size={14} aria-hidden="true" />Жабу</Button>
+              </div>
+            ) : isTask ? (
+              <div className="flex min-h-[56px] items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-3 py-1.5">
+                <span className="min-w-0 truncate text-sm text-text-secondary">{task ? `Тапсырма жабылған · тапсырды ${subsDone} / ${parts.length}` : 'Бұл слайдта тапсырма бар'}</span>
+                <Button onClick={() => run(() => sb.rpc('cf_open_task', { p_session: sid, p_index: cur }))}><Play size={14} aria-hidden="true" />Тапсырма жіберу</Button>
+              </div>
+            ) : (
+              <p className="hidden text-center text-sm text-text-secondary sm:block">Слайд {cur + 1} / {total} · пернетақтада ← және →</p>
+            )}
           </div>
-
+          <Button variant="secondary" className="h-14 text-base sm:order-1 sm:px-5" disabled={cur <= 0} onClick={() => goSlide(cur - 1)}><ArrowLeft size={18} aria-hidden="true" />Артқа</Button>
           {cur >= total - 1 && (lessonNav?.nextLesson || lessonNav?.nextModule) ? (
-            <button
-              type="button"
-              onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}
-              className="flex h-14 flex-[1.4] items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-2 text-white text-xs font-bold shadow-lg transition-all active:scale-95"
-            >
-              <span>Келесі сабақ</span>
-              <ArrowRight size={16} aria-hidden="true" />
-            </button>
+            <Button className="h-14 text-base sm:order-3 sm:px-5" onClick={() => setSwitchAsk(lessonNav.nextLesson || lessonNav.nextModule)}>Келесі сабаққа өту<ArrowRight size={18} aria-hidden="true" /></Button>
           ) : (
-            <button
-              type="button"
-              disabled={cur >= total - 1}
-              onClick={() => goSlide(cur + 1)}
-              className="flex h-14 flex-[1.4] items-center justify-center gap-1.5 rounded-xl bg-accent text-on-accent text-sm font-bold shadow-lg transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
-            >
-              <span>Келесі</span>
+            <Button className="h-14 sm:order-3 sm:px-5" disabled={cur >= total - 1} onClick={() => goSlide(cur + 1)}>
+              <span className="min-w-0 text-left leading-tight"><b className="block text-base">Келесі</b>{next ? <span className="block max-w-[14rem] truncate text-xs font-normal opacity-80">{cur + 2} · {next.title || TYPE[next.type] || 'Слайд'}</span> : null}</span>
               <ArrowRight size={18} aria-hidden="true" />
-            </button>
+            </Button>
           )}
         </div>
       </div>

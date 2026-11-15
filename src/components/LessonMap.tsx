@@ -19,10 +19,16 @@ const NAME: Record<Kind, [string, string, string]> = {
   check: ['Өзіңді тексер', 'Проверь себя', 'Check yourself'],
 };
 const state = (k: string): Kind => (k in ICON ? (k as Kind) : 'info');
+/** Kind of a slide from its own fields: the same mapping as cf_slide_kinds (migration 062), for the teacher who has the slides. */
+export const kindOf = (s: any): Kind =>
+  ['example', 'exampletask'].includes(s?.kind) ? 'example' : s?.kind === 'practice' ? 'practice' : s?.kind === 'check' ? 'check' : ['explain', 'video'].includes(s?.kind) ? 'info'
+    : s?.type === 'quiz' ? 'check' : ['task', 'code'].includes(s?.type) ? 'practice' : s?.type === 'solution' ? 'example' : 'info';
+export const kindName = (k: string, lang: Lang) => pick(lang, ...NAME[state(k)]);
 
 /** One icon per slide, grouped by kind. Slides not shown yet are locked (only their kind is known); shown ones open for look-back when the teacher allows it. */
-export function LessonMap({ kinds, count, cur, viewing, nav, lang, onPick }: {
+export function LessonMap({ kinds, count, cur, viewing, nav, lang, onPick, all = false }: {
   kinds: string[]; count: number; cur: number; viewing: number | null; nav: boolean; lang: Lang; onPick: (i: number | null) => void;
+  /** teacher: every slide opens, also the ones not shown yet */ all?: boolean;
 }) {
   const shown = viewing ?? cur;
   const activeRef = useRef<HTMLButtonElement | null>(null);
@@ -37,8 +43,8 @@ export function LessonMap({ kinds, count, cur, viewing, nav, lang, onPick }: {
     const base = 'grid shrink-0 place-items-center rounded-xl transition';
     if (i > cur) {
       items.push(
-        <button key={i} type="button" disabled aria-label={`${label}: ${pick(lang, 'әлі ашылмаған', 'ещё не открыт', 'not open yet')}`} title={`${i + 1} · ${kind}`}
-          className={`${base} h-10 w-10 border-[1.5px] border-dashed border-slate-400 bg-slate-100 text-slate-600`}><Icon n={ICON[k]} size={20} /></button>,
+        <button key={i} type="button" disabled={!all} onClick={() => onPick(i)} aria-label={`${label}: ${pick(lang, 'әлі ашылмаған', 'ещё не открыт', 'not open yet')}`} title={`${i + 1} · ${kind}`}
+          className={`${base} h-10 w-10 border-[1.5px] border-dashed border-slate-400 bg-slate-100 text-slate-600 ${all ? 'cursor-pointer hover:bg-slate-200' : ''}`}><Icon n={ICON[k]} size={20} /></button>,
       );
     } else if (i === shown) {
       items.push(

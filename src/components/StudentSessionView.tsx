@@ -228,6 +228,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         <div className="flex items-center gap-2">
           <span data-testid="my-points" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-amber-100 px-3 font-bold text-amber-900"><Icon n="star" />{mineRow ? mineRow.points : 0}<span className="hidden sm:inline">{pick(lang, 'ұпай', 'балл', 'pts')}</span></span>
           <button className={TOP} onClick={flipLang} aria-label={pick(lang, 'Тілді ауыстыру', 'Сменить язык', 'Change language')}><Icon n="globe" />{LANG_LABEL[lang]}</button>
+          {session.allow_hand !== false && (
           <button
             className={TOP + (mePart && mePart.hand ? ' !border-amber-600 !bg-amber-100 !text-amber-900' : '')}
             aria-pressed={!!(mePart && mePart.hand)}
@@ -239,6 +240,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           >
             <Icon n="hand" /><span className="hidden sm:inline">{mePart && mePart.hand ? pick(lang, 'Қолды түсіру', 'Опустить руку', 'Lower hand') : pick(lang, 'Қол көтеру', 'Поднять руку', 'Raise hand')}</span>
           </button>
+          )}
           <button className={TOP} aria-label={pick(lang, 'Сөздік', 'Словарь', 'Glossary')} onClick={() => { setDictOpen(true); loadDict(); }}>
             <Icon n="book" /><span className="hidden sm:inline">{pick(lang, 'Сөздік', 'Словарь', 'Glossary')}</span>
           </button>
@@ -422,7 +424,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       </div>
       </>)}
 
-      {!locked && !popupActive && !dictOpen && <AskPanel sid={sid} me={me} slide={viewing ?? cur} kind={pick(lang, ...(KIND_NAME[kinds[viewing ?? cur]] || KIND_NAME.info))} lang={lang} />}
+      {!locked && !popupActive && !dictOpen && session.allow_ask !== false && <AskPanel sid={sid} me={me} slide={viewing ?? cur} kind={pick(lang, ...(KIND_NAME[kinds[viewing ?? cur]] || KIND_NAME.info))} lang={lang} />}
 
       {popupActive && (
         <div className="fixed inset-0 z-50 bg-amber-500 text-black flex flex-col items-center justify-center text-center p-6">
