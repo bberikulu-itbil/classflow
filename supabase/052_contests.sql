@@ -1,4 +1,3 @@
--- NOT APPLIED YET: the Supabase apply step was not confirmed. Remove this line once applied.
 -- Сайыстар каталогы (Сынақтар мен сайыстар > Сайыстар каталогы, оқушыға: Сайыстар).
 -- Reuses: profiles, schools, my_school(), is_staff(), is_deputy(), notify() (as in 003/011). Safe to run twice.
 --   cf_contests          : one row per contest. kind 'own' (runs inside ClassFlow) or 'external' (an olympiad somewhere else).
@@ -133,7 +132,11 @@ drop policy if exists ctt_all on cf_contest_teachers;
 drop policy if exists ctv_all on cf_contest_saves;
 drop policy if exists cta_read on cf_contest_apps;
 
-create policy ct_read on cf_contests for select using (cf_c_visible(id));
+-- inline (not cf_c_visible): a function cannot see the row an insert ... returning has just added
+create policy ct_read on cf_contests for select using (
+  school_id = my_school()
+  and ((status = 'published' and (not teacher_only or is_staff()))
+       or (is_staff() and (author_id = (select auth.uid()) or is_deputy()))));
 create policy ct_ins on cf_contests for insert with check (is_staff() and author_id = (select auth.uid()) and school_id = my_school());
 create policy ct_upd on cf_contests for update using (cf_c_owns(id)) with check (school_id = my_school());
 create policy ct_del on cf_contests for delete using (cf_c_owns(id) and not exists (select 1 from cf_contest_apps a where a.contest_id = cf_contests.id));
