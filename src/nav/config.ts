@@ -45,7 +45,6 @@ export const TEACHER: Section[] = [
     { key: 'list', label: 'Кабинеттер мен жабдық', icon: DoorOpen, to: 'rooms/list' },
     { key: 'requests', label: 'Брондау', icon: Inbox, to: 'rooms/requests' },
     { key: 'wishlist', label: 'Сатып алу тізімі', icon: ShoppingCart, to: 'rooms/wishlist' },
-    { key: 'sponsor', label: 'Демеушіге көрсету', icon: Presentation, to: 'rooms/sponsor' },
   ] },
   { key: 'journal', label: 'Журнал', icon: NotebookText, routes: ['journal'], subs: [
     { key: 'lessons', label: 'Сабақ журналы', to: 'journal/lessons' },

@@ -9,16 +9,15 @@ import { Note, Photo, PhotoPick } from './parts';
 const PRIO: Record<number, { name: string; hue: number }> = { 1: { name: '1-санат · шұғыл', hue: 8 }, 2: { name: '2-санат · маңызды', hue: 38 }, 3: { name: '3-санат · қалауымша', hue: 175 }, 4: { name: '4-санат · кейінірек', hue: 250 } };
 const PrioChip = ({ p }: { p: number }) => { const h = PRIO[p]?.hue ?? 250; return <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `hsl(${h} 80% 92%)`, color: `hsl(${h} 60% 26%)` }}>{PRIO[p]?.name ?? `${p}-санат`}</span>; };
 const open = (w: Wish) => w.status === 'planned' || w.status === 'ordered';
-const roomName = (d: Data, id: string | null) => d.rooms.find(r => r.id === id)?.name;
 
-function WishCard({ d, w, edit, canEdit }: { d: Data; w: Wish; edit: () => void; canEdit: boolean }) {
+function WishCard({ w, edit, canEdit }: { w: Wish; edit: () => void; canEdit: boolean }) {
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface">
       <div className="h-36 shrink-0"><Photo url={w.photo_url} alt={w.name} /></div>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex flex-wrap gap-1"><PrioChip p={w.priority} /><Chip tone={w.status === 'received' ? 'ok' : w.status === 'ordered' ? 'accent' : 'plain'}>{st.WISH_STATUS[w.status]}</Chip></div>
         <h4 className="line-clamp-2 min-h-[2.5rem] font-semibold leading-tight">{w.name}</h4>
-        {(w.description || roomName(d, w.room_id)) && <p className="line-clamp-2 text-sm text-text-secondary">{[w.description, roomName(d, w.room_id)].filter(Boolean).join(' · ')}</p>}
+        {w.description && <p className="line-clamp-2 text-sm text-text-secondary">{w.description}</p>}
         <p className="text-sm text-text-secondary">{st.money(w.price, w.currency)} × {w.qty}{w.delivery > 0 && ` + доставка ${st.money(w.delivery, w.currency)}`}</p>
         <p className="text-lg font-bold">{st.money(st.wishCost(w), w.currency)}</p>
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
@@ -70,28 +69,44 @@ function WishEdit({ me, d, w, done }: { me: Me; d: Data; w: Wish | null; done: (
 
 const Totals = ({ rows, label }: { rows: Wish[]; label: string }) => <p className="text-sm"><span className="text-text-secondary">{label}: </span><b>{st.moneyMap(st.sumBy(rows, w => w.currency, st.wishCost))}</b></p>;
 
+/** Wishes grouped by room (rooms in their own order, "no room" last), each group with its own total. */
+function byRoom(d: Data, rows: Wish[]) {
+  const g = d.rooms.map(r => ({ id: r.id, name: r.name, rows: rows.filter(w => w.room_id === r.id) }));
+  g.push({ id: '', name: 'Кабинет белгісіз', rows: rows.filter(w => !w.room_id || !d.rooms.some(r => r.id === w.room_id)) });
+  return g.filter(x => x.rows.length);
+}
+
 export function WishlistView({ me }: { me: Me }) {
   const { data: d, error, loading, reload } = useLoad(() => st.loadAll(me), [me.id]);
-  const [edit, setEdit] = useState<Wish | 'new' | null>(null), [note, setNote] = useState(''), [prio, setPrio] = useState(''), [hideDone, setHideDone] = useState(true);
+  const [edit, setEdit] = useState<Wish | 'new' | null>(null), [note, setNote] = useState(''), [prio, setPrio] = useState(''), [hideDone, setHideDone] = useState(true), [sponsor, setSponsor] = useState(false);
   if (loading && !d) return <Skeleton rows={3} />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (!d) return null;
   if (edit) return <WishEdit me={me} d={d} w={edit === 'new' ? null : edit} done={m => { setNote(m ?? ''); setEdit(null); reload(); }} />;
   const rows = d.wishes.filter(w => (!prio || String(w.priority) === prio) && (!hideDone || open(w)));
-  const canEdit = () => true; // the server (RLS) refuses edits by someone who is neither the author nor a deputy
+  const modes = [[false, 'Тізім'], [true, 'Демеушіге көрсету']] as const;
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <div role="group" aria-label="Көрініс" className="inline-flex rounded-lg bg-surface-2 p-1">
+          {modes.map(([k, label]) => <button key={label} type="button" aria-pressed={sponsor === k} onClick={() => setSponsor(k)} className={`min-h-[40px] rounded-md px-3 text-sm font-medium ${sponsor === k ? 'bg-surface text-on-accent-soft shadow-card' : 'text-text-secondary'}`}>{label}</button>)}
+        </div>
+        {!sponsor && <Button onClick={() => setEdit('new')}><Plus size={16} aria-hidden="true" />Қосу</Button>}
+      </div>
+      {sponsor ? <SponsorBody d={d} /> : <>
         <div className="space-y-0.5"><Totals rows={d.wishes.filter(open)} label="Жоспардағы жалпы сома" /><p className="text-xs text-text-secondary">Валюталар бір-біріне айналдырылмайды: әр валюта жеке қосылады.</p></div>
-        <Button onClick={() => setEdit('new')}><Plus size={16} aria-hidden="true" />Қосу</Button>
-      </div>
-      <Note msg={note} ok />
-      <div className="flex flex-wrap items-center gap-3">
-        <select aria-label="Санат" className={inputCls + ' !w-auto'} value={prio} onChange={e => setPrio(e.target.value)}><option value="">Барлық санат</option>{Object.entries(PRIO).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}</select>
-        <label className="flex min-h-[44px] items-center gap-2 text-sm"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} />Алынған және бас тартылғандарды жасыру</label>
-        <span className="text-sm text-text-secondary">{rows.length} зат</span>
-      </div>
-      {rows.length === 0 ? <EmptyState text="Тізім бос. Қажет жабдықты қосыңыз." /> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{rows.map(w => <WishCard key={w.id} d={d} w={w} canEdit={canEdit()} edit={() => setEdit(w)} />)}</div>}
+        <Note msg={note} ok />
+        <div className="flex flex-wrap items-center gap-3">
+          <select aria-label="Санат" className={inputCls + ' !w-auto'} value={prio} onChange={e => setPrio(e.target.value)}><option value="">Барлық санат</option>{Object.entries(PRIO).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}</select>
+          <label className="flex min-h-[44px] items-center gap-2 text-sm"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} />Алынған және бас тартылғандарды жасыру</label>
+          <span className="text-sm text-text-secondary">{rows.length} зат</span>
+        </div>
+        {rows.length === 0 ? <EmptyState text="Тізім бос. Қажет жабдықты қосыңыз." /> : byRoom(d, rows).map(g => (
+          <section key={g.id || 'none'} aria-label={g.name} className="space-y-2">
+            <h2 className="flex flex-wrap items-baseline gap-x-3 border-b border-border pb-1 text-base font-semibold">{g.name}<span className="text-sm font-normal text-text-secondary">{g.rows.length} зат · {st.moneyMap(st.sumBy(g.rows.filter(open), w => w.currency, st.wishCost))}</span></h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{g.rows.map(w => <WishCard key={w.id} w={w} canEdit edit={() => setEdit(w)} />)}</div>
+          </section>))}
+      </>}
     </div>
   );
 }
@@ -101,12 +116,8 @@ const Block = ({ title, sub, children }: { title: string; sub?: React.ReactNode;
   <section className="space-y-3 break-inside-avoid-page"><div className="border-b border-border pb-1"><h2 className="text-xl font-bold">{title}</h2>{sub && <div className="text-sm text-text-secondary">{sub}</div>}</div>{children}</section>
 );
 
-export function SponsorView({ me }: { me: Me }) {
-  const { data: d, error, loading, reload } = useLoad(() => st.loadAll(me), [me.id]);
+function SponsorBody({ d }: { d: Data }) {
   const [showHave, setShowHave] = useState(true), [showBuy, setShowBuy] = useState(true), [maxP, setMaxP] = useState('4');
-  if (loading && !d) return <Skeleton rows={3} />;
-  if (error) return <ErrorBox message={error} onRetry={reload} />;
-  if (!d) return null;
   const buy = d.wishes.filter(w => open(w) && w.priority <= Number(maxP));
   const have = d.items.filter(i => i.qty > 0);
   const units = have.reduce((a, i) => a + i.qty, 0), broken = have.reduce((a, i) => a + i.broken, 0);
@@ -136,14 +147,14 @@ export function SponsorView({ me }: { me: Me }) {
         {showBuy && (
           <Block title="Сатып алу керек" sub={<>{buy.length} зат · жалпы сома: <b className="text-text">{st.moneyMap(st.sumBy(buy, w => w.currency, st.wishCost))}</b></>}>
             {buy.length === 0 && <p className="text-sm text-text-secondary">Тізім бос.</p>}
-            {[1, 2, 3, 4].map(p => { const rows = buy.filter(w => w.priority === p); return !rows.length ? null : (
-              <div key={p} className="space-y-2"><h3 className="flex flex-wrap items-center gap-2 font-semibold"><PrioChip p={p} /><span className="text-sm font-normal text-text-secondary">{st.moneyMap(st.sumBy(rows, w => w.currency, st.wishCost))}</span></h3>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-2">{rows.map(w => (
+            {byRoom(d, buy).map(g => (
+              <div key={g.id || 'none'} className="space-y-2"><h3 className="flex flex-wrap items-baseline gap-x-3 font-semibold">{g.name}<span className="text-sm font-normal text-text-secondary">{st.moneyMap(st.sumBy(g.rows, w => w.currency, st.wishCost))}</span></h3>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-2">{[...g.rows].sort((x, y) => x.priority - y.priority).map(w => (
                   <article key={w.id} className="flex break-inside-avoid gap-3 rounded-lg border border-border p-2">
                     <div className="h-24 w-28 shrink-0 overflow-hidden rounded-md"><Photo url={w.photo_url} alt={w.name} /></div>
-                    <div className="min-w-0 text-sm"><p className="line-clamp-2 font-semibold leading-tight">{w.name}</p>{w.description && <p className="line-clamp-1 text-text-secondary">{w.description}</p>}
+                    <div className="min-w-0 space-y-0.5 text-sm"><PrioChip p={w.priority} /><p className="line-clamp-2 font-semibold leading-tight">{w.name}</p>{w.description && <p className="line-clamp-1 text-text-secondary">{w.description}</p>}
                       <p className="text-text-secondary">{st.money(w.price, w.currency)} × {w.qty}{w.delivery > 0 && ` + доставка ${st.money(w.delivery, w.currency)}`}</p><p className="font-bold">{st.money(st.wishCost(w), w.currency)}</p></div>
-                  </article>))}</div></div>); })}
+                  </article>))}</div></div>))}
             <p className="text-xs text-text-secondary">Валюталар бір-біріне айналдырылмайды. Баға — құжаттағы бағалау, нақты баға жеткізушіге байланысты.</p>
           </Block>
         )}
