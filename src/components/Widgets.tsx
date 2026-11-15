@@ -515,6 +515,7 @@ export function VideoBlock({ id, start, title, lang = 'kk' }: { id: string; star
 
 /** The slide, with its kind badge (Түсіндіру, Мысал, Практикалық тапсырма, ...) above it when the slide has one. */
 const MiniSheet = lazy(() => import('../sheet/MiniSheet'));
+const SqlBox = lazy(() => import('../sql/SqlBox'));
 
 /** Slide with a ready-made sheet the teacher works in on the board (steps on the left); students and previews see the same table, read-only. */
 function DemoSheetSlide({ s, ctx }: { s: any; ctx: any }) {
@@ -542,6 +543,8 @@ export function renderSlide(raw: any, ctx: any = {}) {
   return <div className="w-full">
     {badge}
     {s.demoSheet ? <DemoSheetSlide s={s} ctx={ctx} /> : renderSlideBody(s, ctx)}
+    {/* an SQL page: the editor works on the board and on every student's device; a thumbnail (preview) shows the page only */}
+    {s.sql && ctx.mode !== 'preview' && <div className="mx-auto w-full max-w-5xl px-4 pb-4"><Suspense fallback={null}><SqlBox key={s.title} cfg={s.sql} lang={ctx.lang || 'kk'} storageKey={`cf-sql:${s.title}`} /></Suspense></div>}
   </div>;
 }
 

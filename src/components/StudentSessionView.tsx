@@ -3,6 +3,8 @@ import { sb } from '../config';
 import { BTN, BTN_P, INP, renderSlide, CodeIDE, lbTable } from './Widgets';
 import { lazy, Suspense } from 'react';
 const MiniSheet = lazy(() => import('../sheet/MiniSheet'));
+const SqlBox = lazy(() => import('../sql/SqlBox'));
+import type { SqlResult } from '../sql/SqlBox';
 import { LevelsPanel, cellAnswer, type LvTask, type LvSub, type Pair } from './LevelsPanel';
 import type { SheetApi } from '../sheet/MiniSheet';
 import { tr, useLang, pick, LANG_LABEL } from '../lessons/lang';
@@ -45,6 +47,8 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   const [newDef, setNewDef] = useState('');
 
   const [shortAnswer, setShortAnswer] = useState('');
+  const [sqlRes, setSqlRes] = useState<SqlResult | null>(null); // the last successful run of the SQL task on the screen
+  useEffect(() => { setSqlRes(null); }, [currentSlideData?.index]);
   const ideCacheRef = useRef<{ [idx: number]: any }>({});
 
   const quiet = (fn: string, args: any) => sb.rpc(fn, args).then(() => {}, () => {});
@@ -302,7 +306,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
                 {slide.pair && <span className="rounded-full bg-fuchsia-700 px-3 py-1 text-sm font-bold text-white">👥 {pick(lang, 'Жұппен', 'В паре', 'In a pair')}</span>}
                 {slide.points ? <span className="ml-auto rounded-full bg-text px-3 py-1 text-sm font-bold text-bg">{slide.points} ⭐</span> : null}
               </div>
-              <div className={slide.sheet ? 'grid gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] items-start' : 'max-w-3xl mx-auto'}>
+              <div className={slide.sheet ? 'grid gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] items-start' : slide.sql ? 'max-w-5xl mx-auto' : 'max-w-3xl mx-auto'}>
                 <div className="space-y-3 min-w-0">
                   {slide.prompt && <p className="whitespace-pre-wrap rounded-2xl border border-border bg-surface p-4 text-lg">{slide.prompt}</p>}
                   {(slide.steps?.length || hasCrit) && (
@@ -324,6 +328,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
                       <img src={slide.picture} alt={slide.pictureAlt || slide.title || ''} className="h-auto w-full rounded-xl" />
                     </figure>
                   )}
+                  {slide.sql && <Suspense fallback={null}><SqlBox key={`${sid}:${currentSlideData.index}`} cfg={slide.sql} lang={lang} storageKey={`cf-sql:${me.id}:${sid}:${currentSlideData.index}`} onResult={setSqlRes} /></Suspense>}
                   {hasLevels && <LevelsPanel slide={slide} tasks={lvTasks} subs={lvSubs} pair={pair} uid={me.id} lang={lang} onSubmit={submitLevel} readCell={slide.sheet ? (l => sheetApi.current?.get(l) ?? '') : undefined} />}
                 </div>
                 {slide.sheet && (
@@ -391,6 +396,11 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           </div>
         ) : task.kind === 'code' ? (
           <p className="text-emerald-400 text-sm">📝 Тапсырма ашық: кодты жазып, «✔ Тексеру», сосын «📤 Жіберу» бас.</p>
+        ) : slide.sql ? (
+          <div data-testid="sql-submit" className="space-y-2">
+            <p className="text-sm text-text-secondary">{sqlRes ? pick(lang, 'Нәтиже кестесін тапсырмамен салыстыр. Жіберу бір-ақ рет беріледі.', 'Сверь таблицу результата с заданием. Отправить можно только один раз.', 'Compare the result table with the task. You can send only once.') : pick(lang, 'Алдымен сұранысты қатесіз орында («Орындау»), сосын жібер.', 'Сначала выполни запрос без ошибок («Выполнить»), затем отправь.', 'First run the query without errors (“Run”), then send.')}</p>
+            <button className={`${BTN_P} w-full disabled:opacity-50`} disabled={!sqlRes} onClick={() => sqlRes && submitAnswer(sqlRes.answer, { sql: sqlRes.sql })}>{pick(lang, 'Жауапты жіберу', 'Отправить ответ', 'Send the answer')}</button>
+          </div>
         ) : slide.sheet ? (
           <div data-testid="free-submit" className="space-y-2 rounded-2xl border border-orange-400/40 bg-slate-900 p-4">
             <textarea className={`${INP} h-20`} aria-label={pick(lang, 'Пікір', 'Комментарий', 'Comment')} placeholder={pick(lang, 'Мұғалімге пікір (міндетті емес)', 'Комментарий для учителя (необязательно)', 'Comment for the teacher (optional)')} value={comment} onChange={e => setComment(e.target.value)} />

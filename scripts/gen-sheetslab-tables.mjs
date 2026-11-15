@@ -5,7 +5,7 @@ const OUT = new URL('../public/lec/', import.meta.url).pathname; mkdirSync(OUT, 
 const bundle = `${tmpdir()}/sheetslab-pics.mjs`;
 // the Informatics 8 module and the Informatics 7 module (src/lessons/sheetsLab7) keep their pictures in separate bundles
 const PICS = [];
-for (const [i, dir] of ['sheetsLab', 'sheetsLab7'].entries()) {
+for (const [i, dir] of ['sheetsLab', 'sheetsLab7', 'sheetsLab9'].entries()) {
   const out = bundle.replace('.mjs', `-${i}.mjs`);
   await build({ entryPoints: [`src/lessons/${dir}/index.ts`], bundle: true, format: 'esm', outfile: out, logLevel: 'error' });
   PICS.push(...(await import(out)).PICS);

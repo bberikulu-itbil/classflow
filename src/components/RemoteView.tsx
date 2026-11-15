@@ -502,7 +502,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                           </span>
                         </div>
                         {m && <p className={`text-sm ${m.passed === m.total ? 'text-success' : 'text-warning'}`}>Автотест: {m.passed}/{m.total}</p>}
-                        <pre className="whitespace-pre-wrap break-words text-sm text-text-secondary font-sans">{task.kind === 'quiz' ? (task.options || [])[+s.answer] ?? s.answer : s.answer}</pre>
+                        <pre className="whitespace-pre-wrap break-words text-sm text-text-secondary font-sans">{task.kind === 'quiz' ? (task.options || [])[+s.answer] ?? s.answer : s.meta?.sql || s.answer}</pre>
                         {['text', 'code', 'short'].includes(task.kind) && (
                           <div className="flex items-center gap-2 pt-1">
                             <input aria-label={`${nameOf(s.student_id)}: ұпай (0–${task.points})`} className={inputCls + ' !w-20'} type="number" min={0} max={task.points} value={ptsVal} onChange={e => setGradingPoints({ ...gradingPoints, [s.id]: e.target.value })} />

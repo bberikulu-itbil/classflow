@@ -184,7 +184,7 @@ export function spreadAnswers(slides: any[]): any[] {
 
 export function markLesson<L extends { slides: any[] }>(l: L): L {
   return { ...l, slides: spreadAnswers(l.slides).map((s: any) => {
-    if (!['title', 'content', 'solution'].includes(s.type) || s.demoSheet) return s; // a demo sheet slide has its own page
+    if (!['title', 'content', 'solution'].includes(s.type) || s.demoSheet || s.sql) return s; // a demo sheet slide has its own page, an SQL page keeps room for the editor
     if (s.art && !(s.art in ART_H)) throw new Error(`unknown picture ${s.art}`);
     return { ...s, design: 'lab' };
   }) };

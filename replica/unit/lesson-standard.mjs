@@ -1,9 +1,9 @@
 // Lesson standard audit (docs: the «ЖИ көмегімен сабақ жасау» guide). Run: node replica/unit/lesson-standard.mjs [ids...]
 // Exits 1 when a listed lesson breaks the standard. Without ids it reports every lesson and never fails.
 import { build } from 'esbuild';
-await build({ stdin: { contents: "export { SHEETSLAB_LESSONS } from './src/lessons/sheetsLab'; export { SHEETS7_LESSONS } from './src/lessons/sheetsLab7';", resolveDir: '.', loader: 'ts' }, bundle: true, format: 'esm', outfile: '/tmp/lessons-std.mjs', logLevel: 'error' });
+await build({ stdin: { contents: "export { SHEETSLAB_LESSONS } from './src/lessons/sheetsLab'; export { SHEETS7_LESSONS } from './src/lessons/sheetsLab7'; export { SHEETS9_LESSONS } from './src/lessons/sheetsLab9';", resolveDir: '.', loader: 'ts' }, bundle: true, format: 'esm', outfile: '/tmp/lessons-std.mjs', logLevel: 'error' });
 const m = await import('/tmp/lessons-std.mjs');
-const all = [...m.SHEETS7_LESSONS, ...m.SHEETSLAB_LESSONS], want = process.argv.slice(2);
+const all = [...m.SHEETS7_LESSONS, ...m.SHEETSLAB_LESSONS, ...m.SHEETS9_LESSONS], want = process.argv.slice(2);
 const ORDER = ['warmup', 'explain', 'together', 'example', 'practice', 'check', 'reflect'];
 const KIND = { warmup: ['check'], explain: ['explain', 'video'], together: ['explain', 'video', 'example', 'exampletask'], example: ['example', 'exampletask', 'video'], practice: ['practice'], check: ['check'] };
 let bad = 0;
