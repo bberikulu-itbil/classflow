@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Bookmark, BookmarkCheck, CalendarDays, ChevronLeft, ChevronRight, ExternalLink, List, Plus, X } from 'lucide-react';
+import { ArrowRight, Bookmark, BookmarkCheck, CalendarDays, ChevronLeft, ChevronRight, ExternalLink, List, MapPin, Plus, X } from 'lucide-react';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import * as st from './store';
-import type { App, Contest, Data, Me, Stage } from './store';
+import type { App, Category, Contest, Data, Me, Stage } from './store';
 
 const MONTHS = ['Қаңтар', 'Ақпан', 'Наурыз', 'Сәуір', 'Мамыр', 'Маусым', 'Шілде', 'Тамыз', 'Қыркүйек', 'Қазан', 'Қараша', 'Желтоқсан'];
 const DAYS = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб', 'Жк'];
@@ -11,6 +11,8 @@ const dmy = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); ret
 const range = (c: Contest) => !c.starts_on ? 'Күні белгісіз' : !c.ends_on || c.ends_on === c.starts_on ? dmy(c.starts_on) : `${dmy(c.starts_on)} – ${dmy(c.ends_on)}`;
 const monthKey = (c: Contest) => (c.starts_on ? c.starts_on.slice(0, 7) : '');
 const monthLabel = (k: string) => (k ? `${MONTHS[Number(k.slice(5)) - 1]} ${k.slice(0, 4)}` : 'Күні белгісіз');
+const age = (c: Contest) => c.age_min != null && c.age_max != null ? `${c.age_min}–${c.age_max} жас` : c.age_min != null ? `${c.age_min}+ жас` : c.age_max != null ? `${c.age_max} жасқа дейін` : '';
+const catName = (d: Data, id?: string | null) => d.categories.find(x => x.id === id)?.name ?? '';
 const canEdit = (me: Me, c: Contest) => c.author_id === me.id || me.role === 'deputy' || me.role === 'admin';
 
 export type Role = 'teacher' | 'student';
@@ -36,12 +38,15 @@ function Stages({ stages }: { stages: Stage[] }) {
 
 function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data; me: Me; saved: boolean; onSave: () => void; onOpen: () => void }) {
   const stages = d.stages.filter(s => s.contest_id === c.id).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
+  const cats = d.categories.filter(x => x.contest_id === c.id);
   return (
-    <article className={`space-y-2 rounded-lg border border-border p-4 ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
+    <article className={`overflow-hidden rounded-lg border border-border ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
+      {c.cover_url && <img src={c.cover_url} alt="" loading="lazy" className="h-28 w-full object-cover" />}
+      <div className="space-y-2 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm text-text-secondary">{range(c)}</p>
-          <h3 className="text-lg font-semibold">{c.title}</h3>
+          <h3 className="text-lg font-semibold">{c.icon && <span aria-hidden="true" className="mr-1">{c.icon}</span>}{c.title}</h3>
         </div>
         <div className="flex flex-wrap gap-1">
           {c.status !== 'published' && <Chip tone="warn">{st.STATUS_NAMES[c.status]}</Chip>}
@@ -49,10 +54,13 @@ function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data;
         </div>
       </div>
       <div className="flex flex-wrap gap-1">
-        <Chip>{st.nameOf(st.FIELDS, c.field)}</Chip><Chip>{st.nameOf(st.LEVELS, c.level)}</Chip>
+        <Chip>{st.nameOf(st.FIELDS, c.field)}</Chip>{st.levelsOf(c, stages).map(l => <Chip key={l}>{st.nameOf(st.LEVELS, l)}</Chip>)}
+        {c.is_online && <Chip tone="accent">Онлайн</Chip>}
+        {c.location && <Chip><MapPin size={12} aria-hidden="true" className="mr-1" />{c.location}</Chip>}
         {c.kind === 'own' && <Chip tone="accent">ClassFlow ішінде</Chip>}
         {st.regOpen(c) && <Chip tone="ok">Тіркеу ашық</Chip>}
       </div>
+      {cats.length > 0 && <p className="text-sm text-text-secondary"><span className="font-medium text-text">Санаттар:</span> {cats.map(x => x.name).join(' · ')}</p>}
       <Stages stages={stages} />
       <div className="flex flex-wrap gap-2 pt-1">
         {c.status === 'published' && (
@@ -60,6 +68,7 @@ function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data;
         )}
         <Button onClick={onOpen} aria-label={`Ашу: ${c.title}`}>Ашу</Button>
         {me.role !== 'student' && canEdit(me, c) && <LinkButton href={`#contest/${c.id}`}>Өзгерту</LinkButton>}
+      </div>
       </div>
     </article>
   );
@@ -104,50 +113,77 @@ function Calendar({ items, d, month, setMonth, onOpen }: { items: Contest[]; d: 
   );
 }
 
+function CategoryBox({ x }: { x: Category }) {
+  return (
+    <details className="rounded-lg border border-border p-3">
+      <summary className="cursor-pointer font-medium">{x.name}{x.grades.length > 0 && <span className="ml-2 text-sm font-normal text-text-secondary">{x.grades.join(', ')} сынып</span>}</summary>
+      <div className="mt-2 space-y-2 text-sm">
+        {x.rules_url && <a href={x.rules_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent underline">Ереже сілтемесі <ExternalLink size={14} aria-hidden="true" /></a>}
+        {x.rules_text.trim() ? <p className="whitespace-pre-wrap rounded-md bg-surface-2 p-3">{x.rules_text}</p> : !x.rules_url && <p className="text-text-secondary">Ереже әлі жазылмаған.</p>}
+      </div>
+    </details>
+  );
+}
+
 function Detail({ c, d, me, role, onClose, onDone }: { c: Contest; d: Data; me: Me; role: Role; onClose: () => void; onDone: (msg: string) => void }) {
   const stages = d.stages.filter(s => s.contest_id === c.id).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
   const teachers = d.teachers.filter(t => t.contest_id === c.id).map(t => d.people[t.teacher_id]).filter(Boolean);
+  const cats = d.categories.filter(x => x.contest_id === c.id).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
   const mine = d.apps.find(a => a.contest_id === c.id && a.student_id === me.id);
-  const [teacher, setTeacher] = useState(teachers[0]?.id ?? ''), [msg, setMsg] = useState(''), [err, setErr] = useState(''), [busy, setBusy] = useState(false);
+  const [cat, setCat] = useState(''), [teacher, setTeacher] = useState(teachers[0]?.id ?? ''), [msg, setMsg] = useState(''), [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
   const send = async () => {
     setErr(''); setBusy(true);
-    try { await st.apply(me, c, teacher, msg); onDone('Өтінім жіберілді'); onClose(); } catch (e) { setErr(e instanceof Error ? e.message : 'Қате'); } finally { setBusy(false); }
+    try { await st.apply(me, c, teacher, msg, cat); onDone('Өтінім жіберілді'); onClose(); } catch (e) { setErr(e instanceof Error ? e.message : 'Қате'); } finally { setBusy(false); }
   };
   const canApply = role === 'student' && st.regOpen(c) && (!mine || mine.status === 'rejected');
   return (
     <div role="dialog" aria-modal="true" aria-label={c.title} className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-t-xl bg-surface p-4 sm:rounded-xl" onClick={e => e.stopPropagation()}>
+        {c.cover_url && <img src={c.cover_url} alt="" className="h-40 w-full rounded-lg object-cover" />}
         <div className="flex items-start justify-between gap-2">
-          <div><p className="text-sm text-text-secondary">{range(c)}</p><h2 className="text-xl font-bold">{c.title}</h2></div>
+          <div><p className="text-sm text-text-secondary">{range(c)}</p><h2 className="text-xl font-bold">{c.icon && <span aria-hidden="true" className="mr-1">{c.icon}</span>}{c.title}</h2></div>
           <Button variant="ghost" onClick={onClose} aria-label="Жабу"><X size={18} aria-hidden="true" /></Button>
         </div>
-        <div className="flex flex-wrap gap-1"><Chip>{st.nameOf(st.FIELDS, c.field)}</Chip><Chip>{st.nameOf(st.LEVELS, c.level)}</Chip>{c.kind === 'own' && <Chip tone="accent">ClassFlow ішінде{c.format ? ': ' + st.nameOf(st.FORMATS, c.format).toLowerCase() : ''}</Chip>}{c.grades.length > 0 && <Chip>{c.grades.join(', ')} сынып</Chip>}</div>
+        <div className="flex flex-wrap gap-1"><Chip>{st.nameOf(st.FIELDS, c.field)}</Chip>{st.levelsOf(c, stages).map(l => <Chip key={l}>{st.nameOf(st.LEVELS, l)}</Chip>)}{c.is_online && <Chip tone="accent">Онлайн</Chip>}{c.kind === 'own' && <Chip tone="accent">ClassFlow ішінде{c.format ? ': ' + st.nameOf(st.FORMATS, c.format).toLowerCase() : ''}</Chip>}{c.grades.length > 0 && <Chip>{c.grades.join(', ')} сынып</Chip>}</div>
         {c.description && <p className="whitespace-pre-wrap">{c.description}</p>}
         {(c.organizer || c.url) && (
           <p className="text-sm">{c.organizer && <span>Ұйымдастырушы: <b>{c.organizer}</b>. </span>}
             {c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent underline">Ресми сілтеме <ExternalLink size={14} aria-hidden="true" /></a>}</p>
         )}
+        <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+          {(c.location || c.map_url) && <><dt className="text-text-secondary">Орны</dt><dd>{c.location}{c.map_url && <> <a href={c.map_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden="true" />2GIS-те ашу</a></>}</dd></>}
+          {(age(c) || c.grades.length > 0) && <><dt className="text-text-secondary">Жасы</dt><dd>{[age(c), c.grades.length ? `${c.grades.join(', ')} сынып` : ''].filter(Boolean).join(' · ')}</dd></>}
+          {c.team_size && <><dt className="text-text-secondary">Команда</dt><dd>{c.team_size}</dd></>}
+          {c.toolset && <><dt className="text-text-secondary">Жабдық</dt><dd className="whitespace-pre-wrap">{c.toolset}</dd></>}
+          {c.fee_text && <><dt className="text-text-secondary">Қатысу құны</dt><dd className="whitespace-pre-wrap">{c.fee_text}</dd></>}
+          {c.travel_text && <><dt className="text-text-secondary">Жол шығыны</dt><dd className="whitespace-pre-wrap">{c.travel_text}</dd></>}
+        </dl>
         {stages.length > 0 && (
           <div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="mb-1 text-left font-semibold">Кезеңдер</caption>
-            <thead className="text-text-secondary"><tr><th className="py-1 pr-3">Кезең</th><th className="pr-3">Күні</th><th className="pr-3">Формат</th><th>Келесіге өту</th></tr></thead>
-            <tbody>{stages.map((s, i) => <tr key={s.id ?? i} className="border-t border-border"><td className="py-1 pr-3 font-medium">{s.name}</td><td className="pr-3">{s.on_date ? dmy(s.on_date) : '—'}</td><td className="pr-3">{s.format || '—'}</td><td>{s.advance || '—'}</td></tr>)}</tbody></table></div>
+            <thead className="text-text-secondary"><tr><th className="py-1 pr-3">Кезең</th><th className="pr-3">Күні</th><th className="pr-3">Деңгей</th><th className="pr-3">Орны</th><th className="pr-3">Формат</th><th>Келесіге өту</th></tr></thead>
+            <tbody>{stages.map((s, i) => <tr key={s.id ?? i} className="border-t border-border"><td className="py-1 pr-3 font-medium">{s.name}</td><td className="pr-3">{s.on_date ? dmy(s.on_date) : '—'}</td><td className="pr-3">{s.level ? st.nameOf(st.LEVELS, s.level) : '—'}</td><td className="pr-3">{s.location || '—'}</td><td className="pr-3">{s.format || '—'}</td><td>{s.advance || '—'}</td></tr>)}</tbody></table></div>
+        )}
+        {cats.length > 0 && (
+          <section aria-label="Санаттар" className="space-y-2"><h3 className="font-semibold">Санаттар</h3>
+            {cats.map(x => <CategoryBox key={x.id} x={x} />)}</section>
         )}
         {c.rules_text.trim() && (
-          <section><h3 className="font-semibold">Ережелер{c.rules_locked ? ` (нұсқа ${c.rules_version})` : ''}</h3><p className="whitespace-pre-wrap rounded-md bg-surface-2 p-3 text-sm">{c.rules_text}</p></section>
+          <section><h3 className="font-semibold">{cats.length ? 'Жалпы ережелер' : 'Ережелер'}{c.rules_locked ? ` (нұсқа ${c.rules_version})` : ''}</h3><p className="whitespace-pre-wrap rounded-md bg-surface-2 p-3 text-sm">{c.rules_text}</p></section>
         )}
         <p className="text-sm text-text-secondary">
-          {c.reg_deadline ? `Тіркеу ${dmy(c.reg_deadline)} дейін. ` : ''}{c.needs_approval ? 'Өтінімді жауапты мұғалім растайды.' : 'Өтінім автоматты расталады.'}
+          {c.reg_from || c.reg_deadline ? `Тіркеу${c.reg_from ? ' ' + dmy(c.reg_from) + ' бастап' : ''}${c.reg_deadline ? ' ' + dmy(c.reg_deadline) + ' дейін' : ''}. ` : ''}{c.needs_approval ? 'Өтінімді жауапты мұғалім растайды.' : 'Өтінім автоматты расталады.'}
           {teachers.length > 0 && ` Жауапты мұғалімдер: ${teachers.map(t => t.full_name).join(', ')}.`}
         </p>
-        {role === 'student' && mine && <p className="flex items-center gap-2 text-sm">Сіздің өтініміңіз: <AppChip s={mine.status} /></p>}
+        {role === 'student' && mine && <p className="flex items-center gap-2 text-sm">Сіздің өтініміңіз{mine.category_id ? ` (${catName(d, mine.category_id)})` : ''}: <AppChip s={mine.status} /></p>}
         {canApply && (
           <form className="space-y-3 rounded-lg border border-border p-3" onSubmit={e => { e.preventDefault(); send(); }}>
             <h3 className="font-semibold">Өтінім жіберу</h3>
+            {cats.length > 0 && <Field label="Санат">{id => <select id={id} required className={inputCls} value={cat} onChange={e => setCat(e.target.value)}><option value="">Таңдаңыз</option>{cats.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}</Field>}
             <Field label="Жауапты мұғалім">{id => <select id={id} required className={inputCls} value={teacher} onChange={e => setTeacher(e.target.value)}>{teachers.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}</select>}</Field>
             <Field label="Қысқа хабар (міндетті емес)">{id => <textarea id={id} rows={3} maxLength={500} className={inputCls + ' py-2'} value={msg} onChange={e => setMsg(e.target.value)} />}</Field>
             {err && <p role="alert" className="text-sm text-danger">{err}</p>}
-            <Button type="submit" loading={busy} disabled={!teacher}>Өтінім жіберу</Button>
+            <Button type="submit" loading={busy} disabled={!teacher || (cats.length > 0 && !cat)}>Өтінім жіберу</Button>
           </form>
         )}
         {role === 'student' && !canApply && !mine && c.status === 'published' && <p className="text-sm text-text-secondary">Тіркеу жабық.</p>}
@@ -167,7 +203,7 @@ function Inbox({ d, me, act }: { d: Data; me: Me; act: (fn: () => Promise<unknow
         return (
           <Card key={a.id} className="space-y-2 p-3 text-sm">
             <p><b>{p?.full_name ?? 'Оқушы'}</b>{p?.class_name && ` · ${p.class_name}`}</p>
-            <p className="text-text-secondary">{c?.title}</p>
+            <p className="text-text-secondary">{c?.title}{a.category_id ? ` · ${catName(d, a.category_id)}` : ''}</p>
             {a.message && <p className="whitespace-pre-wrap rounded-md bg-surface-2 p-2">{a.message}</p>}
             <div className="flex gap-2">
               <Button variant="success" onClick={() => act(() => st.decide(a.id, 'approved'), 'Өтінім расталды')}>Растау</Button>
@@ -189,7 +225,7 @@ function AppsTable({ d, me, role }: { d: Data; me: Me; role: Role }) {
       <tbody>{rows.map(a => {
         const p = d.people[a.student_id];
         return <tr key={a.id} className="border-t border-border">{role === 'teacher' && <td className="py-2 pr-3">{p?.full_name}{p?.class_name && ` · ${p.class_name}`}</td>}
-          <td className="py-2 pr-3">{d.contests.find(c => c.id === a.contest_id)?.title}</td><td className="pr-3">{d.people[a.teacher_id]?.full_name}</td><td><AppChip s={a.status} /></td></tr>;
+          <td className="py-2 pr-3">{d.contests.find(c => c.id === a.contest_id)?.title}{a.category_id ? ` · ${catName(d, a.category_id)}` : ''}</td><td className="pr-3">{d.people[a.teacher_id]?.full_name}</td><td><AppChip s={a.status} /></td></tr>;
       })}</tbody></table></div>
   );
 }
@@ -211,7 +247,7 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
     if (!d) return [];
     const base = d.contests.filter(c => tab === 'mine' ? c.author_id === me.id : tab === 'saved' ? d.saves.includes(c.id) : c.status === 'published');
     const needle = q.trim().toLowerCase();
-    const out = base.filter(c => (!needle || `${c.title} ${c.organizer ?? ''}`.toLowerCase().includes(needle)) && (!field || c.field === field) && (!level || c.level === level)
+    const out = base.filter(c => (!needle || `${c.title} ${c.organizer ?? ''}`.toLowerCase().includes(needle)) && (!field || c.field === field) && (!level || st.levelsOf(c, d.stages.filter(s => s.contest_id === c.id)).includes(level))
       && (!kind || c.kind === kind) && (!grade || !c.grades.length || c.grades.includes(Number(grade))));
     return out.sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'kk') : (a.starts_on ?? '9999').localeCompare(b.starts_on ?? '9999'));
   }, [d, tab, q, field, level, grade, kind, sort, me.id]);

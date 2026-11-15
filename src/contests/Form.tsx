@@ -18,7 +18,8 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
   const [f, setF] = useState<Form | null>(null), [msg, setMsg] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false);
   useEffect(() => { if (d && !f) setF(isNew ? st.emptyForm(me) : st.formOf(d, id) ?? null); }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF(o => (o ? { ...o, [k]: v } : o));
-  const upd = (k: 'title' | 'organizer' | 'url' | 'description' | 'starts_on' | 'ends_on' | 'reg_deadline' | 'rules_text') => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => set(k, e.target.value);
+  type TextKey = 'title' | 'organizer' | 'url' | 'description' | 'starts_on' | 'ends_on' | 'reg_from' | 'reg_deadline' | 'rules_text' | 'location' | 'map_url' | 'age_min' | 'age_max' | 'team_size' | 'fee_text' | 'travel_text' | 'toolset' | 'cover_url' | 'icon';
+  const upd = (k: TextKey) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => set(k, e.target.value);
   const staff = d ? Object.values(d.people).filter(p => p.staff).sort((a, b) => a.full_name.localeCompare(b.full_name, 'kk')) : [];
 
   if (loading && !d) return <main className="mx-auto max-w-3xl space-y-4 p-4"><Skeleton rows={5} /></main>;
@@ -39,7 +40,8 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
   const remove = async () => {
     try { await st.deleteContest(f.id!); window.location.hash = BACK.slice(1); } catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); setAsk(false); }
   };
-  const stageSet = (i: number, k: 'name' | 'on_date' | 'format' | 'advance', v: string) => set('stages', f.stages.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
+  const stageSet = (i: number, k: 'name' | 'on_date' | 'format' | 'advance' | 'level' | 'location', v: string) => set('stages', f.stages.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
+  const catSet = (i: number, p: Partial<st.Category>) => set('categories', f.categories.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const published = f.status === 'published';
 
   return (
@@ -67,7 +69,9 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
         <Field label="Атауы">{i => <input id={i} className={inputCls} maxLength={120} value={f.title} onChange={upd('title')} />}</Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Сала">{i => <select id={i} className={inputCls} value={f.field} onChange={e => set('field', e.target.value)}>{st.FIELDS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
-          <Field label="Деңгей">{i => <select id={i} className={inputCls} value={f.level} onChange={e => set('level', e.target.value)}>{st.LEVELS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
+          {f.stages.length === 0
+            ? <Field label="Деңгей">{i => <select id={i} className={inputCls} value={f.level} onChange={e => set('level', e.target.value)}><option value="">Көрсетілмеген</option>{st.LEVELS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
+            : <p className="self-end pb-2 text-sm text-text-secondary">Кезеңдер бар: деңгей әр кезеңде көрсетіледі.</p>}
           <Field label="Басталу күні">{i => <input id={i} type="date" className={inputCls} value={f.starts_on} onChange={upd('starts_on')} />}</Field>
           <Field label="Аяқталу күні">{i => <input id={i} type="date" className={inputCls} value={f.ends_on} min={f.starts_on || undefined} onChange={upd('ends_on')} />}</Field>
         </div>
@@ -83,23 +87,63 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
         <Check id="tonly" checked={f.teacher_only} onChange={v => set('teacher_only', v)}>Тек мұғалімдерге: оқушылар көрмейді</Check>
       </section>
 
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Орны, шарттары, безендіру</h2>
+        <Check id="online" checked={f.is_online} onChange={v => set('is_online', v)}>Онлайн өтеді</Check>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Қай жерде өтеді">{i => <input id={i} className={inputCls} maxLength={200} value={f.location} onChange={upd('location')} />}</Field>
+          <Field label="2GIS сілтемесі">{i => <input id={i} type="url" inputMode="url" placeholder="https://2gis.kz/..." className={inputCls} value={f.map_url} onChange={upd('map_url')} />}</Field>
+          <Field label="Жасы: бастап">{i => <input id={i} type="number" min={3} max={99} className={inputCls} value={f.age_min} onChange={upd('age_min')} />}</Field>
+          <Field label="Жасы: дейін">{i => <input id={i} type="number" min={3} max={99} className={inputCls} value={f.age_max} onChange={upd('age_max')} />}</Field>
+          <Field label="Команда мөлшері">{i => <input id={i} className={inputCls} maxLength={40} placeholder="1–2" value={f.team_size} onChange={upd('team_size')} />}</Field>
+          <Field label="Белгіше (эмодзи)">{i => <input id={i} className={inputCls} maxLength={8} placeholder="🤖" value={f.icon} onChange={upd('icon')} />}</Field>
+        </div>
+        <Field label="Құрал-жабдық / бағдарлама">{i => <textarea id={i} rows={2} maxLength={600} className={inputCls + ' py-2'} value={f.toolset} onChange={upd('toolset')} />}</Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Қатысу құны">{i => <textarea id={i} rows={2} maxLength={600} className={inputCls + ' py-2'} value={f.fee_text} onChange={upd('fee_text')} />}</Field>
+          <Field label="Жол шығыны">{i => <textarea id={i} rows={2} maxLength={800} className={inputCls + ' py-2'} value={f.travel_text} onChange={upd('travel_text')} />}</Field>
+        </div>
+        <Field label="Мұқаба суретінің сілтемесі (https)">{i => <input id={i} type="url" inputMode="url" placeholder="https://" className={inputCls} value={f.cover_url} onChange={upd('cover_url')} />}</Field>
+        {f.cover_url.trim() && /^https:\/\//i.test(f.cover_url.trim()) && <img src={f.cover_url.trim()} alt="Мұқаба алдын ала көрінісі" className="h-32 w-full rounded-lg object-cover" />}
+      </section>
+
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Кезеңдер кестесі</h2>
         {f.stages.length === 0 && <p className="text-sm text-text-secondary">Кезең жоқ. Қажет болса қосыңыз.</p>}
         {f.stages.map((s, i) => (
-          <div key={i} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_9rem_1fr_1fr_auto]">
+          <div key={i} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3">
             <Field label={`Кезең ${i + 1}`}>{x => <input id={x} className={inputCls} maxLength={80} value={s.name} onChange={e => stageSet(i, 'name', e.target.value)} />}</Field>
             <Field label="Күні">{x => <input id={x} type="date" className={inputCls} value={s.on_date ?? ''} onChange={e => stageSet(i, 'on_date', e.target.value)} />}</Field>
+            <Field label="Деңгейі">{x => <select id={x} className={inputCls} value={s.level ?? ''} onChange={e => stageSet(i, 'level', e.target.value)}><option value="">Көрсетілмеген</option>{st.LEVELS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
+            <Field label="Орны">{x => <input id={x} className={inputCls} maxLength={200} value={s.location ?? ''} onChange={e => stageSet(i, 'location', e.target.value)} />}</Field>
             <Field label="Формат">{x => <input id={x} className={inputCls} maxLength={120} placeholder="Онлайн / қатысып" value={s.format ?? ''} onChange={e => stageSet(i, 'format', e.target.value)} />}</Field>
             <Field label="Келесіге өту шарты">{x => <input id={x} className={inputCls} maxLength={200} value={s.advance ?? ''} onChange={e => stageSet(i, 'advance', e.target.value)} />}</Field>
-            <Button variant="ghost" className="self-end" onClick={() => set('stages', f.stages.filter((_, j) => j !== i))} aria-label={`Кезең ${i + 1} өшіру`}><Trash2 size={18} aria-hidden="true" /></Button>
+            <Button variant="ghost" className="justify-self-start" onClick={() => set('stages', f.stages.filter((_, j) => j !== i))} aria-label={`Кезең ${i + 1} өшіру`}><Trash2 size={18} aria-hidden="true" />Өшіру</Button>
           </div>
         ))}
-        <Button variant="secondary" onClick={() => set('stages', [...f.stages, { name: '', on_date: null, format: null, advance: null }])}><Plus size={16} aria-hidden="true" />Кезең қосу</Button>
+        <Button variant="secondary" onClick={() => set('stages', [...f.stages, { name: '', on_date: null, format: null, advance: null, level: null, location: null }])}><Plus size={16} aria-hidden="true" />Кезең қосу</Button>
       </section>
 
       <section className="space-y-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">Ережелер {f.rules_locked && <span className="inline-flex items-center gap-1 text-sm font-normal text-success"><Lock size={14} aria-hidden="true" />бекітілген{c ? `, нұсқа ${c.rules_version}` : ''}</span>}</h2>
+        <h2 className="text-lg font-semibold">Санаттар</h2>
+        <p className="text-sm text-text-secondary">Жарыс ішінде бөлімдер болса (мысалы, FLL, Drone Soccer), әрқайсысына өз ережесін жазыңыз. Оқушы өтінімде санатты таңдайды.</p>
+        {f.categories.map((c, i) => (
+          <div key={c.id ?? i} className="space-y-2 rounded-lg border border-border p-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Field label={`Санат ${i + 1}`}>{x => <input id={x} className={inputCls} maxLength={120} value={c.name} onChange={e => catSet(i, { name: e.target.value })} />}</Field>
+              <Field label="Ереже сілтемесі">{x => <input id={x} type="url" inputMode="url" placeholder="https://" className={inputCls} value={c.rules_url ?? ''} onChange={e => catSet(i, { rules_url: e.target.value })} />}</Field>
+            </div>
+            <Field label="Ереже мәтіні">{x => <textarea id={x} rows={4} className={inputCls + ' py-2'} value={c.rules_text} onChange={e => catSet(i, { rules_text: e.target.value })} />}</Field>
+            <fieldset><legend className="mb-1 text-sm font-medium text-text-secondary">Сыныптар (таңдамасаңыз, жалпы)</legend>
+              <div className="flex flex-wrap gap-x-2">{[5, 6, 7, 8, 9, 10, 11].map(n => <Check key={n} id={`cg${i}-${n}`} checked={c.grades.includes(n)} onChange={v => catSet(i, { grades: v ? [...c.grades, n].sort((a, b) => a - b) : c.grades.filter(x => x !== n) })}>{n}</Check>)}</div></fieldset>
+            <Button variant="ghost" onClick={() => set('categories', f.categories.filter((_, j) => j !== i))} aria-label={`Санат ${i + 1} өшіру`}><Trash2 size={18} aria-hidden="true" />Өшіру</Button>
+          </div>
+        ))}
+        <Button variant="secondary" onClick={() => set('categories', [...f.categories, { name: '', rules_url: null, rules_text: '', grades: [] }])}><Plus size={16} aria-hidden="true" />Санат қосу</Button>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">Жалпы ережелер {f.rules_locked && <span className="inline-flex items-center gap-1 text-sm font-normal text-success"><Lock size={14} aria-hidden="true" />бекітілген{c ? `, нұсқа ${c.rules_version}` : ''}</span>}</h2>
         {f.rules_locked && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning">Ереже бекітілген. Мәтінді өзгертіп сақтасаңыз, жаңа нұсқа ашылады және өтінім берген оқушыларға хабар барады.</p>}
         <Field label="Ереже мәтіні">{i => <textarea id={i} rows={8} className={inputCls + ' py-2'} value={f.rules_text} onChange={upd('rules_text')} />}</Field>
         {!f.rules_locked && <Button variant="secondary" disabled={busy || !f.title.trim()} onClick={() => run({ lock: true }, 'Ереже бекітілді')}><Lock size={16} aria-hidden="true" />Ережелерді бекіту</Button>}
@@ -109,6 +153,7 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
         <h2 className="text-lg font-semibold">Тіркеу</h2>
         <Check id="regopen" checked={f.reg_open} onChange={v => set('reg_open', v)}>Тіркеу ашық</Check>
         <Check id="needapp" checked={f.needs_approval} onChange={v => set('needs_approval', v)}>Өтінімді жауапты мұғалім растайды</Check>
+        <Field label="Тіркеу басталуы (бастап)">{i => <input id={i} type="date" className={inputCls} value={f.reg_from} onChange={upd('reg_from')} />}</Field>
         <Field label="Өтінім мерзімі (дейін)">{i => <input id={i} type="date" className={inputCls} value={f.reg_deadline} onChange={upd('reg_deadline')} />}</Field>
         <fieldset><legend className="mb-1 text-sm font-medium text-text-secondary">Жауапты мұғалімдер</legend>
           <div className="grid gap-x-2 sm:grid-cols-2">{staff.map(p => <Check key={p.id} id={`t-${p.id}`} checked={f.teacher_ids.includes(p.id)} onChange={v => set('teacher_ids', v ? [...f.teacher_ids, p.id] : f.teacher_ids.filter(x => x !== p.id))}>{p.full_name}</Check>)}</div></fieldset>
