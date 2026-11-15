@@ -16,6 +16,7 @@ import { StudentVocab, StudentCards, StudentQuiz } from '../vocab/Student';
 import { ProfileCard } from '../components/ProfileView';
 import { ContestCatalog } from '../contests/Catalog';
 import { RoomsView, RequestsView } from '../rooms/Rooms';
+import { WishlistView, SponsorView } from '../rooms/Wishlist';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
   if (section.subs.length < 2) return null; // one screen: a tab strip with one tab says nothing
@@ -70,6 +71,8 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:contests:catalog': c => <ContestCatalog me={c.me} role="teacher" />,
   'teacher:rooms:list': c => <RoomsView me={c.me} />,
   'teacher:rooms:requests': c => <RequestsView me={c.me} />,
+  'teacher:rooms:wishlist': c => <WishlistView me={c.me} />,
+  'teacher:rooms:sponsor': c => <SponsorView me={c.me} />,
   'student:contests:catalog': c => <ContestCatalog me={c.me} role="student" />,
   'student:grades:feedback': () => <StudentFeedback />,
   'student:vocab:mine': c => <StudentVocab me={c.me} />,

@@ -209,3 +209,10 @@
 .status-late { color: var(--color-warning); background: var(--color-warning-soft); }
 .status-needs-work { color: var(--color-danger); background: var(--color-danger-soft); }
 .status-finalized { color: var(--color-success); background: var(--color-success-soft); }
+
+/* Демеушіге көрсету: тек #print-area басылады (кабинет / сатып алу тізімі) */
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area { position: absolute; left: 0; top: 0; width: 100%; border: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
