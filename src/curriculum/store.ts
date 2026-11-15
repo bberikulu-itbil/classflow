@@ -15,6 +15,8 @@ export interface Course {
   instructor?: string | null;
   level?: string | null;
   tags?: string[] | null;
+  /** teacher opened the course to students (058_course_share.sql) */
+  shared?: boolean;
 }
 export type Kind = 'lesson' | 'course';
 /** kind 'lesson' = school-lesson module (may belong to one quarter); 'course' = course module (no quarter). grade empty = the course's grade. */
@@ -139,7 +141,7 @@ export async function loadCurr(me: Me): Promise<Curr> {
   if (!noTable) {
     const readMods = () => sb.from('cf_curr_modules').select('id,course_id,title,position' + (noKindCol ? '' : ',kind,quarter,grade'));
     const readCourses = async () => {
-      const full = await sb.from('cf_curr_courses').select('id,title,subject,grade,description,cover_url,instructor,level').order('created_at');
+      const full = await sb.from('cf_curr_courses').select('id,title,subject,grade,description,cover_url,instructor,level,shared').order('created_at');
       if (!full.error) return full;
       return sb.from('cf_curr_courses').select('id,title,subject,grade').order('created_at');
     };
@@ -208,6 +210,10 @@ export const updateCourse = (me: Me, id: string, updates: Partial<Course>) => {
     })
   );
 };
+
+/** Opens or closes a course for students. Not kept in the browser copy of the metadata: the database is the only truth for who may see it. */
+export const setCourseShared = (me: Me, id: string, shared: boolean) =>
+  run(me, () => sb.from('cf_curr_courses').update({ shared }).eq('id', id), s => ({ ...s, courses: s.courses.map(c => (c.id === id ? { ...c, shared } : c)) }));
 
 export const delCourse = (me: Me, id: string) =>
   run(me, () => sb.from('cf_curr_courses').delete().eq('id', id), s => {

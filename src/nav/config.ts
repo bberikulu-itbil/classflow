@@ -73,7 +73,7 @@ export const STUDENT: Section[] = [
   { key: 'home', label: 'Басты бет', icon: House, routes: [''], subs: [] },
   { key: 'tasks', label: 'Тапсырмалар', icon: ClipboardCheck, routes: ['tasks', 'hw'], to: 'hw', subs: [] },
   { key: 'courses', label: 'Курстарым', icon: Layers, routes: ['courses'], subs: [
-    { key: 'card', label: 'Курс картасы', items: ['Менің курстарым'] },
+    { key: 'list', label: 'Менің курстарым', to: 'courses/list' },
     { key: 'pace', label: 'Өз қарқынымен оқу', items: ['Сабақтарды өз уақытында орындау'] },
     { key: 'replay', label: 'Өткен слайдтар', items: ['Өткен слайдтарды қайта қарау'] },
     { key: 'progress', label: 'Прогресс', items: ['Курс бойынша прогресс'] },

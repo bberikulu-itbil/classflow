@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, Check, ChevronDown, GraduationCap, Info, Languages, Layers, MoreVertical, Pencil, Play, Plus, Share2, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Check, ChevronDown, Eye, EyeOff, GraduationCap, Info, Languages, Layers, MoreVertical, Pencil, Play, Plus, Share2, Trash2, X } from 'lucide-react';
 import { coverOf } from '../ui/cover';
 import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
@@ -296,6 +296,13 @@ export function CoursesView({ me }: { me: Me }) {
                       </a>
                       {c.description && <p className="text-xs text-text-secondary line-clamp-2">{c.description}</p>}
                       <p className="text-xs text-text-muted pt-1">{counts(c)}</p>
+                      <div>
+                        <button type="button" aria-pressed={!!c.shared} onClick={() => act(() => st.setCourseShared(me, c.id, !c.shared))}
+                        title={c.shared ? 'Оқушыларға ашық: жабу үшін басыңыз' : 'Оқушыларға жабық: ашу үшін басыңыз'}
+                        className={`mt-1 inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold ${c.shared ? 'border-success bg-success-soft text-success' : 'border-border-input bg-surface text-text-secondary'}`}>
+                        {c.shared ? <Eye size={14} aria-hidden="true" /> : <EyeOff size={14} aria-hidden="true" />}{c.shared ? 'Оқушыларға ашық' : 'Оқушыларға жабық'}
+                      </button>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2 pt-2 border-t border-border/60">
