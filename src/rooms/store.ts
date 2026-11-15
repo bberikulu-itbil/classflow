@@ -6,20 +6,26 @@ import { sb, DEMO } from '../config';
 
 export interface Me { id: string; full_name?: string; role?: string; school_id?: string }
 export type ElType = 'desk' | 'pc' | 'table' | 'shelf' | 'board' | 'door' | 'window' | 'printer' | 'other';
-export interface El { id: string; t: ElType; x: number; y: number; w: number; h: number; label?: string; item_id?: string }
+export interface El { id: string; t: ElType; x: number; y: number; w: number; h: number; z?: number; label?: string; item_id?: string }
 /** Floor plan on a grid of w x h cells; x, y, w, h of an element are in cells. */
-export interface Layout { w: number; h: number; els: El[] }
-export const EL_TYPES: Record<ElType, { name: string; hue: number; w: number; h: number }> = {
-  desk: { name: 'Парта', hue: 35, w: 2, h: 1 }, pc: { name: 'Компьютер', hue: 215, w: 1, h: 1 }, table: { name: 'Үстел', hue: 28, w: 4, h: 2 }, shelf: { name: 'Сөре / шкаф', hue: 150, w: 3, h: 1 },
-  board: { name: 'Тақта', hue: 255, w: 5, h: 1 }, door: { name: 'Есік', hue: 8, w: 1, h: 1 }, window: { name: 'Терезе', hue: 195, w: 3, h: 1 }, printer: { name: '3D-принтер', hue: 285, w: 2, h: 2 }, other: { name: 'Басқа', hue: 220, w: 2, h: 2 },
+/** w,h in grid cells; cm = real size of one cell (default 50); El.z = height in cm (default by type). */
+export interface Layout { w: number; h: number; cm?: number; els: El[] }
+export const EL_TYPES: Record<ElType, { name: string; hue: number; w: number; h: number; z: number }> = {
+  desk: { name: 'Парта', hue: 35, w: 2, h: 1, z: 75 }, pc: { name: 'Компьютер', hue: 215, w: 1, h: 1, z: 110 }, table: { name: 'Үстел', hue: 28, w: 4, h: 2, z: 75 }, shelf: { name: 'Сөре / шкаф', hue: 150, w: 3, h: 1, z: 180 },
+  board: { name: 'Тақта', hue: 255, w: 5, h: 1, z: 120 }, door: { name: 'Есік', hue: 8, w: 1, h: 1, z: 200 }, window: { name: 'Терезе', hue: 195, w: 3, h: 1, z: 130 }, printer: { name: '3D-принтер', hue: 285, w: 2, h: 2, z: 60 }, other: { name: 'Басқа', hue: 220, w: 2, h: 2, z: 75 },
 };
-export const blankLayout = (): Layout => ({ w: 20, h: 12, els: [] });
+export const CELLS_CM = [25, 50, 100] as const;
+export const cmOf = (l: Layout) => l.cm ?? 50;
+export const zOf = (e: El) => e.z ?? EL_TYPES[e.t].z;
+export const blankLayout = (): Layout => ({ w: 20, h: 12, cm: 50, els: [] });
 export function validateLayout(l: Layout | null): string {
   if (!l) return '';
   if (!Number.isInteger(l.w) || !Number.isInteger(l.h) || l.w < 6 || l.w > 40 || l.h < 6 || l.h > 30) return 'Схема өлшемі: ені 6–40, ұзындығы 6–30 тор';
+  if (l.cm !== undefined && !(CELLS_CM as readonly number[]).includes(l.cm)) return 'Тор өлшемі 25, 50 немесе 100 см болсын';
   if (l.els.length > 300) return 'Схемада 300-ден артық зат болмасын';
   for (const e of l.els) {
     if (!(e.t in EL_TYPES) || ![e.x, e.y, e.w, e.h].every(Number.isInteger) || e.w < 1 || e.h < 1 || e.x < 0 || e.y < 0 || e.x + e.w > l.w || e.y + e.h > l.h) return 'Схемадағы бір зат тордан тыс тұр';
+    if (e.z !== undefined && (!Number.isInteger(e.z) || e.z < 10 || e.z > 400)) return 'Заттың биіктігі 10–400 см болсын';
     if ((e.label ?? '').length > 40) return 'Схемадағы жазу 40 таңбадан аспасын';
   }
   return '';
