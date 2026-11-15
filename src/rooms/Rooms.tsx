@@ -5,14 +5,16 @@ import { Chip } from '../contests/ui';
 import * as st from './store';
 import type { Data, Item, ItemForm, Me, Req, Room } from './store';
 import { Note, Photo, PhotoPick, dmy } from './parts';
+import { PlanEditor, PlanView } from './Plan';
+import { WishCard, WishEdit } from './Wishlist';
 
-type Mode = { k: 'list' } | { k: 'room'; id: string } | { k: 'edit'; id: string | null } | { k: 'book'; id: string } | { k: 'item'; id: string };
+type Mode = { k: 'list' } | { k: 'room'; id: string } | { k: 'edit'; id: string | null } | { k: 'book'; id: string } | { k: 'item'; id: string } | { k: 'wish'; room: string; w: st.Wish | null };
 const itemsOf = (d: Data, id: string) => d.items.filter(i => i.room_id === id);
 const tone = (s: st.ReqStatus) => (s === 'approved' ? 'ok' : s === 'pending' ? 'warn' : 'plain') as 'ok' | 'warn' | 'plain';
 
 function RoomEdit({ me, d, id, done }: { me: Me; d: Data; id: string | null; done: (rid?: string) => void }) {
   const room = d.rooms.find(r => r.id === id);
-  const [f, setF] = useState<st.RoomForm>(() => ({ id: room?.id, name: room?.name ?? '', description: room?.description ?? '', items: id ? itemsOf(d, id).map(i => ({ id: i.id, name: i.name, qty: String(i.qty), kind: i.kind, note: i.note ?? '', inv_no: i.inv_no ?? '', year: i.acquired_year ? String(i.acquired_year) : '', price: i.price != null ? String(i.price) : '', currency: i.currency, photo_url: i.photo_url ?? '', broken: String(i.broken), defect: i.defect ?? '' })) : [] }));
+  const [f, setF] = useState<st.RoomForm>(() => ({ id: room?.id, name: room?.name ?? '', description: room?.description ?? '', layout: room?.layout ?? null, items: id ? itemsOf(d, id).map(i => ({ id: i.id, name: i.name, qty: String(i.qty), kind: i.kind, note: i.note ?? '', inv_no: i.inv_no ?? '', year: i.acquired_year ? String(i.acquired_year) : '', price: i.price != null ? String(i.price) : '', currency: i.currency, photo_url: i.photo_url ?? '', broken: String(i.broken), defect: i.defect ?? '' })) : [] }));
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false);
   const setItem = (i: number, p: Partial<ItemForm>) => setF({ ...f, items: f.items.map((x, j) => (j === i ? { ...x, ...p } : x)) });
   const save = async () => { setBusy(true); setMsg(''); try { done(await st.saveRoom(me, f)); } catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); setBusy(false); } };
@@ -22,6 +24,7 @@ function RoomEdit({ me, d, id, done }: { me: Me; d: Data; id: string | null; don
       <h2 className="text-lg font-semibold">{id ? 'Кабинетті өзгерту' : 'Жаңа кабинет'}</h2>
       <Field label="Атауы">{x => <input id={x} className={inputCls} maxLength={80} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} />}</Field>
       <Field label="Сипаттама">{x => <textarea id={x} rows={2} maxLength={500} className={inputCls + ' py-2'} value={f.description} onChange={e => setF({ ...f, description: e.target.value })} />}</Field>
+      <section><PlanEditor layout={f.layout} items={itemsOf(d, id ?? '')} set={layout => setF({ ...f, layout })} /></section>
       <section className="space-y-2">
         <h3 className="font-semibold">Жабдықтар</h3>
         {f.items.length === 0 && <p className="text-sm text-text-secondary">Жабдық жоқ. Қосыңыз.</p>}
@@ -199,14 +202,15 @@ export function RoomsView({ me }: { me: Me }) {
   if (loading && !d) return <Skeleton rows={3} />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (!d) return null;
-  const room = mode.k === 'list' || mode.k === 'item' || (mode.k === 'edit' && !mode.id) ? undefined : d.rooms.find(r => r.id === (mode as { id: string }).id);
+  const room = mode.k === 'list' || mode.k === 'item' || mode.k === 'wish' || (mode.k === 'edit' && !mode.id) ? undefined : d.rooms.find(r => r.id === (mode as { id: string }).id);
+  if (mode.k === 'wish') return <WishEdit me={me} d={d} w={mode.w} room={mode.room} done={m => back(mode.room, m ?? '')} />;
   if (mode.k === 'edit') return <RoomEdit me={me} d={d} id={mode.id} done={rid => back(rid)} />;
   if (mode.k === 'book' && room) return <Book me={me} d={d} room={room} done={m => back(room.id, m)} />;
   const item = mode.k === 'item' ? d.items.find(x => x.id === mode.id) : undefined;
   const iroom = item ? d.rooms.find(r => r.id === item.room_id) : undefined;
   if (item && iroom) return <ItemPage me={me} d={d} i={item} room={iroom} back={() => back(iroom.id)} reload={reload} />;
   if (mode.k === 'room' && room) {
-    const its = itemsOf(d, room.id);
+    const its = itemsOf(d, room.id), wl = d.wishes.filter(w => w.room_id === room.id);
     return (
       <div className="space-y-3">
         <Button variant="ghost" onClick={() => back()}><ArrowLeft size={16} aria-hidden="true" />Барлық кабинеттер</Button>
@@ -215,7 +219,14 @@ export function RoomsView({ me }: { me: Me }) {
           <h2 className="text-xl font-semibold">{room.name}</h2>
           {room.description && <p className="text-text-secondary">{room.description}</p>}
           <p className="text-sm text-text-secondary">Жауапты: {room.responsible_id ? d.people[room.responsible_id] ?? '—' : '—'}</p>
+          {room.layout && room.layout.els.length > 0 && <PlanView layout={room.layout} items={its} onItem={id => setMode({ k: 'item', id })} />}
+          {st.manages(me, room) && !(room.layout && room.layout.els.length) && <p className="text-sm text-text-secondary">Кабинет схемасы әлі сызылмаған: «Өзгерту» арқылы сызыңыз.</p>}
           {its.length === 0 ? <p className="text-sm text-text-secondary">Жабдық тізімі бос.</p> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{its.map(i => <ItemCard key={i.id} d={d} i={i} open={() => setMode({ k: 'item', id: i.id })} />)}</div>}
+          {st.manages(me, room) && (
+            <section aria-label="Сатып алу керек" className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Сатып алу керек <span className="text-sm font-normal text-text-secondary">· тек сізге және әкімшілікке көрінеді</span></h3><Button variant="secondary" onClick={() => setMode({ k: 'wish', room: room.id, w: null })}><Plus size={16} aria-hidden="true" />Қосу</Button></div>
+              {wl.length === 0 ? <p className="text-sm text-text-secondary">Бұл кабинетке сатып алу тізімі бос.</p> : <><p className="text-sm">Жалпы: <b>{st.moneyMap(st.sumBy(wl.filter(w => w.status === 'planned' || w.status === 'ordered'), w => w.currency, st.wishCost))}</b></p><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{wl.map(w => <WishCard key={w.id} w={w} canEdit edit={() => setMode({ k: 'wish', room: room.id, w })} />)}</div></>}
+            </section>)}
           <div className="flex flex-wrap gap-2"><Button onClick={() => setMode({ k: 'book', id: room.id })}>Брондау</Button>{st.manages(me, room) && <Button variant="secondary" onClick={() => setMode({ k: 'edit', id: room.id })}>Өзгерту</Button>}</div>
         </Card>
       </div>

@@ -5,7 +5,26 @@ import { sb, DEMO } from '../config';
 // shortcut: laptops are counted, not tracked one by one; free stock for a slot is checked when a manager approves, not shown while booking.
 
 export interface Me { id: string; full_name?: string; role?: string; school_id?: string }
-export interface Room { id: string; name: string; description: string | null; responsible_id: string | null }
+export type ElType = 'desk' | 'pc' | 'table' | 'shelf' | 'board' | 'door' | 'window' | 'printer' | 'other';
+export interface El { id: string; t: ElType; x: number; y: number; w: number; h: number; label?: string; item_id?: string }
+/** Floor plan on a grid of w x h cells; x, y, w, h of an element are in cells. */
+export interface Layout { w: number; h: number; els: El[] }
+export const EL_TYPES: Record<ElType, { name: string; hue: number; w: number; h: number }> = {
+  desk: { name: 'Парта', hue: 35, w: 2, h: 1 }, pc: { name: 'Компьютер', hue: 215, w: 1, h: 1 }, table: { name: 'Үстел', hue: 28, w: 4, h: 2 }, shelf: { name: 'Сөре / шкаф', hue: 150, w: 3, h: 1 },
+  board: { name: 'Тақта', hue: 255, w: 5, h: 1 }, door: { name: 'Есік', hue: 8, w: 1, h: 1 }, window: { name: 'Терезе', hue: 195, w: 3, h: 1 }, printer: { name: '3D-принтер', hue: 285, w: 2, h: 2 }, other: { name: 'Басқа', hue: 220, w: 2, h: 2 },
+};
+export const blankLayout = (): Layout => ({ w: 20, h: 12, els: [] });
+export function validateLayout(l: Layout | null): string {
+  if (!l) return '';
+  if (!Number.isInteger(l.w) || !Number.isInteger(l.h) || l.w < 6 || l.w > 40 || l.h < 6 || l.h > 30) return 'Схема өлшемі: ені 6–40, ұзындығы 6–30 тор';
+  if (l.els.length > 300) return 'Схемада 300-ден артық зат болмасын';
+  for (const e of l.els) {
+    if (!(e.t in EL_TYPES) || ![e.x, e.y, e.w, e.h].every(Number.isInteger) || e.w < 1 || e.h < 1 || e.x < 0 || e.y < 0 || e.x + e.w > l.w || e.y + e.h > l.h) return 'Схемадағы бір зат тордан тыс тұр';
+    if ((e.label ?? '').length > 40) return 'Схемадағы жазу 40 таңбадан аспасын';
+  }
+  return '';
+}
+export interface Room { id: string; name: string; description: string | null; responsible_id: string | null; layout: Layout | null }
 export const CUR = { KZT: '₸', USD: '$', EUR: '€', RUB: '₽', CNY: '¥' } as const;
 export type Cur = keyof typeof CUR;
 export const money = (n: number, c: Cur) => `${(Math.round(n * 100) / 100).toLocaleString('ru-RU')} ${CUR[c]}`;
@@ -31,7 +50,7 @@ export function sumBy<T>(rows: T[], cur: (x: T) => Cur, val: (x: T) => number): 
   const o: Partial<Record<Cur, number>> = {}; for (const r of rows) o[cur(r)] = (o[cur(r)] ?? 0) + val(r); return o;
 }
 export const moneyMap = (m: Partial<Record<Cur, number>>) => { const e = Object.entries(m) as [Cur, number][]; return e.length ? e.map(([c, v]) => money(v, c)).join(' + ') : '—'; };
-export interface RoomForm { id?: string; name: string; description: string; items: ItemForm[] }
+export interface RoomForm { id?: string; name: string; description: string; items: ItemForm[]; layout: Layout | null }
 
 export const STATUS_NAMES: Record<ReqStatus, string> = { pending: 'Күтуде', approved: 'Расталды', rejected: 'Қабылданбады', returned: 'Қайтарылды', cancelled: 'Бас тартылды' };
 export const KIND_NAMES = { equipment: 'Жабдық', laptop: 'Ноутбук' } as const;
@@ -45,7 +64,10 @@ const hm = (t: string) => t.slice(0, 5);
 const mkDemo = (): Data => {
   const d = todayIso();
   return {
-    rooms: [{ id: 'r1', name: 'Информатика кабинеті [мысал]', description: '24 орынды компьютер сыныбы', responsible_id: 't1' }, { id: 'r2', name: 'STEM зертханасы [мысал]', description: 'Робототехника және 3D-принтер', responsible_id: 't2' }],
+    rooms: [{ id: 'r1', name: 'Информатика кабинеті [мысал]', description: '24 орынды компьютер сыныбы', responsible_id: 't1', layout: { w: 16, h: 10, els: [
+      { id: 'a1', t: 'board', x: 5, y: 0, w: 6, h: 1, label: 'Тақта' }, { id: 'a2', t: 'door', x: 0, y: 8, w: 1, h: 2, label: 'Есік' }, { id: 'a3', t: 'window', x: 15, y: 3, w: 1, h: 4, label: 'Терезе' },
+      ...[0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ id: `p${r}${c}`, t: 'pc' as const, x: 3 + c * 4, y: 3 + r * 2, w: 2, h: 1, label: `ПК ${r * 3 + c + 1}`, ...(r === 0 && c === 0 ? { item_id: 'i1' } : {}) }))),
+      { id: 'a4', t: 'shelf', x: 1, y: 3, w: 1, h: 3, label: 'Шкаф' }, { id: 'a5', t: 'desk', x: 6, y: 8, w: 4, h: 1, label: 'Мұғалім үстелі', item_id: 'i2' }] } }, { id: 'r2', name: 'STEM зертханасы [мысал]', description: 'Робототехника және 3D-принтер', responsible_id: 't2', layout: null }],
     items: [
       { id: 'i1', room_id: 'r1', name: 'Ноутбук', qty: 12, kind: 'laptop', note: null, inv_no: 'ИН-0101…0112', acquired_year: 2024, price: 280000, currency: 'KZT', photo_url: null, broken: 1, defect: '№7: экраны жарықсыз' },
       { id: 'i2', room_id: 'r1', name: 'Проектор', qty: 1, kind: 'equipment', note: 'Төбеде', inv_no: 'ИН-0150', acquired_year: 2021, price: 190000, currency: 'KZT', photo_url: null, broken: 0, defect: null },
@@ -74,7 +96,7 @@ let n = 0;
 export async function loadAll(me: Me): Promise<Data> {
   if (DEMO) return structuredClone(D());
   const [r, i, q, qi, p, lo, wi] = await Promise.all([
-    sb.from('cf_rooms').select('id,name,description,responsible_id').order('name'),
+    sb.from('cf_rooms').select('id,name,description,responsible_id,layout').order('name'),
     sb.from('cf_room_items').select('*').order('name'),
     sb.from('cf_room_requests').select('*').order('on_date', { ascending: false }),
     sb.from('cf_room_request_items').select('*'),
@@ -92,6 +114,7 @@ const CURS = Object.keys(CUR);
 export function validateRoom(f: RoomForm): string {
   if (!f.name.trim() || f.name.trim().length > 80) return 'Кабинет атауы 1–80 таңба болсын';
   if (f.description.length > 500) return 'Сипаттама 500 таңбадан аспасын';
+  const lb = validateLayout(f.layout); if (lb) return lb;
   for (const it of f.items) {
     const n = `«${it.name || 'жабдық'}»`;
     if (!it.name.trim() || it.name.trim().length > 80) return 'Әр жабдықтың атауы 1–80 таңба болсын';
@@ -110,7 +133,7 @@ const itemRow = (x: ItemForm) => ({ name: x.name.trim(), qty: Number(x.qty), kin
 
 export async function saveRoom(me: Me, f: RoomForm): Promise<string> {
   const bad = validateRoom(f); if (bad) throw new Error(bad);
-  const row = { name: f.name.trim(), description: f.description.trim() || null };
+  const row = { name: f.name.trim(), description: f.description.trim() || null, layout: f.layout && f.layout.els.length ? f.layout : null };
   const items = f.items.map(itemRow);
   if (DEMO) {
     const d = D(); const id = f.id ?? `r${++n}-${Date.now()}`;

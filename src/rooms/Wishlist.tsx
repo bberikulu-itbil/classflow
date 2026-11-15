@@ -10,7 +10,7 @@ const PRIO: Record<number, { name: string; hue: number }> = { 1: { name: '1-са
 const PrioChip = ({ p }: { p: number }) => { const h = PRIO[p]?.hue ?? 250; return <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `hsl(${h} 80% 92%)`, color: `hsl(${h} 60% 26%)` }}>{PRIO[p]?.name ?? `${p}-санат`}</span>; };
 const open = (w: Wish) => w.status === 'planned' || w.status === 'ordered';
 
-function WishCard({ w, edit, canEdit }: { w: Wish; edit: () => void; canEdit: boolean }) {
+export function WishCard({ w, edit, canEdit }: { w: Wish; edit: () => void; canEdit: boolean }) {
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface">
       <div className="h-36 shrink-0"><Photo url={w.photo_url} alt={w.name} /></div>
@@ -29,8 +29,8 @@ function WishCard({ w, edit, canEdit }: { w: Wish; edit: () => void; canEdit: bo
   );
 }
 
-function WishEdit({ me, d, w, done }: { me: Me; d: Data; w: Wish | null; done: (msg?: string) => void }) {
-  const [f, setF] = useState<WishForm>(() => w ? { id: w.id, name: w.name, description: w.description ?? '', price: String(w.price), currency: w.currency, qty: String(w.qty), delivery: w.delivery ? String(w.delivery) : '', priority: String(w.priority), link: w.link ?? '', photo_url: w.photo_url ?? '', note: w.note ?? '', status: w.status, room_id: w.room_id ?? '' } : st.blankWish());
+export function WishEdit({ me, d, w, done, room }: { me: Me; d: Data; w: Wish | null; done: (msg?: string) => void; room?: string }) {
+  const [f, setF] = useState<WishForm>(() => w ? { id: w.id, name: w.name, description: w.description ?? '', price: String(w.price), currency: w.currency, qty: String(w.qty), delivery: w.delivery ? String(w.delivery) : '', priority: String(w.priority), link: w.link ?? '', photo_url: w.photo_url ?? '', note: w.note ?? '', status: w.status, room_id: w.room_id ?? '' } : { ...st.blankWish(), room_id: room ?? '' });
   const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false);
   const set = (p: Partial<WishForm>) => setF({ ...f, ...p });
   const run = async (fn: () => Promise<void>, ok: string) => { setBusy(true); setMsg(''); try { await fn(); done(ok); } catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); setAsk(false); setBusy(false); } };
