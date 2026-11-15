@@ -11,7 +11,7 @@
 <script>try{var t=localStorage.getItem('cf_theme');if(t)document.documentElement.setAttribute('data-theme',t);var f=+localStorage.getItem('cf_font');if(f>=80&&f<=140)document.documentElement.style.fontSize=f+'%'}catch(e){}</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config = { theme: { extend: { colors: {
+tailwind.config = { theme: { extend: { borderRadius: { md: 'var(--radius-sm)', lg: 'var(--radius-md)', xl: 'var(--radius-lg)', '2xl': '20px' }, boxShadow: { card: 'var(--shadow-card)', pop: 'var(--shadow-pop)' }, colors: {
   slate: { 950:'var(--color-bg)', 900:'var(--color-surface)', 800:'var(--color-surface-2)', 700:'var(--color-border)', 600:'var(--p-slate-600)', 500:'var(--p-slate-500)', 400:'var(--color-text-muted)', 300:'var(--color-text-secondary)', 200:'var(--color-text)', 100:'var(--color-text)' },
   blue: { 400:'var(--color-accent)', 500:'var(--p-blue-hover)', 600:'var(--p-blue-solid)', 700:'var(--color-accent-soft)' },
   emerald: { 300:'var(--color-success)', 400:'var(--color-success)', 700:'var(--p-emerald-700)', 800:'var(--p-emerald-800)', 900:'var(--p-emerald-900)', 950:'var(--color-success-soft)' },

@@ -5,8 +5,8 @@ import type { Status } from '../hw/types';
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 const V: Record<Variant, string> = {
   primary: 'bg-accent text-on-accent hover:bg-accent-hover',
-  secondary: 'bg-surface-2 text-text hover:bg-border',
-  ghost: 'bg-transparent text-accent hover:bg-accent-soft',
+  secondary: 'bg-accent-soft text-on-accent-soft hover:bg-border',
+  ghost: 'bg-transparent text-on-accent-soft hover:bg-accent-soft',
   danger: 'bg-danger text-on-danger hover:opacity-90',
   success: 'bg-success text-on-success hover:opacity-90',
 };
@@ -14,14 +14,14 @@ const V: Record<Variant, string> = {
 export function Button({ variant = 'primary', loading, className = '', children, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; loading?: boolean }) {
   return (
     <button type="button" aria-busy={loading || undefined} disabled={p.disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${V[variant]} ${className}`} {...p}>
+      className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${V[variant]} ${className}`} {...p}>
       {loading && <Loader2 size={16} aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}{children}
     </button>
   );
 }
 
 export function LinkButton({ variant = 'secondary', className = '', ...p }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant }) {
-  return <a className={`inline-flex items-center min-h-[44px] px-4 rounded-md text-sm font-semibold ${V[variant]} ${className}`} {...p} />;
+  return <a className={`inline-flex items-center min-h-[44px] px-4 rounded-lg text-sm font-semibold ${V[variant]} ${className}`} {...p} />;
 }
 
 export function Field({ label, error, children }: { label: string; error?: string; children: (id: string) => React.ReactNode }) {
@@ -38,7 +38,7 @@ export function Field({ label, error, children }: { label: string; error?: strin
 export const inputCls = 'w-full min-h-[44px] px-3 rounded-md bg-surface text-text border border-border-input placeholder:text-text-muted';
 
 export function Card({ className = '', ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={`bg-surface border border-border rounded-lg shadow-card p-4 ${className}`} {...p} />;
+  return <div className={`bg-surface border border-border rounded-xl shadow-card p-4 ${className}`} {...p} />;
 }
 
 const LABEL: Record<Status | 'late' | 'flag', string> = {

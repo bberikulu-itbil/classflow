@@ -36,7 +36,10 @@ function Tip({ text }: { text: string }) {
 }
 
 const linkCls = (collapsed: boolean, active: boolean) =>
-  `group relative flex items-center gap-3 min-h-[44px] rounded-md text-sm font-medium transition-colors ${collapsed ? 'justify-center' : 'px-3'} ${active ? 'bg-accent-soft text-on-accent-soft' : 'text-text-secondary hover:bg-surface-2 hover:text-text'}`;
+  `group relative flex items-center gap-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${collapsed ? 'justify-center' : 'px-3'} ${active ? 'bg-accent-soft text-on-accent-soft font-semibold' : 'text-text-secondary hover:bg-surface-2 hover:text-text'}`;
+
+/** the blue edge bar of the active item (aria-hidden: aria-current already says it) */
+const Bar = () => <span aria-hidden="true" className="absolute -left-2 top-2 bottom-2 w-1 rounded-r-full bg-accent" />;
 
 function NavItem({ s, active, collapsed }: { s: Section; active: boolean; collapsed: boolean }) {
   const Icon = s.icon;
@@ -45,6 +48,7 @@ function NavItem({ s, active, collapsed }: { s: Section; active: boolean; collap
       <Icon size={20} aria-hidden="true" className="shrink-0" />
       {!collapsed && <span className="truncate">{s.label}</span>}
       {collapsed && <Tip text={s.label} />}
+      {active && <Bar />}
     </a>
   );
 }
@@ -64,25 +68,25 @@ function Body({ sections, active, collapsed, me, profile, onToggle, onClose, clo
         )}
         {onClose && <IconBtn label="Мәзірді жабу" onClick={onClose} ref={closeRef}><X size={20} aria-hidden="true" /></IconBtn>}
       </div>
-      {/* no overflow clipping while collapsed, otherwise the hover labels would be cut off */}
-      <nav aria-label="Негізгі мәзір" className={`flex-1 px-2 py-2 ${collapsed ? '' : 'overflow-y-auto'}`}>
-        <ul className="space-y-1">
-          {sections.map(s => <li key={s.key}><NavItem s={s} active={s === active} collapsed={collapsed} /></li>)}
-        </ul>
-      </nav>
-      {!collapsed && <p className="px-4 pb-1 text-xs text-text-muted">ClassFlow v{__APP_VERSION__}</p>}
-      <div className="shrink-0 border-t border-border p-2">
-        <a href={profile.href} aria-current={profile.active ? 'page' : undefined} aria-label={collapsed ? `Профиль және баптаулар: ${me.full_name}` : undefined} className={linkCls(collapsed, profile.active)}>
-          <span aria-hidden="true" className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-accent-soft text-on-accent-soft text-xs font-bold">{initials(me.full_name)}</span>
+      <div className="shrink-0 border-b border-border px-2 pb-3">
+        <a href={profile.href} aria-current={profile.active ? 'page' : undefined} aria-label={collapsed ? `Профиль және баптаулар: ${me.full_name}` : undefined} className={`group relative flex items-center gap-3 rounded-xl ${collapsed ? 'justify-center py-1' : 'p-2'} hover:bg-surface-2`}>
+          <span aria-hidden="true" className="grid place-items-center h-11 w-11 shrink-0 rounded-full bg-accent text-on-accent text-sm font-bold">{initials(me.full_name)}</span>
           {!collapsed && (
             <span className="min-w-0">
-              <span className="block truncate text-text">{me.full_name}</span>
-              <span className="block truncate text-xs text-text-muted font-normal">{ROLE_NAMES[me.role] || me.role}</span>
+              <span className="block truncate text-sm font-semibold text-text">{me.full_name}</span>
+              <span className="block truncate text-xs text-text-muted">{ROLE_NAMES[me.role] || me.role}</span>
             </span>
           )}
           {collapsed && <Tip text="Профиль және баптаулар" />}
         </a>
       </div>
+      {/* no overflow clipping while collapsed, otherwise the hover labels would be cut off */}
+      <nav aria-label="Негізгі мәзір" className={`flex-1 py-3 ${collapsed ? 'px-2' : 'px-4 overflow-y-auto'}`}>
+        <ul className="space-y-1.5">
+          {sections.map(s => <li key={s.key}><NavItem s={s} active={s === active} collapsed={collapsed} /></li>)}
+        </ul>
+      </nav>
+      {!collapsed && <p className="px-4 pb-1 text-xs text-text-muted">ClassFlow v{__APP_VERSION__}</p>}
     </>
   );
 }
@@ -135,7 +139,7 @@ export function AppShell({ me, role, routeKey, children }: { me: Who; role: Role
           <IconBtn label="Мәзірді ашу" expanded={open} controls="mobile-menu" onClick={() => setOpen(true)} ref={menuBtn}><Menu size={20} aria-hidden="true" /></IconBtn>
           <Brand />
           <a href={profile.href} aria-label="Профиль және баптаулар" className="ml-auto grid place-items-center h-11 w-11">
-            <span aria-hidden="true" className="grid place-items-center h-8 w-8 rounded-full bg-accent-soft text-on-accent-soft text-xs font-bold">{initials(me.full_name)}</span>
+            <span aria-hidden="true" className="grid place-items-center h-8 w-8 rounded-full bg-accent text-on-accent text-xs font-bold">{initials(me.full_name)}</span>
           </a>
         </header>
         {children}
