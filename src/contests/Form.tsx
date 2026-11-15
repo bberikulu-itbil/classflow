@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Lock, Plus, Trash2 } from 'lucide-react';
+import { Lock, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Button, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import * as st from './store';
 import type { Form, Me } from './store';
@@ -18,8 +18,9 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
   const [f, setF] = useState<Form | null>(null), [msg, setMsg] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false), [ask, setAsk] = useState(false);
   useEffect(() => { if (d && !f) setF(isNew ? st.emptyForm(me) : st.formOf(d, id) ?? null); }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF(o => (o ? { ...o, [k]: v } : o));
-  type TextKey = 'title' | 'organizer' | 'url' | 'description' | 'starts_on' | 'ends_on' | 'reg_from' | 'reg_deadline' | 'rules_text' | 'location' | 'map_url' | 'age_min' | 'age_max' | 'team_size' | 'fee_text' | 'travel_text' | 'toolset' | 'cover_url' | 'icon';
+  type TextKey = 'title' | 'organizer' | 'url' | 'description' | 'starts_on' | 'ends_on' | 'reg_from' | 'reg_deadline' | 'rules_text' | 'location' | 'map_url' | 'age_min' | 'age_max' | 'team_size' | 'fee_text' | 'travel_text' | 'toolset' | 'cover_url' | 'icon' | 'lat' | 'lng' | 'field';
   const upd = (k: TextKey) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => set(k, e.target.value);
+  const [finding, setFinding] = useState(false);
   const staff = d ? Object.values(d.people).filter(p => p.staff).sort((a, b) => a.full_name.localeCompare(b.full_name, 'kk')) : [];
 
   if (loading && !d) return <main className="mx-auto max-w-3xl space-y-4 p-4"><Skeleton rows={5} /></main>;
@@ -43,6 +44,13 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
   const stageSet = (i: number, k: 'name' | 'on_date' | 'format' | 'advance' | 'level' | 'location', v: string) => set('stages', f.stages.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
   const catSet = (i: number, p: Partial<st.Category>) => set('categories', f.categories.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const published = f.status === 'published';
+  const otherField = !st.FIELDS.some(x => x[0] === f.field);
+  const catNames = [...new Set([...st.KNOWN_CATS, ...(d?.categories.map(x => x.name) ?? [])])].sort((a, b) => a.localeCompare(b, 'kk'));
+  const find = async () => {
+    setMsg(''); setNote(''); setFinding(true);
+    try { const p = await st.findCoords(f.map_url, f.location); setF(o => (o ? { ...o, lat: p.lat.toFixed(5), lng: p.lng.toFixed(5) } : o)); setNote('Координата табылды: картада нүкте көрінеді. Сақтауды ұмытпаңыз'); }
+    catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); } finally { setFinding(false); }
+  };
 
   return (
     <main className="mx-auto max-w-3xl space-y-5 p-4">
@@ -68,7 +76,10 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
       <section className="space-y-3">
         <Field label="Атауы">{i => <input id={i} className={inputCls} maxLength={120} value={f.title} onChange={upd('title')} />}</Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Сала">{i => <select id={i} className={inputCls} value={f.field} onChange={e => set('field', e.target.value)}>{st.FIELDS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
+          <div className="space-y-2">
+            <Field label="Сала">{i => <select id={i} className={inputCls} value={otherField ? '__other' : f.field} onChange={e => set('field', e.target.value === '__other' ? '' : e.target.value)}>{st.FIELDS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}<option value="__other">Басқа (өзім жазамын)</option></select>}</Field>
+            {otherField && <Field label="Сала атауы">{i => <input id={i} className={inputCls} maxLength={60} value={f.field} onChange={upd('field')} />}</Field>}
+          </div>
           {f.stages.length === 0
             ? <Field label="Деңгей">{i => <select id={i} className={inputCls} value={f.level} onChange={e => set('level', e.target.value)}><option value="">Көрсетілмеген</option>{st.LEVELS.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select>}</Field>
             : <p className="self-end pb-2 text-sm text-text-secondary">Кезеңдер бар: деңгей әр кезеңде көрсетіледі.</p>}
@@ -93,6 +104,11 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Қай жерде өтеді">{i => <input id={i} className={inputCls} maxLength={200} value={f.location} onChange={upd('location')} />}</Field>
           <Field label="2GIS сілтемесі">{i => <input id={i} type="url" inputMode="url" placeholder="https://2gis.kz/..." className={inputCls} value={f.map_url} onChange={upd('map_url')} />}</Field>
+          <div className="sm:col-span-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <Field label="Ендік (картадағы нүкте)">{i => <input id={i} inputMode="decimal" className={inputCls} placeholder="53.21440" value={f.lat} onChange={upd('lat')} />}</Field>
+            <Field label="Бойлық">{i => <input id={i} inputMode="decimal" className={inputCls} placeholder="63.62460" value={f.lng} onChange={upd('lng')} />}</Field>
+            <Button variant="secondary" loading={finding} onClick={find}><MapPin size={16} aria-hidden="true" />Координатаны табу</Button>
+          </div>
           <Field label="Жасы: бастап">{i => <input id={i} type="number" min={3} max={99} className={inputCls} value={f.age_min} onChange={upd('age_min')} />}</Field>
           <Field label="Жасы: дейін">{i => <input id={i} type="number" min={3} max={99} className={inputCls} value={f.age_max} onChange={upd('age_max')} />}</Field>
           <Field label="Команда мөлшері">{i => <input id={i} className={inputCls} maxLength={40} placeholder="1–2" value={f.team_size} onChange={upd('team_size')} />}</Field>
@@ -126,11 +142,12 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Санаттар</h2>
-        <p className="text-sm text-text-secondary">Жарыс ішінде бөлімдер болса (мысалы, FLL, Drone Soccer), әрқайсысына өз ережесін жазыңыз. Оқушы өтінімде санатты таңдайды.</p>
+        <datalist id="known-cats">{catNames.map(n => <option key={n} value={n} />)}</datalist>
+        <p className="text-sm text-text-secondary">Жарыс ішінде бөлімдер болса (мысалы, FLL, Drone Soccer), әрқайсысына өз ережесін жазыңыз. Оқушы өтінімде санатты таңдайды. Атауын жаза бастасаңыз, белгілі санаттар ұсынылады; тізімде жоқ санатты өзіңіз жаза аласыз.</p>
         {f.categories.map((c, i) => (
           <div key={c.id ?? i} className="space-y-2 rounded-lg border border-border p-3">
             <div className="grid gap-2 sm:grid-cols-2">
-              <Field label={`Санат ${i + 1}`}>{x => <input id={x} className={inputCls} maxLength={120} value={c.name} onChange={e => catSet(i, { name: e.target.value })} />}</Field>
+              <Field label={`Санат ${i + 1}`}>{x => <input id={x} list="known-cats" className={inputCls} maxLength={120} value={c.name} onChange={e => catSet(i, { name: e.target.value })} />}</Field>
               <Field label="Ереже сілтемесі">{x => <input id={x} type="url" inputMode="url" placeholder="https://" className={inputCls} value={c.rules_url ?? ''} onChange={e => catSet(i, { rules_url: e.target.value })} />}</Field>
             </div>
             <Field label="Ереже мәтіні">{x => <textarea id={x} rows={4} className={inputCls + ' py-2'} value={c.rules_text} onChange={e => catSet(i, { rules_text: e.target.value })} />}</Field>

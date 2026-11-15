@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, BookOpen, ClipboardCheck, FolderKanban, Gamepad2, GraduationCap, House, Inbox, Layers, Library, NotebookText, PencilRuler, Presentation, Scale, Send, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy } from 'lucide-react';
+import { Award, BookOpen, ClipboardCheck, FolderKanban, Gamepad2, GraduationCap, House, Inbox, Layers, Library, NotebookText, PencilRuler, Presentation, Scale, Send, ShieldCheck, SlidersHorizontal, Sparkles, Trophy } from 'lucide-react';
 
 export type Role = 'teacher' | 'student';
 
@@ -40,8 +40,6 @@ export const TEACHER: Section[] = [
   ] },
   { key: 'contests', label: 'Сайыстар', icon: Trophy, routes: ['contests', 'contest'], subs: [
     { key: 'catalog', label: 'Сайыстар каталогы', icon: Trophy, to: 'contests/catalog', also: ['contest'] },
-    { key: 'hackathon', label: 'Хакатон және код дуэлі', icon: Swords, items: ['Информатика мен бағдарламалау жарыстары'] },
-    { key: 'tournament', label: 'Турнирлер', icon: Trophy, items: ['Сыныптар аралық және мектеп ішілік зияткерлік сайыстар'] },
   ] },
   { key: 'journal', label: 'Журнал', icon: NotebookText, routes: ['journal'], subs: [
     { key: 'lessons', label: 'Сабақ журналы', to: 'journal/lessons' },

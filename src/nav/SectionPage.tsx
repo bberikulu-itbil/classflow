@@ -17,6 +17,7 @@ import { ProfileCard } from '../components/ProfileView';
 import { ContestCatalog } from '../contests/Catalog';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
+  if (section.subs.length < 2) return null; // one screen: a tab strip with one tab says nothing
   return (
     <nav aria-label={`${section.label} бөлімдері`} className="border-b border-border overflow-x-auto">
       <ul className="flex gap-1 min-w-max">
