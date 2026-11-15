@@ -1,65 +1,48 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react';
-import { ArrowRight, Bookmark, BookmarkCheck, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react';
+import { Bookmark, BookmarkCheck, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, useLoad } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import * as st from './store';
 import type { Contest, Data, Me, Stage } from './store';
 import { DetailDialog } from './DetailDialog';
 import type { Role } from './DetailDialog';
-import { AppChip, Chip, canEdit, catName, monthKey, monthLabel, range } from './ui';
+import { AppChip, Chip, ContestIcon, canEdit, catName, monthKey, monthLabel, range } from './ui';
 
 export type { Role };
 const MapView = lazy(() => import('./MapView'));
 const DAYS = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб', 'Жк'];
 
-function Stages({ stages }: { stages: Stage[] }) {
-  if (!stages.length) return null;
-  const now = st.currentStage(stages);
-  return (
-    <ol aria-label="Кезеңдер" className="flex flex-wrap items-center gap-1 text-sm">
-      {stages.map((s, i) => (
-        <li key={s.id ?? i} className="flex items-center gap-1">
-          {i > 0 && <ArrowRight size={14} aria-hidden="true" className="text-text-muted" />}
-          <span aria-current={s === now ? 'step' : undefined} className={`rounded-md px-2 py-0.5 ${s === now ? 'bg-accent-soft font-semibold text-on-accent-soft' : 'text-text-secondary'}`}>{s.name}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data; me: Me; saved: boolean; onSave: () => void; onOpen: () => void }) {
-  const stages = d.stages.filter(s => s.contest_id === c.id).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
-  const cats = d.categories.filter(x => x.contest_id === c.id);
+  const stages = d.stages.filter(s => s.contest_id === c.id);
+  const nCats = d.categories.filter(x => x.contest_id === c.id).length;
+  const top = st.levelsOf(c, stages).sort((x, y) => st.LEVELS.findIndex(l => l[0] === y) - st.LEVELS.findIndex(l => l[0] === x))[0];
+  const meta = c.location ?? [stages.length ? `${stages.length} кезең` : '', nCats ? `${nCats} санат` : ''].filter(Boolean).join(' · ');
   return (
-    <article className={`flex h-full flex-col overflow-hidden rounded-lg border border-border ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
-      {c.cover_url && <img src={c.cover_url} alt="" loading="lazy" className="h-28 w-full object-cover" />}
-      <div className="flex flex-1 flex-col gap-2 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm text-text-secondary">{range(c)}</p>
-          <h3 className="text-lg font-semibold">{c.icon && <span aria-hidden="true" className="mr-1">{c.icon}</span>}{c.title}</h3>
-        </div>
-        <div className="flex flex-wrap gap-1">
+    <article className={`flex h-full flex-col overflow-hidden rounded-xl border border-border ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
+      <div className="relative h-28 shrink-0">
+        {c.cover_url ? <img src={c.cover_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <ContestIcon c={c} size="lg" />}
+        {c.cover_url && <span className="absolute bottom-2 left-3"><ContestIcon c={c} /></span>}
+        <span className="absolute right-2 top-2 flex gap-1">
           {c.status !== 'published' && <Chip tone="warn">{st.STATUS_NAMES[c.status]}</Chip>}
           {c.teacher_only && <Chip tone="warn">Тек мұғалімдерге</Chip>}
+          {st.regOpen(c) && <Chip tone="ok">Тіркеу ашық</Chip>}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <p className="truncate text-sm text-text-secondary">{range(c)}</p>
+        <h3 className="line-clamp-2 min-h-[3.5rem] text-lg font-semibold leading-7">{c.title}</h3>
+        <div className="flex h-6 gap-1 overflow-hidden [&>*]:shrink-0 [&>*]:whitespace-nowrap">
+          <Chip>{st.fieldName(c.field)}</Chip>{top && <Chip>{st.nameOf(st.LEVELS, top)}</Chip>}
+          {c.is_online && <Chip tone="accent">Онлайн</Chip>}
         </div>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        <Chip>{st.fieldName(c.field)}</Chip>{st.levelsOf(c, stages).map(l => <Chip key={l}>{st.nameOf(st.LEVELS, l)}</Chip>)}
-        {c.is_online && <Chip tone="accent">Онлайн</Chip>}
-        {c.location && <Chip><MapPin size={12} aria-hidden="true" className="mr-1" />{c.location}</Chip>}
-        {c.kind === 'own' && <Chip tone="accent">ClassFlow ішінде</Chip>}
-        {st.regOpen(c) && <Chip tone="ok">Тіркеу ашық</Chip>}
-      </div>
-      {cats.length > 0 && <p className="text-sm text-text-secondary"><span className="font-medium text-text">Санаттар:</span> {cats.map(x => x.name).join(' · ')}</p>}
-      <Stages stages={stages} />
-      <div className="mt-auto flex flex-wrap gap-2 pt-1">
-        {c.status === 'published' && (
-          <Button variant="secondary" onClick={onSave} aria-pressed={saved}>{saved ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}{saved ? 'Сақталды' : 'Сақтау'}</Button>
-        )}
-        <Button onClick={onOpen} aria-label={`Ашу: ${c.title}`}>Ашу</Button>
-        {me.role !== 'student' && canEdit(me, c) && <LinkButton href={`#contest/${c.id}`}>Өзгерту</LinkButton>}
-      </div>
+        <p className="flex h-5 items-center gap-1 truncate text-sm text-text-secondary">{meta && <>{c.location && <MapPin size={14} aria-hidden="true" className="shrink-0" />}<span className="truncate">{meta}</span></>}</p>
+        <div className="mt-auto flex gap-2 pt-1">
+          {c.status === 'published' && (
+            <Button variant="secondary" onClick={onSave} aria-pressed={saved} aria-label={saved ? 'Сақталған, алып тастау' : 'Сақтау'}>{saved ? <BookmarkCheck size={18} aria-hidden="true" /> : <Bookmark size={18} aria-hidden="true" />}</Button>
+          )}
+          <Button onClick={onOpen} aria-label={`Ашу: ${c.title}`}>Ашу</Button>
+          {me.role !== 'student' && canEdit(me, c) && <LinkButton href={`#contest/${c.id}`}>Өзгерту</LinkButton>}
+        </div>
       </div>
     </article>
   );

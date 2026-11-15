@@ -23,7 +23,7 @@ export default function MapView({ items, onOpen }: { items: Contest[]; onOpen: (
       const pop = document.createElement('div');
       pop.style.cssText = 'display:grid;gap:4px;min-width:180px;max-width:240px';
       for (const c of g) {
-        const b = document.createElement('button'); b.type = 'button'; b.textContent = (c.icon ? c.icon + ' ' : '') + c.title;
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = c.title;
         b.style.cssText = 'text-align:left;cursor:pointer;min-height:36px;padding:6px 8px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);font:500 14px/1.3 system-ui';
         b.onclick = () => { map.closePopup(); open.current(c.id); };
         pop.appendChild(b);

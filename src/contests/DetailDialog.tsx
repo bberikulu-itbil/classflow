@@ -3,7 +3,7 @@ import { Banknote, CalendarDays, ExternalLink, Gauge, MapPin, Pencil, Plane, Use
 import { Button, Field, LinkButton, inputCls } from '../ui';
 import * as st from './store';
 import type { Category, Contest, Data, Me, Stage } from './store';
-import { AppChip, Chip, age, canEdit, catName, daysTo, dmy, range } from './ui';
+import { AppChip, Chip, ContestIcon, age, canEdit, catName, daysTo, dmy, range } from './ui';
 
 export type Role = 'teacher' | 'student';
 
@@ -115,8 +115,8 @@ export function DetailDialog({ c, d, me, role, onClose, onDone }: { c: Contest; 
         <div className="relative shrink-0">
           {c.cover_url
             ? <img src={c.cover_url} alt="" className="h-36 w-full object-cover sm:h-44" />
-            : <div aria-hidden="true" className="grid h-28 w-full place-items-center bg-gradient-to-br from-accent-soft to-info-soft text-5xl sm:h-32">{c.icon || '🏆'}</div>}
-          {c.cover_url && c.icon && <span aria-hidden="true" className="absolute -bottom-6 left-5 grid h-14 w-14 place-items-center rounded-2xl border border-border bg-surface text-3xl shadow-card">{c.icon}</span>}
+            : <div className="h-28 w-full sm:h-32"><ContestIcon c={c} size="lg" /></div>}
+          {c.cover_url && <span className="absolute -bottom-6 left-5"><ContestIcon c={c} /></span>}
           <button ref={closeBtn} type="button" onClick={onClose} aria-label="Жабу" className="absolute right-3 top-3 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-surface/90 text-text shadow-card hover:bg-surface"><X size={20} aria-hidden="true" /></button>
         </div>
 

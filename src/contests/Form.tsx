@@ -3,6 +3,7 @@ import { Lock, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Button, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import * as st from './store';
 import type { Form, Me } from './store';
+import { ICONS } from './ui';
 
 const STEPS: Form['status'][] = ['draft', 'rules_locked', 'published'];
 const BACK = '#contests/catalog';
@@ -112,7 +113,7 @@ export function ContestForm({ me, id }: { me: Me; id: string }) {
           <Field label="Жасы: бастап">{i => <input id={i} type="number" min={3} max={99} className={inputCls} value={f.age_min} onChange={upd('age_min')} />}</Field>
           <Field label="Жасы: дейін">{i => <input id={i} type="number" min={3} max={99} className={inputCls} value={f.age_max} onChange={upd('age_max')} />}</Field>
           <Field label="Команда мөлшері">{i => <input id={i} className={inputCls} maxLength={40} placeholder="1–2" value={f.team_size} onChange={upd('team_size')} />}</Field>
-          <Field label="Белгіше (эмодзи)">{i => <input id={i} className={inputCls} maxLength={8} placeholder="🤖" value={f.icon} onChange={upd('icon')} />}</Field>
+          <Field label="Белгіше">{i => <select id={i} className={inputCls} value={f.icon} onChange={e => set('icon', e.target.value)}><option value="">Салаға қарай автоматты</option>{Object.entries(ICONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>}</Field>
         </div>
         <Field label="Құрал-жабдық / бағдарлама">{i => <textarea id={i} rows={2} maxLength={600} className={inputCls + ' py-2'} value={f.toolset} onChange={upd('toolset')} />}</Field>
         <div className="grid gap-3 sm:grid-cols-2">
