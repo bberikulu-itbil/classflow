@@ -5,29 +5,71 @@ import { sb, DEMO } from '../config';
 // shortcut: laptops are counted, not tracked one by one; free stock for a slot is checked when a manager approves, not shown while booking.
 
 export interface Me { id: string; full_name?: string; role?: string; school_id?: string }
-export type ElType = 'desk' | 'pc' | 'table' | 'shelf' | 'board' | 'door' | 'window' | 'printer' | 'other';
-export interface El { id: string; t: ElType; x: number; y: number; w: number; h: number; z?: number; label?: string; item_id?: string }
-/** Floor plan on a grid of w x h cells; x, y, w, h of an element are in cells. */
-/** w,h in grid cells; cm = real size of one cell (default 50); El.z = height in cm (default by type). */
-export interface Layout { w: number; h: number; cm?: number; els: El[] }
+export type ElType = 'desk' | 'chair' | 'pc' | 'table' | 'shelf' | 'board' | 'door' | 'window' | 'printer' | 'other';
+/** All lengths are whole centimetres. r = turn in quarter steps (front side), z = height, c = colour as #rrggbb. */
+export interface El { id: string; t: ElType; x: number; y: number; w: number; h: number; r?: number; z?: number; c?: string; label?: string; item_id?: string }
+/** A door or window cut into a wall: `at` = cm from the wall's start, wd = width. */
+export interface Opening { id: string; k: 'door' | 'window'; at: number; wd: number; sill?: number; hh?: number; c?: string }
+export interface Wall { id: string; x1: number; y1: number; x2: number; y2: number; th?: number; z?: number; c?: string; ops?: Opening[] }
+/** Floor plan in cm (v2). `grid` only helps snapping and drawing: sizes are free. Old v1 plans (cells) are converted by normLayout. */
+export interface Layout { v: 2; w: number; h: number; grid?: number; fc?: string; els: El[]; walls?: Wall[] }
+export const GRIDS = [1, 5, 10, 25, 50, 100] as const;
 export const EL_TYPES: Record<ElType, { name: string; hue: number; w: number; h: number; z: number }> = {
-  desk: { name: 'Парта', hue: 35, w: 2, h: 1, z: 75 }, pc: { name: 'Компьютер', hue: 215, w: 1, h: 1, z: 110 }, table: { name: 'Үстел', hue: 28, w: 4, h: 2, z: 75 }, shelf: { name: 'Сөре / шкаф', hue: 150, w: 3, h: 1, z: 180 },
-  board: { name: 'Тақта', hue: 255, w: 5, h: 1, z: 120 }, door: { name: 'Есік', hue: 8, w: 1, h: 1, z: 200 }, window: { name: 'Терезе', hue: 195, w: 3, h: 1, z: 130 }, printer: { name: '3D-принтер', hue: 285, w: 2, h: 2, z: 60 }, other: { name: 'Басқа', hue: 220, w: 2, h: 2, z: 75 },
+  desk: { name: 'Парта', hue: 35, w: 120, h: 60, z: 75 }, chair: { name: 'Орындық', hue: 25, w: 45, h: 45, z: 90 }, pc: { name: 'Компьютер', hue: 215, w: 60, h: 60, z: 110 },
+  table: { name: 'Үстел', hue: 28, w: 200, h: 100, z: 75 }, shelf: { name: 'Шкаф', hue: 150, w: 150, h: 50, z: 190 }, board: { name: 'Тақта', hue: 255, w: 250, h: 20, z: 200 },
+  door: { name: 'Есік', hue: 28, w: 90, h: 12, z: 205 }, window: { name: 'Терезе', hue: 195, w: 120, h: 12, z: 210 }, printer: { name: '3D-принтер', hue: 285, w: 60, h: 60, z: 60 }, other: { name: 'Басқа', hue: 220, w: 100, h: 100, z: 75 },
 };
-export const CELLS_CM = [25, 50, 100] as const;
-export const cmOf = (l: Layout) => l.cm ?? 50;
 export const zOf = (e: El) => e.z ?? EL_TYPES[e.t].z;
-export const blankLayout = (): Layout => ({ w: 20, h: 12, cm: 50, els: [] });
+export const thOf = (w: Wall) => w.th ?? 20;
+export const wzOf = (w: Wall) => w.z ?? 270;
+export const opSill = (o: Opening) => o.sill ?? (o.k === 'window' ? 90 : 0);
+export const opH = (o: Opening) => o.hh ?? (o.k === 'door' ? 205 : 120);
+export const OP_W = { door: 90, window: 120 } as const;
+export const wallLen = (w: Wall) => Math.round(Math.hypot(w.x2 - w.x1, w.y2 - w.y1));
+export const blankLayout = (): Layout => ({ v: 2, w: 800, h: 500, grid: 50, els: [], walls: [] });
+const HEX = /^#[0-9a-f]{6}$/i;
+/** Plans saved before cm existed: x, y, w, h were cells of `cm` (default 50) cm. */
+export function normLayout(l: unknown): Layout | null {
+  if (!l || typeof l !== 'object') return null;
+  const o = l as Layout & { cm?: number };
+  if (o.v === 2) return o;
+  const k = o.cm ?? 50;
+  return { v: 2, w: o.w * k, h: o.h * k, grid: k, els: (o.els ?? []).map(e => ({ ...e, x: e.x * k, y: e.y * k, w: e.w * k, h: e.h * k })), walls: [] };
+}
 export function validateLayout(l: Layout | null): string {
   if (!l) return '';
-  if (!Number.isInteger(l.w) || !Number.isInteger(l.h) || l.w < 6 || l.w > 40 || l.h < 6 || l.h > 30) return 'Схема өлшемі: ені 6–40, ұзындығы 6–30 тор';
-  if (l.cm !== undefined && !(CELLS_CM as readonly number[]).includes(l.cm)) return 'Тор өлшемі 25, 50 немесе 100 см болсын';
+  const int = (...n: number[]) => n.every(Number.isInteger);
+  if (!int(l.w, l.h) || l.w < 200 || l.w > 5000 || l.h < 200 || l.h > 4000) return 'Кабинет өлшемі: ені 200–5000 см, ұзындығы 200–4000 см';
+  if (l.grid !== undefined && !(GRIDS as readonly number[]).includes(l.grid)) return 'Тор қадамы қате';
+  if (l.fc !== undefined && !HEX.test(l.fc)) return 'Еденнің түсі қате';
   if (l.els.length > 300) return 'Схемада 300-ден артық зат болмасын';
   for (const e of l.els) {
-    if (!(e.t in EL_TYPES) || ![e.x, e.y, e.w, e.h].every(Number.isInteger) || e.w < 1 || e.h < 1 || e.x < 0 || e.y < 0 || e.x + e.w > l.w || e.y + e.h > l.h) return 'Схемадағы бір зат тордан тыс тұр';
+    if (!(e.t in EL_TYPES) || !int(e.x, e.y, e.w, e.h) || e.w < 5 || e.h < 5 || e.x < 0 || e.y < 0 || e.x + e.w > l.w || e.y + e.h > l.h) return 'Схемадағы бір зат кабинеттен тыс тұр немесе өлшемі қате (кемі 5 см)';
     if (e.z !== undefined && (!Number.isInteger(e.z) || e.z < 10 || e.z > 400)) return 'Заттың биіктігі 10–400 см болсын';
+    if (e.r !== undefined && (!Number.isInteger(e.r) || e.r < 0 || e.r > 3)) return 'Бұру қате';
+    if (e.c !== undefined && !HEX.test(e.c)) return 'Түс қате';
     if ((e.label ?? '').length > 40) return 'Схемадағы жазу 40 таңбадан аспасын';
   }
+  const ws = l.walls ?? [];
+  if (ws.length > 80) return 'Қабырға саны 80-ден аспасын';
+  for (const w of ws) {
+    if (!int(w.x1, w.y1, w.x2, w.y2) || [w.x1, w.x2].some(x => x < 0 || x > l.w) || [w.y1, w.y2].some(y => y < 0 || y > l.h)) return 'Қабырға кабинеттен тыс тұр';
+    const len = wallLen(w);
+    if (len < 20) return 'Қабырға кемі 20 см болсын';
+    if (!Number.isInteger(thOf(w)) || thOf(w) < 5 || thOf(w) > 60) return 'Қабырға қалыңдығы 5–60 см болсын';
+    if (!Number.isInteger(wzOf(w)) || wzOf(w) < 100 || wzOf(w) > 500) return 'Қабырға биіктігі 100–500 см болсын';
+    if (w.c !== undefined && !HEX.test(w.c)) return 'Түс қате';
+    const ops = [...(w.ops ?? [])].sort((p, q) => p.at - q.at);
+    if (ops.length > 12) return 'Бір қабырғада 12-ден артық есік/терезе болмасын';
+    let end = 0;
+    for (const o of ops) {
+      if ((o.k !== 'door' && o.k !== 'window') || !int(o.at, o.wd, opSill(o), opH(o)) || o.wd < 40 || o.wd > 400 || o.at < end || o.at + o.wd > len) return 'Есік/терезе қабырғаға сыймайды немесе бір-біріне тиіп тұр';
+      if (opSill(o) < 0 || opSill(o) > 300 || opH(o) < 20 || opSill(o) + opH(o) > wzOf(w)) return 'Есік/терезе биіктігі қабырғадан асып кетті';
+      if (o.c !== undefined && !HEX.test(o.c)) return 'Түс қате';
+      end = o.at + o.wd;
+    }
+  }
+  if (JSON.stringify(l).length > 55000) return 'Схема тым үлкен: заттарды азайтыңыз';
   return '';
 }
 export interface Room { id: string; name: string; description: string | null; responsible_id: string | null; layout: Layout | null }
@@ -67,13 +109,24 @@ const fail = (e: { message: string } | null) => { if (e) throw new Error(e.messa
 const hm = (t: string) => t.slice(0, 5);
 
 // ---------- demo data ----------
+const DEMO_PLAN: Layout = {
+  v: 2, w: 800, h: 500, grid: 50,
+  walls: [
+    { id: 'w1', x1: 10, y1: 10, x2: 790, y2: 10 }, { id: 'w2', x1: 790, y1: 10, x2: 790, y2: 490, ops: [{ id: 'o1', k: 'window', at: 60, wd: 140 }, { id: 'o2', k: 'window', at: 260, wd: 140 }] },
+    { id: 'w3', x1: 790, y1: 490, x2: 10, y2: 490, ops: [{ id: 'o3', k: 'door', at: 640, wd: 90 }] }, { id: 'w4', x1: 10, y1: 490, x2: 10, y2: 10, ops: [{ id: 'o4', k: 'window', at: 120, wd: 140 }, { id: 'o5', k: 'window', at: 300, wd: 140 }] },
+  ],
+  els: [
+    { id: 'a1', t: 'board', x: 275, y: 24, w: 250, h: 20, label: 'Тақта' },
+    ...[0, 1, 2].flatMap(r => [0, 1, 2].flatMap(c => [
+      { id: `p${r}${c}`, t: 'pc' as const, x: 150 + c * 200, y: 150 + r * 100, w: 100, h: 50, label: `ПК ${r * 3 + c + 1}`, ...(r === 0 && c === 0 ? { item_id: 'i1' } : {}) },
+      { id: `c${r}${c}`, t: 'chair' as const, x: 177 + c * 200, y: 202 + r * 100, w: 45, h: 45, r: 2 }])),
+    { id: 'a4', t: 'shelf', x: 24, y: 160, w: 50, h: 150, r: 3, label: 'Шкаф' }, { id: 'a5', t: 'desk', x: 300, y: 410, w: 200, h: 50, label: 'Мұғалім үстелі', item_id: 'i2' },
+  ],
+};
 const mkDemo = (): Data => {
   const d = todayIso();
   return {
-    rooms: [{ id: 'r1', name: 'Информатика кабинеті [мысал]', description: '24 орынды компьютер сыныбы', responsible_id: 't1', layout: { w: 16, h: 10, els: [
-      { id: 'a1', t: 'board', x: 5, y: 0, w: 6, h: 1, label: 'Тақта' }, { id: 'a2', t: 'door', x: 0, y: 8, w: 1, h: 2, label: 'Есік' }, { id: 'a3', t: 'window', x: 15, y: 3, w: 1, h: 4, label: 'Терезе' },
-      ...[0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ id: `p${r}${c}`, t: 'pc' as const, x: 3 + c * 4, y: 3 + r * 2, w: 2, h: 1, label: `ПК ${r * 3 + c + 1}`, ...(r === 0 && c === 0 ? { item_id: 'i1' } : {}) }))),
-      { id: 'a4', t: 'shelf', x: 1, y: 3, w: 1, h: 3, label: 'Шкаф' }, { id: 'a5', t: 'desk', x: 6, y: 8, w: 4, h: 1, label: 'Мұғалім үстелі', item_id: 'i2' }] } }, { id: 'r2', name: 'STEM зертханасы [мысал]', description: 'Робототехника және 3D-принтер', responsible_id: 't2', layout: null }],
+    rooms: [{ id: 'r1', name: 'Информатика кабинеті [мысал]', description: '24 орынды компьютер сыныбы', responsible_id: 't1', layout: normLayout(DEMO_PLAN) }, { id: 'r2', name: 'STEM зертханасы [мысал]', description: 'Робототехника және 3D-принтер', responsible_id: 't2', layout: null }],
     items: [
       { id: 'i1', room_id: 'r1', name: 'Ноутбук', qty: 12, kind: 'laptop', note: null, inv_no: 'ИН-0101…0112', acquired_year: 2024, price: 280000, currency: 'KZT', photo_url: null, broken: 1, defect: '№7: экраны жарықсыз' },
       { id: 'i2', room_id: 'r1', name: 'Проектор', qty: 1, kind: 'equipment', note: 'Төбеде', inv_no: 'ИН-0150', acquired_year: 2021, price: 190000, currency: 'KZT', photo_url: null, broken: 0, defect: null },
@@ -111,7 +164,7 @@ export async function loadAll(me: Me): Promise<Data> {
     sb.from('cf_room_wishlist').select('*').order('priority').order('created_at')]);
   for (const x of [r, i, q, qi, p, lo, wi]) fail(x.error);
   const reqs = (q.data as Req[]).map(x => ({ ...x, start_time: hm(x.start_time), end_time: hm(x.end_time) }));
-  return { rooms: r.data as Room[], items: i.data as Item[], loans: lo.data as Loan[], wishes: wi.data as Wish[], reqs, reqItems: qi.data as ReqItem[], people: Object.fromEntries((p.data as { id: string; full_name: string }[]).map(x => [x.id, x.full_name])) };
+  return { rooms: (r.data as Room[]).map(x => ({ ...x, layout: normLayout(x.layout) })), items: i.data as Item[], loans: lo.data as Loan[], wishes: wi.data as Wish[], reqs, reqItems: qi.data as ReqItem[], people: Object.fromEntries((p.data as { id: string; full_name: string }[]).map(x => [x.id, x.full_name])) };
 }
 
 // ---------- room + items ----------
@@ -139,7 +192,7 @@ const itemRow = (x: ItemForm) => ({ name: x.name.trim(), qty: Number(x.qty), kin
 
 export async function saveRoom(me: Me, f: RoomForm): Promise<string> {
   const bad = validateRoom(f); if (bad) throw new Error(bad);
-  const row = { name: f.name.trim(), description: f.description.trim() || null, layout: f.layout && f.layout.els.length ? f.layout : null };
+  const row = { name: f.name.trim(), description: f.description.trim() || null, layout: f.layout && (f.layout.els.length || f.layout.walls?.length) ? f.layout : null };
   const items = f.items.map(itemRow);
   if (DEMO) {
     const d = D(); const id = f.id ?? `r${++n}-${Date.now()}`;
