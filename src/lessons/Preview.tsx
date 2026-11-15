@@ -5,11 +5,12 @@ import { EmptyState, ErrorBox, LinkButton, Skeleton, inputCls, useLoad } from '.
 import { renderSlide } from '../components/Widgets';
 import { tr, useLang, LANG_LABEL, type Lang } from './lang';
 import { spCtx, useSpoilers } from './spoil';
+import { stageName, totalMin, type PlanStage } from './stages';
 
 import { isRoboticsLessonId, loadRoboticsLesson } from './robotics';
 import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from './spreadsheets';
 
-interface Row { id: string; title: string; subject: string | null; slides: any[] }
+interface Row { id: string; title: string; subject: string | null; slides: any[]; plan?: any }
 const label = (s: any, i: number, lang: Lang) => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
 /** Teacher-only hint under a slide: the right answer and the lecture notes. Nothing here reaches students. */
 const hint = (s: any): string[] => [
@@ -30,7 +31,7 @@ export function LessonPreview({ id }: { id: string }) {
       const sp = await loadSpreadsheetsLesson(id);
       if (sp) return sp as Row;
     }
-    const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides').eq('id', id).maybeSingle();
+    const { data, error } = await sb.from('cf_lessons').select('id,title,subject,slides,plan').eq('id', id).maybeSingle();
     if (error) {
       if (isRoboticsLessonId(id)) {
         const rob = await loadRoboticsLesson(id);
@@ -81,12 +82,22 @@ export function LessonPreview({ id }: { id: string }) {
           <LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
         </div>
       </div>
+      {Array.isArray(lesson.plan?.stages) && lesson.plan.stages.length > 0 && (() => {
+        const pl = lesson.plan, loc = lang === 'kk' ? pl : { ...pl, ...pl[lang] }, st: PlanStage[] = pl.stages, cur = slides[Math.min(i, last)]?.stage;
+        return (
+          <details className="rounded-lg border border-border bg-surface p-3 text-sm">
+            <summary className="cursor-pointer font-semibold">Сабақ жоспары · {totalMin(st)} мин</summary>
+            <ol className="mt-2 space-y-1">{st.map((x, k) => <li key={k} className={x.k === cur ? 'font-semibold text-accent' : ''}>{stageName(x.k, lang)} · {x.min} мин — {(lang === 'kk' ? x.do : pl[lang]?.stages?.[k]) || x.do}</li>)}</ol>
+            {[['Бастапқы білім', loc.prior], ['Жұмыс ортасы', loc.env], ['Дереккөз', loc.source]].filter(([, v]) => v).map(([h, v]) => <p key={h} className="mt-2 text-text-secondary"><b className="text-text">{h}:</b> {v}</p>)}
+          </details>
+        );
+      })()}
       {!s ? <EmptyState text="Бұл дәрісте слайд жоқ." /> : (
         <>
           <div data-theme="light" role="region" aria-label={`Слайд ${i + 1} / ${slides.length}`} className="min-h-[18rem] overflow-x-auto rounded-xl bg-slate-950 py-4 text-text">{renderSlide(s, { mode: 'student', lang, sp: spCtx(spoil), lb: () => <p className="text-slate-400">Нәтиже кестесі сабақ кезінде толтырылады.</p> })}</div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" aria-label="Алдыңғы слайд" disabled={i === 0} onClick={() => go(i - 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface hover:bg-surface-2 disabled:opacity-30"><ChevronLeft size={18} aria-hidden="true" /></button>
-            <span aria-live="polite" className="min-w-[4.5rem] text-center text-sm tabular-nums">{i + 1} / {slides.length}</span>
+            <span aria-live="polite" className="min-w-[4.5rem] text-center text-sm tabular-nums">{i + 1} / {slides.length}</span>{slides[i]?.stage && <span className="rounded-full bg-accent-soft px-2 py-1 text-xs font-semibold text-accent">{stageName(slides[i].stage, lang)}</span>}
             <button type="button" aria-label="Келесі слайд" disabled={i === last} onClick={() => go(i + 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface hover:bg-surface-2 disabled:opacity-30"><ChevronRight size={18} aria-hidden="true" /></button>
             <select aria-label="Слайдқа өту" className={inputCls + ' !w-auto min-w-[12rem] flex-1'} value={i} onChange={e => go(+e.target.value)}>{slides.map((x, k) => <option key={k} value={k}>{label(x, k, lang)}</option>)}</select>
           </div>

@@ -1,5 +1,5 @@
 // Informatics 8, textbook chapter 3 "Spreadsheets": lessons 3.2-3.4 (3.1 is in lesson1.ts). Texts are [kk, ru, en]; the numbers of every table are checked by replica/unit/sheetslab.test.mjs.
-import { info, labTask, quiz, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
+import { demoSheet, info, labTask, quiz, tag, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
 
 const sub: T = ['Информатика 8-сынып · 3-тарау «Электрондық кестелер»', 'Информатика 8 класс · глава 3 «Электронные таблицы»', 'Informatics Grade 8 · Chapter 3 “Spreadsheets”'];
 const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
@@ -15,37 +15,68 @@ export const L2: LabLesson = {
     ['argument', 'Аргумент — функция жақшада алатын мән немесе диапазон', 'Аргумент — значение или диапазон в скобках функции', 'Argument — the value or range a function takes in brackets'],
     ['range', 'Диапазон — ұяшықтар тобы, мысалы B2:B6', 'Диапазон — группа ячеек, например B2:B6', 'Range — a group of cells, e.g. B2:B6'],
   ],
+  plan: {
+    prior: ['Ұяшық адресін (мысалы, C4) біледі және «=» арқылы қарапайым формула жаза алады (3.1 сабақ).', 'Знают адрес ячейки (например, C4) и умеют записать простую формулу с «=» (урок 3.1).', 'Know a cell address (e.g. C4) and can write a simple formula starting with “=” (lesson 3.1).'],
+    env: ['ClassFlow кестесі (Excel және Google Sheets-ке ұқсас). Функция аргументтерін «;» немесе «,» бөліп жазуға болады. Әр оқушыға бір құрылғы және интернет қажет.', 'Таблица ClassFlow (как Excel и Google Sheets). Аргументы функций можно разделять «;» или «,». Нужны устройство для каждого ученика и интернет.', 'The ClassFlow sheet (like Excel and Google Sheets). Function arguments can be separated by “;” or “,”. Each student needs a device and the internet.'],
+    source: ['Информатика 8-сынып оқулығы, 3-тарау «Электрондық кестелер». Бет нөмірін мұғалім өзі нақтылайды. Сабақтағы барлық формулалар кестеде орындалып тексерілген, ойдан шығарылған деректер қолданылған.', 'Учебник информатики 8 класса, глава 3 «Электронные таблицы». Номер страницы уточняет учитель. Все формулы урока проверены выполнением в таблице, данные вымышленные.', 'Informatics Grade 8 textbook, chapter 3 “Spreadsheets”. The teacher fills in the page number. Every formula in the lesson was run in the sheet; the data are made up.'],
+    stages: [
+      { k: 'warmup', min: 5, do: ['Ұяшық адресі мен формула туралы екі қысқа сұраққа жауап береді', 'Отвечает на два коротких вопроса об адресе ячейки и формуле', 'Answers two short questions about cell addresses and formulas'] },
+      { k: 'together', min: 8, do: ['Мұғаліммен бірге шығындар кестесінің қосындысын SUM көмегімен есептейді', 'Вместе с учителем считает сумму таблицы расходов функцией SUM', 'Works out the expenses total with SUM together with the teacher'] },
+      { k: 'example', min: 10, do: ['Үлгі бойынша орташа, ең үлкен және ең кіші мәндерді табады', 'По образцу находит среднее, наибольшее и наименьшее значения', 'Finds the mean, largest and smallest values following the sample'] },
+      { k: 'practice', min: 15, do: ['Асхана деректерімен өздігінен жұмыс істейді, екі қорытынды жазады', 'Самостоятельно работает с данными столовой и записывает два вывода', 'Works on the canteen data alone and writes two conclusions'] },
+      { k: 'check', min: 7, do: ['Нәтижесін тексереді, қысқа тестті орындайды, не үйренгенін айтады', 'Проверяет результат, выполняет короткий тест и говорит, что узнал', 'Checks the result, takes a short test and says what was learned'] },
+    ],
+  },
   slides: [
     titleSlide(['3.2 Кірістірілген функциялар', '3.2 Встроенные функции', '3.2 Built-in functions'], sub),
-    info('explain', ['Функция деген не?', 'Что такое функция?', 'What is a function?'], [
+    tag(quiz(['Қайталау: формула', 'Повторение: формула', 'Review: formulas'], ['Формула қандай таңбадан басталады?', 'С какого знака начинается формула?', 'Which sign does a formula start with?'],
+      [['«=» таңбасынан', 'Со знака «=»', 'With the “=” sign'], ['Санынан', 'С числа', 'With a number'], ['Әріптен', 'С буквы', 'With a letter'], ['Жақшадан', 'Со скобки', 'With a bracket']], 0,
+      ['Кестедегі кез келген формула «=» таңбасынан басталады, әйтпесе кесте оны мәтін деп санайды.', 'Любая формула в таблице начинается с «=», иначе таблица считает её текстом.', 'Every formula in a sheet starts with “=”, otherwise the sheet treats it as text.']), 'warmup', ['5 минут. Оқушылар жауабын телефонынан жібереді. Жауабы қате оқушыға =B2+C2 мысалын еске сал, келесі сұраққа өт.', '5 минут. Ученики отвечают с телефона. Если ответ неверный, напомните пример =B2+C2 и переходите к следующему вопросу.', '5 minutes. Students answer from their phones. If an answer is wrong, recall the example =B2+C2 and move on.']),
+    tag(quiz(['Қайталау: ұяшық адресі', 'Повторение: адрес ячейки', 'Review: cell address'], ['C4 деген не?', 'Что такое C4?', 'What is C4?'],
+      [['C бағаны мен 4-жолдың қиылысындағы ұяшықтың адресі', 'Адрес ячейки на пересечении столбца C и строки 4', 'The address of the cell where column C meets row 4'], ['4-баған мен C жолының қиылысы', 'Пересечение столбца 4 и строки C', 'The meeting of column 4 and row C'], ['C және 4 сандарының қосындысы', 'Сумма чисел C и 4', 'The sum of C and 4'], ['Ұяшықтар диапазоны', 'Диапазон ячеек', 'A range of cells']], 0,
+      ['Адрес әріптен (баған) және саннан (жол) тұрады: C4 — C бағаны, 4-жол.', 'Адрес состоит из буквы (столбец) и числа (строка): C4 — столбец C, строка 4.', 'An address is a letter (column) and a number (row): C4 is column C, row 4.']), 'warmup', ['Бұл сұрақтан кейін «ал B2:B6 деген не?» деп сұра: диапазон туралы бір ауыз сөз. Жауабы: B2-ден B6-ға дейінгі бес ұяшық.', 'После этого спросите: «А что такое B2:B6?» — одна фраза про диапазон. Ответ: пять ячеек от B2 до B6.', 'Then ask: “and what is B2:B6?” — one sentence about a range. Answer: the five cells from B2 to B6.']),
+    tag(info('explain', ['Функция деген не?', 'Что такое функция?', 'What is a function?'], [
       ['Функция — аты бар дайын формула. Ұзын қосуды қолмен жазбай, бір сөзбен орындаймыз.', 'Функция — готовая формула с именем. Не пишем длинное сложение вручную, а вызываем одним словом.', 'A function is a ready-made formula with a name. Instead of a long sum by hand, we call it by one word.'],
       ['Жазылуы: =АТЫ(аргументтер). Аргумент — жақша ішіндегі ұяшықтар немесе сандар.', 'Запись: =ИМЯ(аргументы). Аргумент — ячейки или числа в скобках.', 'Form: =NAME(arguments). An argument is the cells or numbers inside the brackets.'],
       ['Аргументтерді «;» немесе «,» бөліп жазамыз, диапазонды «:» таңбасымен: B2:B6.', 'Аргументы разделяют «;» или «,», а диапазон записывают через «:» — B2:B6.', 'Arguments are separated by “;” or “,”, a range uses “:” — B2:B6.'],
-    ], { art: 'functions' }),
-    info('explain', ['Негізгі функциялар', 'Основные функции', 'The main functions'], [
-      ['SUM — қосынды, AVERAGE — орташа мән, COUNT — сандардың саны.', 'SUM — сумма, AVERAGE — среднее, COUNT — количество чисел.', 'SUM adds up, AVERAGE gives the mean, COUNT counts the numbers.'],
-      ['MAX — ең үлкен мән, MIN — ең кіші мән, ROUND — дөңгелектеу.', 'MAX — наибольшее значение, MIN — наименьшее, ROUND — округление.', 'MAX is the largest value, MIN the smallest, ROUND rounds a number.'],
-      ['Функция ішіне функция жазуға болады: =ROUND(AVERAGE(B2:B6);1).', 'Одну функцию можно вложить в другую: =ROUND(AVERAGE(B2:B6);1).', 'A function can sit inside another one: =ROUND(AVERAGE(B2:B6);1).'],
-    ], { code: '=SUM(B2:B6)\n=AVERAGE(B2:B6)\n=MAX(B2:B6)\n=MIN(B2:B6)\n=COUNT(B2:B6)\n=ROUND(B7;1)' }),
-    info('explain', ['Функцияны қалай енгіземіз?', 'Как ввести функцию?', 'How do we enter a function?'], [
+    ], { art: 'functions' }), 'together'),
+    tag(info('explain', ['Функцияны қалай енгіземіз?', 'Как ввести функцию?', 'How do we enter a function?'], [
       ['Нәтиже шығатын ұяшықты бас, «=» таңбасын және функция атын жаз.', 'Нажми на ячейку для результата, напиши «=» и имя функции.', 'Click the cell for the result, type “=” and the function name.'],
       ['Жақшаны ашып, диапазонды тінтуірмен сүйреп белгіле немесе қолмен жаз, жақшаны жап.', 'Открой скобку, выдели диапазон мышью или напиши вручную, закрой скобку.', 'Open the bracket, drag over the range or type it, close the bracket.'],
       ['Enter бас. Мәндер өзгерсе, нәтиже өздігінен қайта есептеледі.', 'Нажми Enter. Если значения изменятся, результат пересчитается сам.', 'Press Enter. If the values change, the result recalculates by itself.'],
-    ], { art: 'recalc' }),
-    info('video', ['Видео: кестедегі функциялар', 'Видео: функции в таблице', 'Video: spreadsheet functions'], [
-      ['Видеоны көр, сосын екі сұраққа жауап бер: функция қалай басталады? Диапазон қалай жазылады?', 'Посмотри видео и ответь на два вопроса: как начинается функция? Как записывается диапазон?', 'Watch the video and answer two questions: how does a function start? How is a range written?'],
-    ], { video: 'RBVub9rdF40', notes: ['Видео ашылмаса, астындағы «YouTube-та ашу» сілтемесін басыңыз. Басқа видео қосу үшін дәріс өңдегішінде «YouTube видео» өрісіне сілтемесін қойыңыз.', 'Если видео не открывается, нажмите ссылку «Смотреть на YouTube» под ним. Другое видео можно вставить в поле «YouTube видео» в редакторе урока.', 'If the video does not play, use the “Open on YouTube” link under it. To use another video, paste its link into the “YouTube video” field in the lesson editor.'] }),
-    walk(['Мысал: сатылым кестесі', 'Пример: таблица продаж', 'Example: a sales table'],
+    ], { art: 'recalc' }), 'together'),
+    tag(demoSheet(['Шығындар кестесі: қосынды', 'Таблица расходов: сумма', 'Expenses table: the sum'], [
+      ['B6 ұяшығын бас да, =SUM( деп жаз.', 'Нажми на B6 и напиши =SUM(.', 'Click B6 and type =SUM(.'],
+      ['B2:B5 диапазонын тінтуірмен сүйреп белгіле, жақшаны жап.', 'Выдели диапазон B2:B5 мышью и закрой скобку.', 'Drag over B2:B5 with the mouse and close the bracket.'],
+      ['Enter бас: 2550. Енді B3-ті 1500-ге өзгертіп көр: қосынды өздігінен 2850 болады.', 'Нажми Enter: 2550. Теперь измени B3 на 1500: сумма сама станет 2850.', 'Press Enter: 2550. Now change B3 to 1500: the sum becomes 2850 by itself.'],
+    ], {
+      rows: 8, cols: 4,
+      cells: {
+        A1: ['Шығын', 'Статья', 'Item'], B1: ['Сомасы, ₸', 'Сумма, ₸', 'Amount, ₸'],
+        A2: ['Көлік', 'Транспорт', 'Transport'], B2: '400',
+        A3: ['Тамақ', 'Питание', 'Food'], B3: '1200',
+        A4: ['Кітаптар', 'Книги', 'Books'], B4: '650',
+        A5: ['Байланыс', 'Связь', 'Phone'], B5: '300',
+        A6: ['Барлығы', 'Итого', 'Total'],
+      },
+      fmt: Object.fromEntries(['A1', 'B1', 'A6'].map(k => [k, { b: 1, bg: '#1e3a8a' }])),
+    }, ['8 минут. Формуланы тақтада өзің жаз, оқушылар экранда қарайды, сосын өз кестесінде қайталайды. Күтілетін нәтиже: B6 = 2550; B3 = 1500 болса — 2850. «Бастапқыға қайтару» батырмасы кестені алғашқы күйіне келтіреді. Жиі қате: диапазонды B2:B6 деп жазу (B6 — нәтиже ұяшығының өзі, циклдік сілтеме).', '8 минут. Формулу вводите на доске сами, ученики смотрят на экран, затем повторяют в своей таблице. Ожидаемый результат: B6 = 2550; при B3 = 1500 — 2850. Кнопка «Сбросить» возвращает таблицу. Частая ошибка: диапазон B2:B6 (B6 — сама ячейка результата, циклическая ссылка).', '8 minutes. Type the formula on the board yourself while the class watches, then they repeat it in their own sheet. Expected: B6 = 2550; with B3 = 1500 it is 2850. The Reset button restores the table. Common mistake: the range B2:B6 (B6 is the result cell itself, a circular reference).']), 'together'),
+    tag(info('explain', ['Негізгі функциялар', 'Основные функции', 'The main functions'], [
+      ['SUM — қосынды, AVERAGE — орташа мән, COUNT — сандардың саны.', 'SUM — сумма, AVERAGE — среднее, COUNT — количество чисел.', 'SUM adds up, AVERAGE gives the mean, COUNT counts the numbers.'],
+      ['MAX — ең үлкен мән, MIN — ең кіші мән, ROUND — дөңгелектеу.', 'MAX — наибольшее значение, MIN — наименьшее, ROUND — округление.', 'MAX is the largest value, MIN the smallest, ROUND rounds a number.'],
+      ['Функция ішіне функция жазуға болады: =ROUND(AVERAGE(B2:B6);1).', 'Одну функцию можно вложить в другую: =ROUND(AVERAGE(B2:B6);1).', 'A function can sit inside another one: =ROUND(AVERAGE(B2:B6);1).'],
+    ], { code: '=SUM(B2:B6)\n=AVERAGE(B2:B6)\n=MAX(B2:B6)\n=MIN(B2:B6)\n=COUNT(B2:B6)\n=ROUND(B7;1)' }), 'example'),
+    tag(walk(['Мысал: сатылым кестесі', 'Пример: таблица продаж', 'Example: a sales table'],
       ['B2:B6 ұяшықтарында бес күндегі сатылым: 120, 80, 100, 60, 40. Қосындысын, орташасын, ең үлкенін, ең кішісін және күн санын тап.', 'В ячейках B2:B6 продажи за пять дней: 120, 80, 100, 60, 40. Найди сумму, среднее, наибольшее, наименьшее и количество дней.', 'Cells B2:B6 hold five days of sales: 120, 80, 100, 60, 40. Find the sum, mean, largest, smallest and the number of days.'],
       [['B7-ге =SUM(B2:B6) жаз.', 'В B7 запиши =SUM(B2:B6).', 'In B7 type =SUM(B2:B6).'],
        ['B8-ге =AVERAGE(B2:B6) жаз.', 'В B8 запиши =AVERAGE(B2:B6).', 'In B8 type =AVERAGE(B2:B6).'],
        ['B9-ға =MAX(B2:B6), B10-ға =MIN(B2:B6) жаз.', 'В B9 запиши =MAX(B2:B6), в B10 — =MIN(B2:B6).', 'In B9 type =MAX(B2:B6), in B10 =MIN(B2:B6).'],
        ['B11-ге =COUNT(B2:B6) жаз.', 'В B11 запиши =COUNT(B2:B6).', 'In B11 type =COUNT(B2:B6).']],
-      ['Қосынды 400, орташа 80, ең үлкен 120, ең кіші 40, күн саны 5.', 'Сумма 400, среднее 80, наибольшее 120, наименьшее 40, дней 5.', 'Sum 400, mean 80, largest 120, smallest 40, 5 days.']),
-    quiz(['SUM функциясы', 'Функция SUM', 'The SUM function'], ['A1:A4 ұяшықтарында 2, 4, 6, 8 сандары бар. =SUM(A1:A4) нәтижесі қандай?', 'В ячейках A1:A4 числа 2, 4, 6, 8. Каков результат =SUM(A1:A4)?', 'Cells A1:A4 hold 2, 4, 6, 8. What does =SUM(A1:A4) give?'],
-      [['14', '14', '14'], ['20', '20', '20'], ['5', '5', '5'], ['8', '8', '8']], 1,
-      ['2 + 4 + 6 + 8 = 20.', '2 + 4 + 6 + 8 = 20.', '2 + 4 + 6 + 8 = 20.']),
-    labTask(['Практика: асхана сатылымы', 'Практика: продажи в столовой', 'Practice: canteen sales'],
+      ['Қосынды 400, орташа 80, ең үлкен 120, ең кіші 40, күн саны 5.', 'Сумма 400, среднее 80, наибольшее 120, наименьшее 40, дней 5.', 'Sum 400, mean 80, largest 120, smallest 40, 5 days.']), 'example'),
+    tag(info('video', ['Видео: кестедегі функциялар', 'Видео: функции в таблице', 'Video: spreadsheet functions'], [
+      ['Видеоны көр, сосын екі сұраққа жауап бер: функция қалай басталады? Диапазон қалай жазылады?', 'Посмотри видео и ответь на два вопроса: как начинается функция? Как записывается диапазон?', 'Watch the video and answer two questions: how does a function start? How is a range written?'],
+    ], { video: 'RBVub9rdF40', notes: ['Видео ашылмаса, астындағы «YouTube-та ашу» сілтемесін басыңыз. Басқа видео қосу үшін дәріс өңдегішінде «YouTube видео» өрісіне сілтемесін қойыңыз.', 'Если видео не открывается, нажмите ссылку «Смотреть на YouTube» под ним. Другое видео можно вставить в поле «YouTube видео» в редакторе урока.', 'If the video does not play, use the “Open on YouTube” link under it. To use another video, paste its link into the “YouTube video” field in the lesson editor.'] }), 'example'),
+    tag(labTask(['Практика: асхана сатылымы', 'Практика: продажи в столовой', 'Practice: canteen sales'],
       ['Суреттегі кестені енгіз және қосындыларды, ең үлкен мәнді, орташа мәнді функциялармен есепте.', 'Введи таблицу с рисунка и посчитай суммы, наибольшее и среднее значения функциями.', 'Enter the table from the picture and work out the totals, the largest and the mean with functions.'],
       {
         pic: pic('t32', ['Асхана: сатылған тағамдар саны', 'Столовая: сколько продано', 'Canteen: items sold'],
@@ -53,10 +84,11 @@ export const L2: LabLesson = {
             A2: ['Бөлке', 'Булочка', 'Bun'], B2: '12', C2: '15', D2: '10', E2: '?', A3: ['Бәліш', 'Пирожок', 'Pie'], B3: '8', C3: '6', D3: '9', E3: '?',
             A4: ['Шай', 'Чай', 'Tea'], B4: '20', C4: '18', D4: '22', E4: '?', A5: ['Шырын', 'Сок', 'Juice'], B5: '14', C5: '10', D5: '12', E5: '?',
             A6: ['Салат', 'Салат', 'Salad'], B6: '7', C6: '9', D6: '5', E6: '?', A7: ['Барлығы', 'Всего', 'Total'], B7: '?', C7: '?', D7: '?', E7: '?',
-            A8: ['Ең көбі', 'Максимум', 'Largest'], B8: '?', A9: ['Орташа', 'Среднее', 'Mean'], B9: '?' },
-          ['E2', 'E3', 'E4', 'E5', 'E6', 'B7', 'C7', 'D7', 'E7', 'B8', 'B9'], 5, 9, [120, 70, 70, 70, 90], NOTE),
+            A8: ['Ең көбі', 'Максимум', 'Largest'], B8: '?', A9: ['Орташа', 'Среднее', 'Mean'], B9: '?',
+            A10: ['★ Ең азы', '★ Минимум', '★ Smallest'], B10: '?', A11: ['★ Орташа (бүтінге)', '★ Среднее (до целых)', '★ Mean (whole)'], B11: '?' },
+          ['E2', 'E3', 'E4', 'E5', 'E6', 'B7', 'C7', 'D7', 'E7', 'B8', 'B9', 'B10', 'B11'], 5, 11, [120, 70, 70, 70, 90], NOTE),
         alt: ['Үш күндегі бес тағамның сатылым кестесі, бос ұяшықтар қосындылар мен ең көбі, орташа үшін', 'Таблица продаж пяти блюд за три дня, пустые ячейки для сумм, максимума и среднего', 'Sales of five items over three days with empty cells for totals, largest and mean'],
-        solve: { E2: '=SUM(B2:D2)', E3: '=SUM(B3:D3)', E4: '=SUM(B4:D4)', E5: '=SUM(B5:D5)', E6: '=SUM(B6:D6)', B7: '=SUM(B2:B6)', C7: '=SUM(C2:C6)', D7: '=SUM(D2:D6)', E7: '=SUM(E2:E6)', B8: '=MAX(B2:D6)', B9: '=AVERAGE(B2:D6)' },
+        solve: { E2: '=SUM(B2:D2)', E3: '=SUM(B3:D3)', E4: '=SUM(B4:D4)', E5: '=SUM(B5:D5)', E6: '=SUM(B6:D6)', B7: '=SUM(B2:B6)', C7: '=SUM(C2:C6)', D7: '=SUM(D2:D6)', E7: '=SUM(E2:E6)', B8: '=MAX(B2:D6)', B9: '=AVERAGE(B2:D6)', B10: '=MIN(B2:D6)', B11: '=ROUND(B9;0)' },
         criteria: [
           { id: 'c1', text: ['Деректер енгізілген: B2 = 12 және D6 = 5', 'Данные введены: B2 = 12 и D6 = 5', 'Data entered: B2 = 12 and D6 = 5'], cell: 'D6' },
           { id: 'c2', text: ['E2 — бөлкенің үш күндегі қосындысы (SUM)', 'E2 — сумма по булочкам за три дня (SUM)', 'E2 — buns over three days (SUM)'], cell: 'E2', fn: 'SUM', points: 2 },
@@ -65,11 +97,32 @@ export const L2: LabLesson = {
           { id: 'c5', text: ['E7 — жалпы қосынды', 'E7 — общая сумма', 'E7 — grand total'], cell: 'E7', fn: 'SUM', points: 2 },
           { id: 'c6', text: ['B8 — барлық кестедегі ең үлкен мән (MAX)', 'B8 — наибольшее значение во всей таблице (MAX)', 'B8 — largest value in the whole table (MAX)'], cell: 'B8', fn: 'MAX', points: 2 },
           { id: 'c7', text: ['B9 — барлық сандардың орташасы (AVERAGE)', 'B9 — среднее всех чисел (AVERAGE)', 'B9 — mean of all the numbers (AVERAGE)'], cell: 'B9', fn: 'AVERAGE', points: 2 },
+          { id: 'c8', text: ['★ B10 — ең аз сатылған мән (MIN)', '★ B10 — наименьшее значение (MIN)', '★ B10 — smallest value (MIN)'], cell: 'B10', fn: 'MIN', points: 2 },
+          { id: 'c9', text: ['★ B11 — орташаны бүтінге дейін дөңгелектеу (ROUND)', '★ B11 — среднее, округлённое до целых (ROUND)', '★ B11 — the mean rounded to a whole number (ROUND)'], cell: 'B11', fn: 'ROUND', points: 2 },
         ],
-      }),
-    quiz(['COUNT', 'COUNT', 'COUNT'], ['COUNT функциясы нені санайды?', 'Что считает функция COUNT?', 'What does the COUNT function count?'],
+        steps: [
+          ['Көмек: E2 ұяшығына =SUM(B2:D2) жаз да, E6-ға дейін төмен тарт.', 'Подсказка: в E2 запиши =SUM(B2:D2) и протяни до E6.', 'Hint: in E2 type =SUM(B2:D2) and drag down to E6.'],
+          ['Көмек: B7-ге =SUM(B2:B6) жаз да, E7-ге дейін оңға тарт.', 'Подсказка: в B7 запиши =SUM(B2:B6) и протяни вправо до E7.', 'Hint: in B7 type =SUM(B2:B6) and drag right to E7.'],
+          ['B8 — MAX, B9 — AVERAGE, диапазон екеуіне де B2:D6.', 'B8 — MAX, B9 — AVERAGE, диапазон для обоих B2:D6.', 'B8 uses MAX, B9 uses AVERAGE, the range for both is B2:D6.'],
+          ['★ Күрделі: B10-ға MIN, B11-ге ROUND(B9;0) жаз.', '★ Сложнее: в B10 запиши MIN, в B11 — ROUND(B9;0).', '★ Challenge: put MIN in B10 and ROUND(B9;0) in B11.'],
+          ['Қорытынды: A13 мен A14 ұяшықтарына екі ой жаз — қай тағам көп сатылды, қай күні сатылым жақсы болды?', 'Вывод: в A13 и A14 запиши две мысли — какое блюдо продавалось лучше всего, в какой день продажи были выше?', 'Conclusion: in A13 and A14 write two findings — which item sold best, and on which day were sales higher?'],
+        ],
+        notes: ['15 минут. Үш деңгей: көмек (қадамдар тізімі), негізгі (c1–c7, барлығы 12 ұпай), ★ күрделі (c8–c9, +4 ұпай). Күтілетін нәтиже: E2:E6 = 37, 23, 60, 36, 21; B7 = 61, C7 = 58, D7 = 58, E7 = 177; B8 = 22; B9 = 11.8; B10 = 5; B11 = 12. Жиі қателер: санның орнына нәтижені қолмен жазу (формула емес), диапазонды шатастыру (B2:B6 орнына B2:D6), «;» орнына «.» қолдану. Оқушы қорытындыларын (A13, A14) мұғалім қолмен оқиды, автоматты тексерілмейді.', '15 минут. Три уровня: подсказка (список шагов), основной (c1–c7, всего 12 баллов), ★ сложнее (c8–c9, +4 балла). Ожидаемый результат: E2:E6 = 37, 23, 60, 36, 21; B7 = 61, C7 = 58, D7 = 58, E7 = 177; B8 = 22; B9 = 11.8; B10 = 5; B11 = 12. Частые ошибки: вместо формулы вписано готовое число, перепутан диапазон (B2:B6 вместо B2:D6), «.» вместо «;». Выводы учеников (A13, A14) учитель читает сам, автоматически они не проверяются.', '15 minutes. Three levels: hint (the step list), core (c1–c7, 12 points), ★ challenge (c8–c9, +4 points). Expected: E2:E6 = 37, 23, 60, 36, 21; B7 = 61, C7 = 58, D7 = 58, E7 = 177; B8 = 22; B9 = 11.8; B10 = 5; B11 = 12. Common mistakes: typing a ready number instead of a formula, mixing up the range (B2:B6 instead of B2:D6), “.” instead of “;”. The students’ conclusions (A13, A14) are read by the teacher and not marked automatically.'],
+      }), 'practice'),
+    tag(quiz(['SUM функциясы', 'Функция SUM', 'The SUM function'], ['A1:A4 ұяшықтарында 2, 4, 6, 8 сандары бар. =SUM(A1:A4) нәтижесі қандай?', 'В ячейках A1:A4 числа 2, 4, 6, 8. Каков результат =SUM(A1:A4)?', 'Cells A1:A4 hold 2, 4, 6, 8. What does =SUM(A1:A4) give?'],
+      [['14', '14', '14'], ['20', '20', '20'], ['5', '5', '5'], ['8', '8', '8']], 1,
+      ['2 + 4 + 6 + 8 = 20.', '2 + 4 + 6 + 8 = 20.', '2 + 4 + 6 + 8 = 20.']), 'check'),
+    tag(quiz(['COUNT', 'COUNT', 'COUNT'], ['COUNT функциясы нені санайды?', 'Что считает функция COUNT?', 'What does the COUNT function count?'],
       [['Ұяшықтардың барлығын', 'Все ячейки подряд', 'All cells'], ['Тек сандар бар ұяшықтарды', 'Только ячейки с числами', 'Only the cells that hold numbers'], ['Мәтіндерді ғана', 'Только тексты', 'Only texts'], ['Диапазон қосындысын', 'Сумму диапазона', 'The sum of the range']], 1,
-      ['COUNT тек сандарды санайды, мәтін мен бос ұяшықты өткізіп жібереді.', 'COUNT считает только числа, текст и пустые ячейки пропускает.', 'COUNT counts only numbers and skips text and empty cells.']),
+      ['COUNT тек сандарды санайды, мәтін мен бос ұяшықты өткізіп жібереді.', 'COUNT считает только числа, текст и пустые ячейки пропускает.', 'COUNT counts only numbers and skips text and empty cells.']), 'check'),
+    tag(quiz(['Қате қайда?', 'Где ошибка?', 'Where is the mistake?'], ['Сатылым B2:B6 ұяшықтарында (120, 80, 100, 60, 40). Оқушы B7-ге =SUM(B2:B5) жазды. Не болады?', 'Продажи лежат в B2:B6 (120, 80, 100, 60, 40). Ученик написал в B7 =SUM(B2:B5). Что получится?', 'Sales are in B2:B6 (120, 80, 100, 60, 40). A student typed =SUM(B2:B5) in B7. What happens?'],
+      [['B6 (40) қосындыға кірмейді, нәтиже 360 болады', 'B6 (40) не войдёт в сумму, получится 360', 'B6 (40) is left out, the result is 360'], ['Кесте қате туралы хабар береді', 'Таблица покажет сообщение об ошибке', 'The sheet shows an error message'], ['Нәтиже 400, дұрыс', 'Результат 400, всё верно', 'The result is 400, correct'], ['B7 бос қалады', 'B7 останется пустой', 'B7 stays empty']], 0,
+      ['Диапазон бір ұяшыққа қысқа: 120 + 80 + 100 + 60 = 360. Формуланы жазған соң диапазонды әрқашан тексер.', 'Диапазон короче на одну ячейку: 120 + 80 + 100 + 60 = 360. После записи формулы всегда проверяй диапазон.', 'The range is one cell short: 120 + 80 + 100 + 60 = 360. Always check the range after you write a formula.']), 'check', ['Жиі қате: диапазонның бір ұяшықты қалдырып кетуі. Кесте қате хабарламайды, сондықтан оқушы өзі тексеруі керек.', 'Частая ошибка: диапазон пропускает одну ячейку. Таблица не сообщает об ошибке, поэтому ученик должен проверять сам.', 'Common mistake: the range misses one cell. The sheet gives no error, so students must check it themselves.']),
+    tag(info('check', ['Қорытынды: бүгін не үйрендім?', 'Итог: что я узнал сегодня?', 'Wrap-up: what did I learn today?'], [
+      ['Функция — … (өз сөзіңмен жалғастыр).', 'Функция — … (продолжи своими словами).', 'A function is … (finish in your own words).'],
+      ['SUM пен AVERAGE айырмашылығы: …', 'Разница между SUM и AVERAGE: …', 'The difference between SUM and AVERAGE: …'],
+      ['Бүгін маған ең қиыны: …', 'Сегодня мне было труднее всего: …', 'The hardest thing for me today: …'],
+    ], {}), 'check', ['Оқушылар үш сөйлемді дәптерге немесе кестенің бос ұяшықтарына жазады, 2-3 оқушы дауыстап оқиды. Қай сұрақ жиі «қиын» болса, келесі сабақтың басында қайталаңыз.', 'Ученики дописывают три предложения в тетрадь или в свободные ячейки таблицы, 2–3 ученика читают вслух. Что чаще всего названо трудным, повторите в начале следующего урока.', 'Students finish three sentences in a notebook or in empty sheet cells; 2–3 read aloud. Whatever is named “hardest” most often, revisit at the start of the next lesson.']),
   ],
 };
 

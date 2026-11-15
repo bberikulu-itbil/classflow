@@ -13,6 +13,8 @@ import { CanvasEditor } from '../lessons/CanvasEditor';
 import { canConvert, toCanvas } from '../lessons/canvas';
 import { isRoboticsLessonId, loadRoboticsLesson } from '../lessons/robotics';
 import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from '../lessons/spreadsheets';
+import type { PlanStage } from '../lessons/stages';
+import type { PlanData } from '../lessons/PlanPanel';
 
 type Mode = 'manual' | 'ai';
 type PageType = 'slide' | 'scroll' | 'interactive';
@@ -192,6 +194,11 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const [duration, setDuration] = useState('90 минут');
   const [summary, setSummary] = useState('');
   const [objectives, setObjectives] = useState('');
+  const [planBase, setPlanBase] = useState<Record<string, any>>({}); // the saved plan: keys this editor does not show (ru, en, …) must survive a save
+  const [prior, setPrior] = useState('');
+  const [env, setEnv] = useState('');
+  const [source, setSource] = useState('');
+  const [stages, setStages] = useState<PlanStage[]>([]);
   const [slides, setSlides] = useState<Slide[]>(SAMPLE);
   const slidesRef = useRef<Slide[]>(SAMPLE);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -262,6 +269,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           setObjectives(Array.isArray(sp.plan?.objectives) ? sp.plan.objectives.join('\n') : '');
           setGrade(String(sp.plan?.grade || '8'));
           setDuration(sp.plan?.duration || '45 минут');
+          loadPlan(sp.plan);
           const loadedSlides = parseSlides(sp.slides);
           const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
           setSlides(nextSlides);
@@ -283,6 +291,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
         setObjectives(Array.isArray(data.plan?.objectives) ? data.plan.objectives.join('\n') : '');
         setGrade(String(data.plan?.grade || '7'));
         setDuration(data.plan?.duration || '90 минут');
+        loadPlan(data.plan);
         const loadedSlides = parseSlides(data.slides);
         const nextSlides = loadedSlides.length ? loadedSlides : SAMPLE;
         setSlides(nextSlides);
@@ -292,6 +301,30 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       setLoading(false);
     });
   }, [isNew, route.lessonId]);
+
+  const loadPlan = (plan: any) => {
+    const p = plan && typeof plan === 'object' ? plan : {};
+    setPlanBase(p);
+    setPrior(typeof p.prior === 'string' ? p.prior : '');
+    setEnv(typeof p.env === 'string' ? p.env : '');
+    setSource(typeof p.source === 'string' ? p.source : '');
+    setStages(Array.isArray(p.stages) ? p.stages.filter((x: any) => x && typeof x === 'object').map((x: any) => ({ k: String(x.k || 'explain'), min: Number(x.min) || 0, do: String(x.do || '') })) : []);
+  };
+  const dropStage = (i: number) => { // the ru / en texts of a stage are parallel arrays: cut the same row there
+    setStages(xs => xs.filter((_, j) => j !== i));
+    setPlanBase(b => ({ ...b, ...Object.fromEntries((['ru', 'en'] as const).filter(l => Array.isArray(b[l]?.stages)).map(l => [l, { ...b[l], stages: b[l].stages.filter((_: any, j: number) => j !== i) }])) }));
+  };
+  const patchPlan = (p: Partial<PlanData>) => {
+    if (p.subject !== undefined) setSubject(p.subject);
+    if (p.grade !== undefined) setGrade(p.grade);
+    if (p.duration !== undefined) setDuration(p.duration);
+    if (p.summary !== undefined) setSummary(p.summary);
+    if (p.objectives !== undefined) setObjectives(p.objectives);
+    if (p.prior !== undefined) setPrior(p.prior);
+    if (p.env !== undefined) setEnv(p.env);
+    if (p.source !== undefined) setSource(p.source);
+    if (p.stages !== undefined) setStages(p.stages);
+  };
 
   const updateSlide = (index: number, patch: Slide) => setSlides(items => items.map((item, i) => i === index ? normalizePage({ ...item, ...patch }) : item));
   const changePageType = (index: number, pageType: PageType) => {
@@ -443,7 +476,9 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
   const save = async () => {
     if (!title.trim()) return setError('Дәрістің атауын жазыңыз.');
     setError(''); setMessage(''); setSaving(true);
-    const plan = { summary: summary.trim(), objectives: objectives.split('\n').map(x => x.trim()).filter(Boolean), grade: +grade || 7, duration };
+    const plan: Record<string, any> = { ...planBase, summary: summary.trim(), objectives: objectives.split('\n').map(x => x.trim()).filter(Boolean), grade: +grade || 7, duration };
+    for (const [k, v] of [['prior', prior], ['env', env], ['source', source]] as const) { if (v.trim()) plan[k] = v.trim(); else delete plan[k]; }
+    if (stages.length) plan.stages = stages.map(x => ({ k: x.k, min: Math.max(0, Math.round(+x.min || 0)), do: x.do.trim() })); else delete plan.stages;
     const row = { title: title.trim(), subject: subject.trim() || null, slides, terms, plan };
     try {
       let lessonId = route.lessonId;
@@ -490,6 +525,9 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       cur={currentIndex}
       schoolId={me?.school_id || ''}
       title={title}
+      plan={{ subject, grade, duration, summary, objectives, prior, env, source, stages }}
+      onPlan={patchPlan}
+      onDropStage={dropStage}
       status={saving ? 'Сақталуда…' : 'Нобай'}
       saved={message}
       importBusy={importBusy}
@@ -609,6 +647,9 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
           cur={Math.min(canvasEditorIndex, Math.max(0, slides.length - 1))}
           schoolId={me?.school_id || ''}
           title={title}
+          plan={{ subject, grade, duration, summary, objectives, prior, env, source, stages }}
+          onPlan={patchPlan}
+          onDropStage={dropStage}
           status={saving ? 'Сақталуда…' : 'Нобай'}
           saved={message}
           embedded

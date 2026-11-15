@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BringToFront, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Upload, Video, Sigma, MousePointerClick, Crop, FlipHorizontal, FlipVertical, Sparkles, Wand2 } from 'lucide-react';
+import { BringToFront, ClipboardList, Layers, LayoutTemplate, Palette, PanelRight, SendToBack, AlignCenter, AlignLeft, AlignRight, Bold, Code2, Copy, Grid3x3, Image as ImageIcon, Magnet, Minus, Plus, Shapes, Table2, Trash2, Type, Undo2, Upload, Video, Sigma, MousePointerClick, Crop, FlipHorizontal, FlipVertical, Sparkles, Wand2 } from 'lucide-react';
 import { Button, LinkButton, inputCls } from '../ui';
 import { renderSlide } from '../components/Widgets';
 import { FieldRow } from './FieldRow';
@@ -10,6 +10,8 @@ import { track, useWide } from '../board/Win';
 import { uploadSlideImage, removeWhiteBackground } from './media';
 import { BG, BlockView, canConvert, toCanvas, CBlock, CanvasSlide, H, INK, LANGS, LAYOUTS, MIN, Stage, W, bgOf, blocksOf, box, clamp, fs, imgOk, ink, newId, norm, ratio, slim, type CanvasAppearance } from './canvas';
 import { blockForLanguage } from './canvas';
+import { PlanPanel, type PlanData } from './PlanPanel';
+import { STAGES, stageName } from './stages';
 
 type Tab = 'design' | 'content' | 'action';
 type Rail = 'elements' | 'templates' | 'layers' | 'bg';
@@ -26,8 +28,10 @@ const tb = 'flex h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:
 const label = (b: CBlock, i: number) => `${i + 1}. ${KIND_LABEL[b.kind]}${b.kind === 'text' && b.text ? ': ' + b.text.replace(/\s+/g, ' ').slice(0, 24) : b.kind === 'code' && b.code ? ': ' + b.code.replace(/\s+/g, ' ').slice(0, 20) : ''}`;
 
 /** Full-screen editor of one «кенеп» page: palette, 16:9 stage, properties, layers and the page strip. */
-export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previewHref, embedded = false, importBusy, importVariant, onImportVariant, onImport, onTitle, onChange, onSelect, onAdd, onReorder, onSave, onClose }: {
+export function CanvasEditor({ pages, cur, schoolId, title, plan, onPlan, onDropStage, status, saved, previewHref, embedded = false, importBusy, importVariant, onImportVariant, onImport, onTitle, onChange, onSelect, onAdd, onReorder, onSave, onClose }: {
   pages: any[]; cur: number; schoolId: string; title: string; status: string; saved: string; previewHref?: string;
+  /** The lesson plan card; without it the editor has no «Сабақ жоспары» panel. */
+  plan?: PlanData; onPlan?: (patch: Partial<PlanData>) => void; onDropStage?: (i: number) => void;
   embedded?: boolean;
   importBusy?: boolean; importVariant?: PresentationVariant; onImportVariant?: (variant: PresentationVariant) => void; onImport?: (file: File) => void;
   onTitle: (t: string) => void; onChange: (slide: any) => void; onSelect: (i: number) => void; onAdd: () => void; onReorder: (from: number, to: number) => void; onSave: () => void; onClose: (changed: boolean) => void;
@@ -36,7 +40,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
   const [selId, setSel] = useState<string | null>(null), [tab, setTab] = useState<Tab>('design'), [editing, setEditing] = useState<string | null>(null), [canvasLang, setCanvasLang] = useState('kk');
   const blocks = blocksOf(slide).map(b => blockForLanguage(b, canvasLang));
   const [zoom, setZoom] = useState<number | 'fit'>('fit'), [avail, setAvail] = useState(800), [grid, setGrid] = useState(true), [snap, setSnap] = useState(true);
-  const [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
+  const [planOpen, setPlanOpen] = useState(false), [msg, setMsg] = useState(''), [busy, setBusy] = useState(false), [nHist, setNHist] = useState(0);
   const wide = useWide(), [rail, setRail] = useState<Rail | null>(wide ? 'elements' : null), [propsOpen, setPropsOpen] = useState(wide), [dragFrom, setDragFrom] = useState<number | null>(null), [dragOver, setDragOver] = useState<number | null>(null);
   const latest = useRef(slide), hist = useRef<any[]>([]), lastKey = useRef<string | null>(null), changed = useRef(false);
   const cb = useRef(onChange), area = useRef<HTMLDivElement>(null), head = useRef<HTMLHeadingElement>(null), importFile = useRef<HTMLInputElement>(null);
@@ -181,6 +185,7 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
           <Button variant="secondary" loading={importBusy} onClick={() => importFile.current?.click()}><Upload size={16} aria-hidden="true" />PPTX импорттау</Button>
           <input ref={importFile} type="file" className="sr-only" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={e => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ''; }} />
         </>}
+        {plan && onPlan && <Button variant="secondary" onClick={() => setPlanOpen(true)}><ClipboardList size={16} aria-hidden="true" />Сабақ жоспары</Button>}
         <button type="button" aria-label="Қасиеттер панелі" title="Қасиеттер панелі" aria-pressed={propsOpen} aria-controls="ce-props" className={tb + ' !h-11 !w-11'} onClick={() => setPropsOpen(o => !o)}><PanelRight size={18} aria-hidden="true" /></button>
         {previewHref && <LinkButton variant="ghost" href={previewHref} target="_blank" rel="noopener">Алдын ала қарау</LinkButton>}
         <Button onClick={onSave}>Сақтау</Button>
@@ -192,6 +197,11 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
             {TEXT_LANGS.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
           </select>
         </label>
+        {plan && <label className="mr-2 flex items-center gap-2 text-sm">Кезең
+          <select aria-label="Беттің кезеңі" className={inputCls + ' !w-auto'} value={slide.stage || ''} onChange={e => commit({ ...latest.current, stage: e.target.value || undefined })}>
+            <option value="">Кезеңсіз</option>{STAGES.map(x => <option key={x.k} value={x.k}>{x.kk}</option>)}
+          </select>
+        </label>}
         {!isCv ? (<>
           <span className="mr-2 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-on-accent-soft">{typeLabel(pageOf(slide).pageType)}</span>
           {canConvert(slide)
@@ -488,11 +498,12 @@ export function CanvasEditor({ pages, cur, schoolId, title, status, saved, previ
             onClick={() => { if (i !== cur) onSelect(i); }}
             className={`w-36 shrink-0 rounded-lg border-2 p-1 text-left ${dragOver === i && dragFrom !== null && dragFrom !== i ? 'border-dashed border-accent' : i === cur ? 'border-accent' : 'border-border hover:border-text-muted'} ${dragFrom === i ? 'opacity-50' : ''}`}>
             {p.type === 'canvas' ? <div className="pointer-events-none"><CanvasSlide s={{ ...p, title: '' }} R={t => t} lang={canvasLang} /></div> : <div className="flex aspect-video items-center justify-center rounded bg-surface-2 px-1 text-center text-xs text-text-secondary">{p.title || p.prompt || 'Бет'}</div>}
-            <span className="mt-1 block truncate text-xs font-semibold">{i + 1}. {p.title || p.prompt || 'Бет'}</span>
+            <span className="mt-1 block truncate text-xs font-semibold">{i + 1}. {p.title || p.prompt || 'Бет'}</span>{p.stage && <span className="block truncate text-[11px] text-accent">{stageName(p.stage)}</span>}
           </button>
         ))}
         <button type="button" onClick={onAdd} className="flex w-36 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-accent text-sm font-semibold text-accent hover:bg-accent-soft"><Plus size={20} aria-hidden="true" />Бет қосу</button>
       </nav>
+      {planOpen && plan && onPlan && <PlanPanel plan={plan} pages={pages} onChange={onPlan} onDropStage={i => onDropStage?.(i)} onClose={() => setPlanOpen(false)} />}
     </div>
   );
 }

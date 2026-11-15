@@ -85,4 +85,13 @@ export const labTask = (t: T, intro: T, o: { pic: Pic; alt: T; solve: Record<str
   };
 };
 
-export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string, string][]; slides: any[] }
+/** Lesson stage of a page (matches STAGES in src/lessons/stages.ts) and an optional teacher-only note in three languages. */
+export const tag = (s: any, stage: string, notes?: T) => ({
+  ...s, stage,
+  ...(notes ? { notes: notes[0], ru: { ...s.ru, notes: notes[1] }, en: { ...s.en, notes: notes[2] } } : {}),
+});
+
+/** The lesson plan card: what students already know, the software, the source and the timed stages (`do` = what the student does). */
+export interface LabPlan { prior: T; env: T; source: T; stages: { k: string; min: number; do: T }[] }
+
+export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string, string][]; slides: any[]; plan?: LabPlan }
