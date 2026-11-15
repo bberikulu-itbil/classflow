@@ -31,9 +31,9 @@ function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data;
   const stages = d.stages.filter(s => s.contest_id === c.id).sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
   const cats = d.categories.filter(x => x.contest_id === c.id);
   return (
-    <article className={`overflow-hidden rounded-lg border border-border ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
+    <article className={`flex h-full flex-col overflow-hidden rounded-lg border border-border ${c.teacher_only ? 'bg-warning-soft' : 'bg-surface'}`}>
       {c.cover_url && <img src={c.cover_url} alt="" loading="lazy" className="h-28 w-full object-cover" />}
-      <div className="space-y-2 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm text-text-secondary">{range(c)}</p>
@@ -53,7 +53,7 @@ function ContestCard({ c, d, me, saved, onSave, onOpen }: { c: Contest; d: Data;
       </div>
       {cats.length > 0 && <p className="text-sm text-text-secondary"><span className="font-medium text-text">Санаттар:</span> {cats.map(x => x.name).join(' · ')}</p>}
       <Stages stages={stages} />
-      <div className="flex flex-wrap gap-2 pt-1">
+      <div className="mt-auto flex flex-wrap gap-2 pt-1">
         {c.status === 'published' && (
           <Button variant="secondary" onClick={onSave} aria-pressed={saved}>{saved ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}{saved ? 'Сақталды' : 'Сақтау'}</Button>
         )}
@@ -237,8 +237,8 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
                   : groups.map(([k, items]) => (
                     <section key={k || 'none'} aria-label={monthLabel(k)} className="space-y-2">
                       <h2 className="text-base font-semibold text-text-secondary">{monthLabel(k)}</h2>
-                      {items.map(c => <ContestCard key={c.id} c={c} d={d} me={me} saved={d.saves.includes(c.id)} onOpen={() => setOpen(c.id)}
-                        onSave={() => act(() => st.setSaved(me, c.id, !d.saves.includes(c.id)), '')} />)}
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{items.map(c => <ContestCard key={c.id} c={c} d={d} me={me} saved={d.saves.includes(c.id)} onOpen={() => setOpen(c.id)}
+                        onSave={() => act(() => st.setSaved(me, c.id, !d.saves.includes(c.id)), '')} />)}</div>
                     </section>
                   ))}
               </>
