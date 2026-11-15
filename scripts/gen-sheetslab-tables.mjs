@@ -1,10 +1,15 @@
-// Draws the table pictures of the practice tasks (src/lessons/sheetsLab) into public/lec/inf8-<name>-<kk|ru|en>.svg: a sheet with column letters and row numbers,
+// Draws the table pictures of the practice tasks (src/lessons/sheetsLab and sheetsLab7) into public/lec/inf8-<name>-<kk|ru|en>.svg: a sheet with column letters and row numbers,
 // the data to copy and yellow "?" cells to calculate. Run after gen-sheetslab-art.mjs: node scripts/gen-sheetslab-tables.mjs
 import { build } from 'esbuild'; import { writeFileSync, mkdirSync } from 'node:fs'; import { tmpdir } from 'node:os';
 const OUT = new URL('../public/lec/', import.meta.url).pathname; mkdirSync(OUT, { recursive: true });
 const bundle = `${tmpdir()}/sheetslab-pics.mjs`;
-await build({ entryPoints: ['src/lessons/sheetsLab/index.ts'], bundle: true, format: 'esm', outfile: bundle, logLevel: 'error' });
-const { PICS } = await import(bundle);
+// the Informatics 8 module and the Informatics 7 module (src/lessons/sheetsLab7) keep their pictures in separate bundles
+const PICS = [];
+for (const [i, dir] of ['sheetsLab', 'sheetsLab7'].entries()) {
+  const out = bundle.replace('.mjs', `-${i}.mjs`);
+  await build({ entryPoints: [`src/lessons/${dir}/index.ts`], bundle: true, format: 'esm', outfile: out, logLevel: 'error' });
+  PICS.push(...(await import(out)).PICS);
+}
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const L = i => String.fromCharCode(65 + i);
 const LANGS = ['kk', 'ru', 'en'];

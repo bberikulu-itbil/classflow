@@ -1,0 +1,172 @@
+// Informatics 7, textbook chapter 3, lessons 3.5-3.7 and "Check yourself" (kk / ru / en), 45 minutes each.
+import { demoSheet, info, labTask, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
+import { SUBTITLE, plan, reflect, shortTask } from './lib';
+
+const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
+const NOTE: T = ['сары «?» ұяшықтарды формуламен есепте', 'жёлтые «?» посчитай формулой', 'work out the yellow “?” cells with a formula'];
+
+export const L5: LabLesson = {
+  id: 'inf7lab-5',
+  title: ['3.5 Шартты пішімдеу', '3.5 Условное форматирование', '3.5 Conditional formatting'],
+  summary: ['Шарт орындалса, ұяшықтың түсі өздігінен өзгереді: бір түсті ереже, түс шкаласы, өз формуласы.', 'Если условие выполняется, цвет ячейки меняется сам: правило одного цвета, цветовая шкала, своя формула.', 'If a condition holds, the cell colour changes by itself: single colour rule, colour scale, custom formula.'],
+  objectives: [
+    ['Шартты пішімдеу не үшін керегін түсіндіру', 'Объяснять, зачем нужно условное форматирование', 'Explain what conditional formatting is for'],
+    ['Google Sheets-те бір түсті ереже жасау', 'Создавать правило одного цвета в Google Sheets', 'Create a single colour rule in Google Sheets'],
+    ['Өз формуласымен бүкіл жолды бояу', 'Окрашивать всю строку собственной формулой', 'Colour a whole row with a custom formula'],
+  ],
+  terms: [
+    ['conditional formatting', 'Шартты пішімдеу — шарт орындалса, ұяшық пішімі өздігінен өзгереді', 'Условное форматирование — формат ячейки меняется сам, если выполняется условие', 'Conditional formatting — the cell format changes by itself when a condition holds'],
+    ['rule', 'Ереже — қандай шартта қандай пішім қолданылатынын көрсетеді', 'Правило — задаёт, при каком условии какой формат применить', 'Rule — says which format to apply under which condition'],
+    ['color scale', 'Түс шкаласы — мәнге қарай түс біртіндеп өзгереді', 'Цветовая шкала — цвет плавно меняется в зависимости от значения', 'Color scale — the colour changes smoothly with the value'],
+  ],
+  plan: plan(
+    ['Ұяшықты бояуды, деректер түрлерін біледі (3.3–3.4 сабақтар).', 'Умеют закрашивать ячейки, знают типы данных (уроки 3.3–3.4).', 'Can fill cells and know the data types (lessons 3.3–3.4).'], '34–35',
+    [['Не нәрсені дәптерде ерекшелейтіні туралы сұраққа жауап береді', 'Отвечает на вопрос, как выделяет важное в тетради', 'Answers how they highlight important things in a notebook'],
+     ['Шартты пішімдеудің қадамдарын үйренеді', 'Узнаёт шаги условного форматирования', 'Learns the steps of conditional formatting'],
+     ['Мұғаліммен бірге 80%-дан төмен балдарды қызыл түске бояйды', 'Вместе с учителем красит баллы ниже 80% в красный', 'Colours scores below 80% red with the teacher'],
+     ['Өз кестесінде ереже жасап, екі есеп шығарады', 'Создаёт правило в своей таблице и решает две задачи', 'Creates a rule in their own sheet and solves two problems'],
+     ['Қысқа тест тапсырып, не үйренгенін айтады', 'Проходит короткий тест и говорит, что узнал', 'Takes a short test and says what was learned']]),
+  slides: [
+    titleSlide(['3.5 Шартты пішімдеу', '3.5 Условное форматирование', '3.5 Conditional formatting'], SUBTITLE('34–35')),
+    tag(quiz(['Қайталау: пішім', 'Повторение: формат', 'Review: format'], ['Ұяшық түсін қолмен өзгертсең, оның мәні өзгере ме?', 'Если закрасить ячейку вручную, изменится ли её значение?', 'If you colour a cell by hand, does its value change?'],
+      [['Жоқ, тек сыртқы түрі өзгереді', 'Нет, меняется только вид', 'No, only the look changes'], ['Иә, мән жоғалады', 'Да, значение пропадёт', 'Yes, the value is lost'], ['Иә, ол 0 болады', 'Да, станет 0', 'Yes, it becomes 0'], ['Ұяшық жойылады', 'Ячейка удалится', 'The cell is deleted']], 0,
+      ['Пішім мәнді өзгертпейді, тек оның көрінісін өзгертеді.', 'Формат не меняет значение, а только его вид.', 'Formatting does not change the value, only how it looks.']), 'warmup',
+      ['5 минут. Сұрақ: «Дәптерде маңызды нәрсені қалай ерекшелейсің — маркер, асты сызу?» Жауаптар шартты пішімдеуге кіріспе.', '5 минут. Спросите: «Как выделяешь важное в тетради — маркер, подчёркивание?» Ответы — подводка к теме.', '5 minutes. Ask: “How do you mark important things in a notebook — marker, underline?” It leads into the topic.']),
+    tag(quiz(['Қайталау: сан түрі', 'Повторение: тип числа', 'Review: number type'], ['0.8 санын 80% деп көрсететін түр қайсы?', 'Какой тип показывает 0.8 как 80%?', 'Which type shows 0.8 as 80%?'],
+      [['Percent', 'Percent', 'Percent'], ['Date', 'Date', 'Date'], ['Time', 'Time', 'Time'], ['Plain text', 'Plain text', 'Plain text']], 0,
+      ['Percent түрі 0.8 санын 80% түрінде көрсетеді; мәні 0.8 болып қалады.', 'Тип Percent показывает 0.8 как 80%; значение остаётся 0.8.', 'Percent shows 0.8 as 80%; the value stays 0.8.']), 'warmup'),
+    tag(info('explain', ['Шартты пішімдеу деген не?', 'Что такое условное форматирование?', 'What is conditional formatting?'], [
+      ['Ұяшықтардың, жолдардың немесе бағандардың мәтіні мен фоны, егер белгілі шарт орындалса, өздігінен өзгереді.', 'Текст и фон ячеек, строк или столбцов меняются сами, если выполняется определённое условие.', 'The text and background of cells, rows or columns change by themselves when a certain condition is met.'],
+      ['Мысалы, мұғалім емтихан нәтижелерінде 80%-дан төмен балды қызылмен ерекшелейді.', 'Например, учитель выделяет красным результаты экзамена ниже 80%.', 'For example, a teacher can colour test scores below 80% red.'],
+      ['Мән өзгерсе, түс те өздігінен өзгереді: қайта бояудың қажеті жоқ.', 'Если значение изменится, цвет изменится сам: перекрашивать не нужно.', 'If a value changes, the colour follows it: no need to recolour.'],
+    ], { art: 'ifflow' }), 'together'),
+    tag(info('explain', ['Ереже жасау қадамдары', 'Шаги создания правила', 'Steps of making a rule'], [
+      ['Google Sheets-те кестені аш, ереже қолданылатын ұяшықтарды белгіле.', 'Открой таблицу в Google Sheets и выдели ячейки, к которым применится правило.', 'Open the sheet in Google Sheets and select the cells for the rule.'],
+      ['Format → Conditional formatting. Оң жақта панель ашылады.', 'Format → Conditional formatting. Справа откроется панель.', 'Format → Conditional formatting. A panel opens on the right.'],
+      ['«Format cells if» тізімінен шартты таңда (мысалы, Less than), мәнін жаз, «Fill» түсін таңда, Done бас.', 'В списке «Format cells if» выбери условие (например, Less than), впиши значение, выбери цвет «Fill», нажми Done.', 'Under “Format cells if” pick a condition (e.g. Less than), type a value, pick a “Fill” colour, click Done.'],
+    ]), 'together', ['8 минут. Түс шкаласы (Color scale) — екінші түрі: ең кіші мен ең үлкен мәнге екі түс таңдалады, аралық мән өтпелі түспен боялады. Ережені өшіру үшін оның үстіне апарып Remove бас.', '8 минут. Color scale — второй вид: выбирают два цвета для наименьшего и наибольшего значений, промежуточные окрашиваются плавно. Правило удаляют кнопкой Remove при наведении на него.', '8 minutes. A color scale is the second kind: two colours for the smallest and largest value, the rest blend. Remove a rule with the Remove button when pointing at it.']),
+    tag(demoSheet(['Мысал: 80%-дан төмен балдар', 'Пример: баллы ниже 80%', 'Example: scores below 80%'], [
+      ['B2:B7 баллдарын белгіле.', 'Выдели баллы B2:B7.', 'Select the scores B2:B7.'],
+      ['Format → Conditional formatting → «Less than» → 0.8 → Fill: қызыл → Done.', 'Format → Conditional formatting → «Less than» → 0.8 → Fill: красный → Done.', 'Format → Conditional formatting → “Less than” → 0.8 → Fill: red → Done.'],
+      ['Қызыл болған ұяшықтарды санап көр. Бір баллды 0.9 деп өзгерт: қызыл түс жоғалады.', 'Посчитай закрашенные ячейки. Измени один балл на 0.9: красный цвет исчезнет.', 'Count the coloured cells. Change one score to 0.9: the red disappears.'],
+    ], {
+      rows: 7, cols: 2,
+      cells: {
+        A1: ['Оқушы', 'Ученик', 'Student'], B1: ['Нәтиже', 'Результат', 'Result'],
+        A2: ['Алмас', 'Алмас', 'Almas'], B2: '92%', A3: ['Айгерім', 'Айгерим', 'Aigerim'], B3: '78%', A4: ['Нұрлан', 'Нурлан', 'Nurlan'], B4: '65%',
+        A5: ['Дана', 'Дана', 'Dana'], B5: '80%', A6: ['Ербол', 'Ербол', 'Erbol'], B6: '79%', A7: ['Мөлдір', 'Молдир', 'Moldir'], B7: '85%',
+      },
+      fmt: { A1: { b: 1, bg: '#dbeafe' }, B1: { b: 1, bg: '#dbeafe' }, B3: { bg: '#fecaca' }, B4: { bg: '#fecaca' }, B6: { bg: '#fecaca' } },
+    }, ['10 минут. Күтілетін нәтиже: қызыл түске 78%, 65%, 79% боялады — 3 ұяшық. 80% қызыл емес, себебі «Less than» дәл 80%-ды қамтымайды. Оқушылар өздері «Less than or equal to» таңдап көрсін.', '10 минут. Ожидаемый результат: красными станут 78%, 65%, 79% — 3 ячейки. 80% не красный, ведь «Less than» не включает ровно 80%. Пусть сами попробуют «Less than or equal to».', '10 minutes. Expected: 78%, 65% and 79% turn red — 3 cells. 80% stays plain because “Less than” does not include exactly 80%. Let students try “Less than or equal to”.']), 'example'),
+    tag(info('example', ['Өз формуласымен бояу', 'Окраска своей формулой', 'Colouring with a custom formula'], [
+      ['«Format cells if» тізімінен «Custom formula is» таңда. Формула «=» таңбасынан басталады.', 'В списке «Format cells if» выбери «Custom formula is». Формула начинается с «=».', 'Under “Format cells if” pick “Custom formula is”. The formula starts with “=”.'],
+      ['Егер B бағанында «Yes» болса, бүкіл жолды жасыл ет: =$B1="Yes".', 'Чтобы красить всю строку зелёным, когда в столбце B стоит «Yes», запиши =$B1="Yes".', 'To make the whole row green when column B says “Yes”, write =$B1="Yes".'],
+      ['Ережелер тізімдегі ретімен тексеріледі: бірінші рас ереже ұяшық пішімін анықтайды.', 'Правила проверяются по порядку списка: первое выполнившееся определяет формат ячейки.', 'Rules are checked in list order: the first true one decides the format.'],
+    ]), 'example'),
+    tag(info('practice', ['Практика 1 және 2: ережелер', 'Практика 1 и 2: правила', 'Practice 1 and 2: rules'], [
+      ['Нысанаға жеткені үшін 15000-нан артық адамдар жасыл, 15000-нан кемі қызыл, дәл 15000 — сары түспен көрсетілсін.', 'Люди с результатом больше 15000 — зелёные, меньше 15000 — красные, ровно 15000 — жёлтые.', 'Anyone above 15000 in green, below 15000 in red, exactly 15000 in yellow.'],
+      ['Оқушының нәтижесі 80%-дан төмен болса, бүкіл жол боялсын (Custom formula).', 'Если результат ученика ниже 80%, окрасить всю строку (Custom formula).', 'If a student’s score is below 80%, colour the entire row (Custom formula).'],
+      ['Дайын кестені мұғалімге көрсет. Төмендегі екі есеп автоматты тексеріледі.', 'Покажи готовую таблицу учителю. Две задачи ниже проверяются автоматически.', 'Show the finished sheet to the teacher. The two problems below are marked automatically.'],
+    ]), 'practice', ['15 минут. Ереже жасалғанын мұғалім экраннан тексереді: дұрыс диапазон, шарт, түс. Мәндерді өзгертіп көріңіз — түс өзгеруі керек.', '15 минут. Правило проверяйте на экране: верный диапазон, условие, цвет. Измените значения — цвет должен поменяться.', '15 minutes. Check the rule on screen: right range, condition, colour. Change values — the colour must follow.']),
+    tag(shortTask(['Есеп: қанша ұяшық қызыл?', 'Задача: сколько красных?', 'Problem: how many red cells?'], ['Нәтижелер: 92, 78, 65, 80, 79, 85. Ереже: «Less than 80» → қызыл. Неше ұяшық қызыл болады?', 'Результаты: 92, 78, 65, 80, 79, 85. Правило: «Less than 80» → красный. Сколько ячеек станут красными?', 'Scores: 92, 78, 65, 80, 79, 85. Rule: “Less than 80” → red. How many cells turn red?'], ['3'], 2, ['78, 65, 79 — үшеуі; 80 қызыл болмайды (шарт қатаң «аз»).', '78, 65, 79 — три; 80 красным не станет (условие строго «меньше»).', '78, 65, 79 are three; 80 stays plain (the condition is strictly “less”).']), 'practice'),
+    tag(shortTask(['Есеп: сары ұяшықтар', 'Задача: жёлтые ячейки', 'Problem: yellow cells'], ['Нысанаға жету: 14800, 15000, 17200, 9000, 15000, 21000. Ереже: 15000-нан артық — жасыл, кем — қызыл, тең — сары. Неше ұяшық сары?', 'Выполнение: 14800, 15000, 17200, 9000, 15000, 21000. Правило: больше 15000 — зелёный, меньше — красный, равно — жёлтый. Сколько ячеек жёлтые?', 'Targets reached: 14800, 15000, 17200, 9000, 15000, 21000. Rule: above 15000 green, below red, equal yellow. How many cells are yellow?'], ['2'], 2), 'practice'),
+    tag(quiz(['Ереже қайда?', 'Где правило?', 'Where is the rule?'], ['Шартты пішімдеу қай мәзір арқылы ашылады?', 'Через какое меню открывается условное форматирование?', 'Which menu opens conditional formatting?'],
+      [['Format → Conditional formatting', 'Format → Conditional formatting', 'Format → Conditional formatting'], ['File → Print', 'File → Print', 'File → Print'], ['Insert → Chart', 'Insert → Chart', 'Insert → Chart'], ['Data → Sort', 'Data → Sort', 'Data → Sort']], 0,
+      ['Шартты пішімдеу — Format мәзірінде.', 'Условное форматирование находится в меню Format.', 'Conditional formatting is in the Format menu.']), 'check'),
+    tag(quiz(['Түс шкаласы', 'Цветовая шкала', 'Colour scale'], ['Single color мен Color scale айырмашылығы қандай?', 'Чем отличаются Single color и Color scale?', 'How do Single color and Color scale differ?'],
+      [['Single color — шарт орындалса бір түс; Color scale — мәнге қарай түс біртіндеп өзгереді', 'Single color — один цвет, если условие выполнено; Color scale — цвет плавно меняется по значению', 'Single color gives one colour when a condition holds; Color scale shades colours by value'], ['Бір-бірінен еш айырмашылығы жоқ', 'Различий нет', 'There is no difference'], ['Single color тек мәтінді бояйды', 'Single color красит только текст', 'Single color colours text only'], ['Color scale тек жолдарды ғана бояйды', 'Color scale красит только строки', 'Color scale colours rows only']], 0,
+      ['Бір түсті ереже шарт орындалғанда ғана бояйды, ал шкала барлық ұяшықты мәнге қарай бояйды.', 'Правило одного цвета красит только при выполнении условия, а шкала красит все ячейки по значению.', 'A single-colour rule paints only when the condition holds, a scale paints every cell by value.']), 'check'),
+    reflect(),
+  ],
+};
+
+export const L6: LabLesson = {
+  id: 'inf7lab-6',
+  title: ['3.6 Деректерді графиктік түрде көрсету', '3.6 Графическое представление данных', '3.6 Graphical representation of data'],
+  summary: ['Диаграмма — деректердің графиктік көрінісі: бағанды, сызықтық және дөңгелек. Қайсысын қашан таңдау және Insert → Chart.', 'Диаграмма — графическое представление данных: столбчатая, линейная и круговая. Какую выбрать и как вставить: Insert → Chart.', 'A chart is a graphical view of data: bar, line and pie. Which one to choose, and Insert → Chart.'],
+  objectives: [
+    ['Бағанды, сызықтық және дөңгелек диаграммалардың айырмасын түсіндіру', 'Объяснять разницу между столбчатой, линейной и круговой диаграммами', 'Explain the difference between bar, line and pie charts'],
+    ['Берілген деректерге сай диаграмма түрін таңдау', 'Выбирать вид диаграммы под данные', 'Choose a chart type to fit the data'],
+    ['Кесте негізінде диаграмма салу', 'Строить диаграмму по таблице', 'Build a chart from a table'],
+  ],
+  terms: [
+    ['chart', 'Диаграмма — деректердің графиктік көрінісі', 'Диаграмма — графическое представление данных', 'Chart — a graphical representation of data'],
+    ['bar chart', 'Бағанды диаграмма — жеке элементтерді салыстыруға', 'Столбчатая диаграмма — для сравнения отдельных элементов', 'Bar chart — compares individual items'],
+    ['line chart', 'Сызықтық диаграмма — өзгеру жылдамдығын көрсетеді', 'Линейная диаграмма — показывает скорость изменения', 'Line chart — shows the rate of change'],
+    ['pie chart', 'Дөңгелек диаграмма — бөліктің бүтінге қатынасын пайызбен көрсетеді', 'Круговая диаграмма — показывает доли целого в процентах', 'Pie chart — shows parts of a whole as percentages'],
+  ],
+  plan: plan(
+    ['Кесте жасай алады, пайыз есептей алады (3.3–3.5 сабақтар).', 'Умеют делать таблицу и считать проценты (уроки 3.3–3.5).', 'Can make a table and calculate percents (lessons 3.3–3.5).'], '36–37',
+    [['Шығындарды суретпен көрсетудің пайдасы туралы екі сұраққа жауап береді', 'Отвечает на два вопроса о пользе наглядного показа данных', 'Answers two questions on why a picture of data helps'],
+     ['Үш диаграмма түрін және оларды таңдау ережесін үйренеді', 'Узнаёт три вида диаграмм и правило выбора', 'Learns the three chart types and how to choose'],
+     ['Мұғаліммен бірге ақша шығыны кестесінен дөңгелек диаграмма салады', 'Вместе с учителем строит круговую диаграмму по таблице расходов', 'Builds a pie chart from an expenses table with the teacher'],
+     ['Өз деректері бойынша диаграмма салып, екі есеп шығарады', 'Строит диаграмму по своим данным и решает две задачи', 'Builds a chart from own data and solves two problems'],
+     ['Қысқа тест тапсырып, не үйренгенін айтады', 'Проходит короткий тест и говорит, что узнал', 'Takes a short test and says what was learned']]),
+  slides: [
+    titleSlide(['3.6 Деректерді графиктік түрде көрсету', '3.6 Графическое представление данных', '3.6 Graphical representation of data'], SUBTITLE('36–37')),
+    tag(quiz(['Қайталау: диапазон', 'Повторение: диапазон', 'Review: range'], ['A2:E6 диапазонында неше ұяшық бар?', 'Сколько ячеек в диапазоне A2:E6?', 'How many cells are in A2:E6?'],
+      [['25', '25', '25'], ['10', '10', '10'], ['15', '15', '15'], ['30', '30', '30']], 0,
+      ['5 баған (A–E) × 5 жол (2–6) = 25.', '5 столбцов (A–E) × 5 строк (2–6) = 25.', '5 columns (A–E) × 5 rows (2–6) = 25.']), 'warmup',
+      ['5 минут. Бұл диапазон кейін диаграмма үшін белгіленеді. Сұрақ: «Қай суретте деректі түсіну жеңіл: кестеде ме, диаграммада ма?»', '5 минут. Этот диапазон потом выделяют для диаграммы. Спросите: «Где проще понять данные — в таблице или на диаграмме?»', '5 minutes. This range is later selected for the chart. Ask: “Where is data easier to grasp — in a table or on a chart?”']),
+    tag(quiz(['Қайталау: пайыз', 'Повторение: проценты', 'Review: percent'], ['2000 теңгенің 500 теңгесі неше пайыз?', 'Сколько процентов составляют 500 тенге от 2000?', 'What percent is 500 tenge of 2000?'],
+      [['25%', '25%', '25%'], ['40%', '40%', '40%'], ['10%', '10%', '10%'], ['50%', '50%', '50%']], 0,
+      ['500 / 2000 = 0.25 = 25%.', '500 / 2000 = 0.25 = 25%.', '500 / 2000 = 0.25 = 25%.']), 'warmup'),
+    tag(info('explain', ['Диаграмманың үш түрі', 'Три вида диаграмм', 'Three kinds of chart'], [
+      ['Диаграмма (график) — деректердің графиктік көрінісі.', 'Диаграмма (график) — графическое представление данных.', 'A chart (graph) is a graphical representation of data.'],
+      ['Бағанды: жеке элементтерді салыстыр (смартфондар бағасы). Сызықтық: өзгеру жылдамдығын көрсет (аптадағы температура).', 'Столбчатая: сравнивает отдельные элементы (цены смартфонов). Линейная: показывает скорость изменения (температура за неделю).', 'Bar: compare individual items (phone prices). Line: show the rate of change (temperature through the week).'],
+      ['Дөңгелек: бөліктің бүтінге қатынасын пайызбен көрсет (түрлі іске кеткен уақыт).', 'Круговая: показывает доли целого в процентах (время на разные занятия).', 'Pie: show a part-to-whole relation in percent (time spent on different activities).'],
+    ], { art: 'charts' }), 'together'),
+    tag(info('explain', ['Диаграмма қалай салынады', 'Как построить диаграмму', 'How to make a chart'], [
+      ['Кестені жаса, мысалы A1:E6 диапазонында.', 'Составь таблицу, например в диапазоне A1:E6.', 'Make a table, for instance in the range A1:E6.'],
+      ['Деректерді белгіле: A2:E6 (сандармен). Insert → Chart.', 'Выдели данные: A2:E6 (с числами). Insert → Chart.', 'Select the data: A2:E6 (with the numbers). Insert → Chart.'],
+      ['Оң жақтағы Chart editor-да диаграмма түрін таңда және баптауларын өзгерт.', 'В Chart editor справа выбери вид диаграммы и настрой её.', 'In the Chart editor on the right pick the chart type and adjust it.'],
+    ]), 'together', ['8 минут. Назар аударыңыз: Google Sheets диаграмма түрін өзі таңдайды, сондықтан оқушы «Chart type» ашып, мақсатқа сай түрді өзі таңдасын.', '8 минут. Подводный камень: Google Sheets сам выберет вид диаграммы; ученик должен открыть «Chart type» и выбрать вид под задачу.', '8 minutes. Pitfall: Google Sheets picks a type by itself; students must open “Chart type” and choose one that fits the task.']),
+    tag(demoSheet(['Мысал: қалтадағы ақша шығыны', 'Пример: расходы из карманных денег', 'Example: pocket money spending'], [
+      ['A1:B5 деректерін белгіле.', 'Выдели данные A1:B5.', 'Select the data A1:B5.'],
+      ['Insert → Chart → Chart type: Pie chart.', 'Insert → Chart → Chart type: Pie chart.', 'Insert → Chart → Chart type: Pie chart.'],
+      ['Бөліктердің қосындысы 100% болуы керек: 40% + 20% + 15% + 25%. Неге бағанды емес, дөңгелек диаграмма таңдадық?', 'Сумма долей должна быть 100%: 40% + 20% + 15% + 25%. Почему выбрали круговую, а не столбчатую?', 'The parts must add up to 100%: 40% + 20% + 15% + 25%. Why a pie chart rather than a bar chart?'],
+    ], {
+      rows: 5, cols: 2,
+      cells: { A1: ['Шығын', 'Расход', 'Item'], B1: ['Сомасы, ₸', 'Сумма, ₸', 'Amount, ₸'], A2: ['Тамақ', 'Еда', 'Food'], B2: '800', A3: ['Көлік', 'Транспорт', 'Transport'], B3: '400', A4: ['Кітаптар', 'Книги', 'Books'], B4: '300', A5: ['Ойын-сауық', 'Развлечения', 'Fun'], B5: '500' },
+      fmt: { A1: { b: 1, bg: '#dbeafe' }, B1: { b: 1, bg: '#dbeafe' } },
+    }, ['10 минут. Жалпы сома 2000, үлестері 40%, 20%, 15%, 25%. Жауап: диаграмма «бөлік — бүтін» қатынасын көрсетеді, сондықтан дөңгелек.', '10 минут. Общая сумма 2000, доли 40%, 20%, 15%, 25%. Ответ: диаграмма показывает «часть — целое», поэтому круговая.', '10 minutes. Total 2000, shares 40%, 20%, 15%, 25%. Answer: the chart shows part-to-whole, so a pie.']), 'example'),
+    tag(info('practice', ['Практика: Қазақстан облыстары', 'Практика: области Казахстана', 'Practice: regions of Kazakhstan'], [
+      ['Қазақстанда 14 облыс бар. Әр облыстың ауданы (км²) туралы ақпарат тап, екі бағанды кесте жаса: облыс атауы, ауданы.', 'В Казахстане 14 областей. Найди площадь каждой (км²) и сделай таблицу из двух столбцов: название, площадь.', 'Kazakhstan has 14 regions. Find the area of each (km²) and make a two-column table: name, area.'],
+      ['Әр облыстың ауданының үлесін көрсететін дөңгелек диаграмма сал.', 'Построй круговую диаграмму долей площади каждой области.', 'Make a pie chart that shows each region’s share of the area.'],
+      ['Қосымша: компанияның жарты жылдағы кірісі мен шығысына, Олимпиада медальдарына лайықты диаграмма сал. Дайын жұмысты мұғалімге көрсет.', 'Дополнительно: подбери диаграмму для дохода и расхода компании за полгода и для медалей Олимпиады. Покажи работу учителю.', 'Extra: choose a chart for a company’s half-year income and expense, and for an Olympic medal table. Show the result to the teacher.'],
+    ]), 'practice', ['15 минут. Облыстар ауданын оқулықтан немесе ашық дереккөзден алуға болады. Мұғалім тексеретіні: дұрыс диапазон белгіленген бе, диаграмма түрі деректерге сай ма, атауы бар ма. Платформа диаграмманы тексермейді — төмендегі есептер ғана автоматты.', '15 минут. Площади областей можно взять из учебника или открытого источника. Учитель смотрит: выделен ли верный диапазон, подходит ли вид диаграммы, есть ли название. Платформа диаграммы не проверяет — автоматически только задачи ниже.', '15 minutes. Areas can come from the textbook or an open source. The teacher checks the selected range, a suitable chart type and a title. The platform does not mark charts — only the problems below are automatic.']),
+    tag(labTask(['Практика: бөліктердің үлесі', 'Практика: доли частей', 'Practice: shares of parts'],
+      ['Дөңгелек диаграмма үшін әр шығынның үлесін есепте: шығын / барлығы. Үлесті Percent түрінде көрсетуге болады.', 'Для круговой диаграммы посчитай долю каждого расхода: расход / всего. Долю можно показать в формате Percent.', 'For a pie chart work out each expense’s share: expense / total. You may show the share in Percent format.'],
+      {
+        pic: pic('g7-share', ['Қалтадағы ақша: үлестер', 'Карманные деньги: доли', 'Pocket money: shares'],
+          { A1: ['Шығын', 'Расход', 'Item'], B1: ['Сомасы, ₸', 'Сумма, ₸', 'Amount, ₸'], C1: ['Үлесі', 'Доля', 'Share'],
+            A2: ['Тамақ', 'Еда', 'Food'], B2: '800', C2: '?', A3: ['Көлік', 'Транспорт', 'Transport'], B3: '400', C3: '?',
+            A4: ['Кітаптар', 'Книги', 'Books'], B4: '300', C4: '?', A5: ['Ойын-сауық', 'Развлечения', 'Fun'], B5: '500', C5: '?',
+            A6: ['Барлығы', 'Итого', 'Total'], B6: '?', C6: '?' },
+          ['C2', 'C3', 'C4', 'C5', 'B6', 'C6'], 3, 6, [130, 100, 90], NOTE),
+        alt: ['Төрт шығын: 800, 400, 300, 500; үлестер мен жалпы сома бос', 'Четыре расхода: 800, 400, 300, 500; доли и общая сумма пустые', 'Four expenses: 800, 400, 300, 500; shares and the total are empty'],
+        solve: { B6: '=SUM(B2:B5)', C2: '=B2/B6', C3: '=B3/B6', C4: '=B4/B6', C5: '=B5/B6', C6: '=SUM(C2:C5)' },
+        criteria: [
+          { id: 'c1', text: ['Деректер енгізілген: B2 = 800 және B5 = 500', 'Данные введены: B2 = 800 и B5 = 500', 'Data entered: B2 = 800 and B5 = 500'], cell: 'B5' },
+          { id: 'c2', text: ['B6 — жалпы шығын (SUM)', 'B6 — общий расход (SUM)', 'B6 — total spending (SUM)'], cell: 'B6', fn: 'SUM', points: 2 },
+          { id: 'c3', text: ['C2 — тамақтың үлесі (0.4 немесе 40%)', 'C2 — доля еды (0.4 или 40%)', 'C2 — the food share (0.4 or 40%)'], cell: 'C2', formula: true, points: 2, accept: ['0.4', '40%', '40'] },
+          { id: 'c4', text: ['C5 — ойын-сауықтың үлесі (0.25 немесе 25%)', 'C5 — доля развлечений (0.25 или 25%)', 'C5 — the fun share (0.25 or 25%)'], cell: 'C5', formula: true, points: 2, accept: ['0.25', '25%', '25'] },
+          { id: 'c5', text: ['★ C6 — үлестердің қосындысы 100% (SUM)', '★ C6 — сумма долей равна 100% (SUM)', '★ C6 — the shares add up to 100% (SUM)'], cell: 'C6', fn: 'SUM', points: 2, accept: ['1', '100%', '100'] },
+        ],
+        steps: [
+          ['Көмек: алдымен B6-ға =SUM(B2:B5) жаз — барлығы 2000.', 'Подсказка: сначала в B6 запиши =SUM(B2:B5) — всего 2000.', 'Hint: first type =SUM(B2:B5) in B6 — the total is 2000.'],
+          ['C2-ге =B2/B6 жаз. Басқа үлестерді өзің жаз: әрқайсысында бөлгіш B6.', 'В C2 запиши =B2/B6. Остальные доли запиши сам: в каждой делитель B6.', 'In C2 type =B2/B6. Write the other shares yourself: each divides by B6.'],
+          ['★ Күрделі: C6-ға үлестердің қосындысын жаз. Дөңгелек диаграмманы A1:B5 бойынша сал.', '★ Сложнее: в C6 запиши сумму долей. Построй круговую диаграмму по A1:B5.', '★ Challenge: in C6 total the shares. Build a pie chart from A1:B5.'],
+        ],
+        notes: ['Күтілетін нәтиже: B6 = 2000; C2 = 0.4, C3 = 0.2, C4 = 0.15, C5 = 0.25; C6 = 1 (100%). Үлестердің қосындысы 100% болмаса, дөңгелек диаграмма «толмайды» — қайда қате екенін іздеу керек.', 'Ожидаемый результат: B6 = 2000; C2 = 0.4, C3 = 0.2, C4 = 0.15, C5 = 0.25; C6 = 1 (100%). Если сумма долей не 100%, круг «не замкнётся» — нужно искать ошибку.', 'Expected: B6 = 2000; C2 = 0.4, C3 = 0.2, C4 = 0.15, C5 = 0.25; C6 = 1 (100%). If the shares do not add up to 100% the pie does not close — look for the mistake.'],
+      }), 'practice'),
+    tag(quiz(['Диаграмма түрін таңда', 'Выбери вид диаграммы', 'Pick the chart'], ['Апта ішіндегі температураның өзгеруін көрсету үшін қай диаграмма лайық?', 'Какая диаграмма лучше всего показывает изменение температуры за неделю?', 'Which chart shows how the temperature changed through the week?'],
+      [['Сызықтық', 'Линейная', 'Line chart'], ['Дөңгелек', 'Круговая', 'Pie chart'], ['Мүлде диаграмма керек емес', 'Диаграмма не нужна', 'No chart at all'], ['Дөңгелек немесе бағанды, бәрібір', 'Круговая или столбчатая, всё равно', 'Pie or bar, no difference']], 0,
+      ['Өзгеру жылдамдығын (уақыт бойынша) сызықтық диаграмма жақсы көрсетеді.', 'Изменение во времени лучше всего показывает линейная диаграмма.', 'Change over time is best shown by a line chart.']), 'check'),
+    tag(quiz(['Дөңгелек диаграмма', 'Круговая диаграмма', 'Pie chart'], ['Шоколад құрамындағы бөліктерді (какао, қант, сүт) көрсету үшін қай диаграмма лайық?', 'Какая диаграмма лучше всего покажет составные части шоколада (какао, сахар, молоко)?', 'Which chart best shows the ingredients of chocolate (cocoa, sugar, milk)?'],
+      [['Дөңгелек — бөліктер бүтіннің үлесі', 'Круговая — части составляют целое', 'Pie — the parts make a whole'], ['Сызықтық', 'Линейная', 'Line'], ['Бағанды, себебі ол әрдайым дұрыс', 'Столбчатая, она всегда подходит', 'Bar, it is always right'], ['Диаграмма керек емес', 'Диаграмма не нужна', 'No chart needed']], 0,
+      ['Құрам — бүтіннің бөліктері, оны дөңгелек диаграмма жақсы көрсетеді.', 'Состав — это части целого, их хорошо показывает круговая диаграмма.', 'A composition is parts of a whole, which a pie chart shows well.']), 'check'),
+    tag(shortTask(['Есеп: үлесі', 'Задача: доля', 'Problem: share'], ['Дөңгелек диаграммада үш бөлік: 25%, 35% және ? Үшіншісі неше пайыз болуы керек?', 'На круговой диаграмме три части: 25%, 35% и ? Сколько процентов должна занимать третья?', 'A pie chart has three parts: 25%, 35% and ? What percent is the third?'], ['40', '40%'], 1), 'check'),
+    reflect(),
+  ],
+};
