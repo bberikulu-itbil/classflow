@@ -192,3 +192,9 @@ end $$;
 
 revoke all on function cf_contest_apply(uuid, uuid, text), cf_contest_decide(uuid, text) from public, anon;
 grant execute on function cf_contest_apply(uuid, uuid, text), cf_contest_decide(uuid, text) to authenticated;
+
+-- the helpers and the trigger are not for the public API: only signed-in users may run the helpers (RLS needs them), nobody the trigger
+revoke all on function cf_contest_guard() from public, anon, authenticated;
+revoke all on function cf_c_owns(uuid), cf_c_visible(uuid) from public, anon;
+grant execute on function cf_c_owns(uuid), cf_c_visible(uuid) to authenticated;
+revoke all on function cf_contest_apply(uuid, uuid, text), cf_contest_decide(uuid, text) from anon;

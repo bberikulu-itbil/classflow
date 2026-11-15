@@ -34,7 +34,8 @@ export const TEACHER: Section[] = [
     { key: 'queue', label: 'Тексеру кезегі', icon: Inbox, to: 'tasks/queue' },
     { key: 'grading', label: 'Бағалау жүйесі', icon: Scale, items: ['Баллдық, пайыздық және критериалды бағалау', 'Максималды балл және рубрикалар', 'Автоматты, AI және қолмен тексеру'] },
   ] },
-  { key: 'exams', label: 'Сынақтар мен сайыстар', icon: GraduationCap, routes: ['exams', 'contests'], subs: [
+  { key: 'exams', label: 'Сынақтар мен сайыстар', icon: GraduationCap, routes: ['exams', 'contests', 'contest'], subs: [
+    { key: 'catalog', label: 'Сайыстар каталогы', icon: Trophy, to: 'exams/catalog', also: ['contest'] },
     { key: 'summative', label: 'БЖБ / ТЖБ', items: ['Бөлім және тоқсан бойынша жиынтық бағалау'] },
     { key: 'proctoring', label: 'Прокторинг', icon: ShieldCheck, items: ['Емтихан кезіндегі академиялық адалдық'] },
     { key: 'settings', label: 'Емтихан баптаулары', items: ['Уақытты шектеу', 'Сұрақтар ретін араластыру', 'Нәтижені автоматты жариялау'] },
@@ -75,6 +76,7 @@ export const STUDENT: Section[] = [
     { key: 'progress', label: 'Прогресс', items: ['Курс бойынша прогресс'] },
   ] },
   { key: 'contests', label: 'Сайыстар', icon: Trophy, routes: ['contests'], subs: [
+    { key: 'catalog', label: 'Каталог', icon: Trophy, to: 'contests/catalog' },
     { key: 'active', label: 'Белсенді сайыс', items: ['Белсенді сайысқа кіру'] },
     { key: 'upcoming', label: 'Алдағы сайыстар', items: ['Күнтізбе'] },
     { key: 'results', label: 'Нәтижелер', items: ['Өткен сайыстар нәтижесі'] },

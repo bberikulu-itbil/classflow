@@ -14,6 +14,7 @@ import { StudentFeedback } from '../views/student';
 import { VocabBase, VocabLink, VocabTest, VocabShare } from '../vocab/Teacher';
 import { StudentVocab, StudentCards, StudentQuiz } from '../vocab/Student';
 import { ProfileCard } from '../components/ProfileView';
+import { ContestCatalog } from '../contests/Catalog';
 
 export function SectionTabs({ section, active }: { section: Section; active: string }) {
   return (
@@ -64,6 +65,8 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:vocab:link': c => <VocabLink me={c.me} />,
   'teacher:vocab:test': c => <VocabTest me={c.me} />,
   'teacher:vocab:share': c => <VocabShare me={c.me} />,
+  'teacher:exams:catalog': c => <ContestCatalog me={c.me} role="teacher" />,
+  'student:contests:catalog': c => <ContestCatalog me={c.me} role="student" />,
   'student:grades:feedback': () => <StudentFeedback />,
   'student:vocab:mine': c => <StudentVocab me={c.me} />,
   'student:vocab:cards': c => <StudentCards me={c.me} />,

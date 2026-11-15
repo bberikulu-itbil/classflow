@@ -27,6 +27,7 @@ import { StudentHomeView } from './views/StudentHomeView';
 import { SharedEdit, SharedGame } from './views/Jeopardy';
 import { LessonDetail } from './lessons/LessonDetail';
 import { CourseDetailView } from './curriculum/CourseDetailView';
+import { ContestForm } from './contests/Form';
 
 let demoApi: ReturnType<typeof makeFakeApi> | undefined;
 
@@ -126,6 +127,7 @@ export default function App() {
   if (routeKey === 'course' && isStaff) return framed('5xl', <CourseDetailView key={routeId} courseId={routeId} me={me} />);
   if (routeKey === 'preview' && isStaff) return framed('5xl', <LessonPreview key={routeId} id={routeId} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
+  if (routeKey === 'contest' && isStaff) return framed('3xl', <ContestForm key={routeId} me={me} id={routeId || 'new'} />);
   if (routeKey === 'jeopardy-edit') return shell(<SharedEdit key={routeId} payload={routeId} me={me} canSave={isStaff} />);
   if (routeKey === 'jeopardy') return shell(<SharedGame key={routeId} payload={routeId} me={me} canSave={isStaff} />);
   if (routeKey === 'profile') {
