@@ -544,7 +544,10 @@ begin
     ]
   }
 ]
-$json_spec$
+$json_spec$::jsonb) as x(
+  title text, subject text, position int,
+  plan jsonb, terms jsonb, slides jsonb
+)
   loop
     -- Look for existing lesson with this title in this school/owner
     select id into v_lesson
