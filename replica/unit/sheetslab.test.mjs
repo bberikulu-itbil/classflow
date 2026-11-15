@@ -27,7 +27,8 @@ for (const m of M) {
     }
     if (s.video) { videos++; assert.match(s.video, /^[\w-]{11}$/, at + ' video id'); assert.equal(designSlide(s), s, 'a video slide keeps its player'); }
     if (s.type === 'solution') for (const lg of LANGS) assert.equal(s[lg].sections[1].bullets.length, s.sections[1].bullets.length, `${at} ${lg} steps`);
-    if (s.type === 'task') {
+    if (s.type === 'task' && !s.criteria) assert.ok(s.accept?.length && s.accept.every(a => a === a.toLowerCase().trim()) && s.points > 0, at + ' short answer');
+    else if (s.type === 'task') {
       tasks++;
       assert.ok(s.criteria?.length >= 5 && !s.levels && s.sheet, at + ' task has a marking scheme and a sheet');
       assert.ok(s.points > 0 && s.points <= 100 && s.points === s.criteria.reduce((n, c) => n + c.points, 0), at + ' points = sum of criteria (cf_tasks allows up to 100)');
@@ -69,7 +70,7 @@ const grade = (criteria, sheet) => {
   }
   return { pts, res };
 };
-const lessonTasks = Object.values(D).flatMap(l => l.slides.filter(s => s.type === 'task'));
+const lessonTasks = Object.values(D).flatMap(l => l.slides.filter(s => s.type === 'task' && s.criteria));
 assert.equal(SOLUTIONS.length, lessonTasks.length);
 for (const [i, sol] of SOLUTIONS.entries()) {
   const t = lessonTasks[i], total = t.points, at = sol.task;

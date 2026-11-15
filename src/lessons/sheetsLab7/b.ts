@@ -96,7 +96,7 @@ export const L3: LabLesson = {
     tag(quiz(['Деректер түрі: валюта', 'Тип данных: валюта', 'Data type: currency'], ['$2,999.00 жазуы қандай түр?', 'К какому типу относится запись $2,999.00?', 'Which type is $2,999.00?'],
       [['Currency', 'Currency', 'Currency'], ['Plain text', 'Plain text', 'Plain text'], ['Time', 'Time', 'Time'], ['Duration', 'Duration', 'Duration']], 0,
       ['Currency — валюта белгісі бар сан; Currency (rounded) оны бүтінге дейін дөңгелектейді.', 'Currency — число со знаком валюты; Currency (rounded) округляет его до целых.', 'Currency is a number with a currency sign; Currency (rounded) rounds it to whole units.']), 'check'),
-    tag(shortTask(['Қысқа сұрақ: түр', 'Короткий вопрос: тип', 'Short question: type'], ['Телефон нөмірімен есептемейміз. Оған қандай деректер түрін қояды? (екі сөз, ағылшынша)', 'С номером телефона мы не считаем. Какой тип данных ему ставят? (два слова, по-английски)', 'We do not calculate with a phone number. Which data type fits it? (two words, in English)'], ['plain text'], 1), 'check'),
+    tag({ ...shortTask(['Қысқа сұрақ: түр', 'Короткий вопрос: тип', 'Short question: type'], ['Телефон нөмірімен есептемейміз. Оған қандай деректер түрін қояды? (екі сөз, ағылшынша)', 'С номером телефона мы не считаем. Какой тип данных ему ставят? (два слова, по-английски)', 'We do not calculate with a phone number. Which data type fits it? (two words, in English)'], ['plain text', 'plaintext'], 1), kind: 'check' }, 'check'),
     reflect(),
   ],
 };
