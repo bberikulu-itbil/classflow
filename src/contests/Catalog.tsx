@@ -1,12 +1,13 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react';
-import { Bookmark, BookmarkCheck, CalendarDays, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react';
+import { Archive, Bookmark, BookmarkCheck, CalendarDays, ChartGantt, ChevronLeft, ChevronRight, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, useLoad } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import * as st from './store';
 import type { Contest, Data, Me, Stage } from './store';
 import { DetailDialog } from './DetailDialog';
 import type { Role } from './DetailDialog';
-import { AppChip, Chip, ContestIcon, canEdit, catName, monthKey, monthLabel, range } from './ui';
+import { AppChip, Chip, ContestIcon, canEdit, catName, isPast, monthKey, monthLabel, range } from './ui';
+import { Timeline } from './Timeline';
 
 export type { Role };
 const MapView = lazy(() => import('./MapView'));
@@ -127,7 +128,7 @@ function AppsTable({ d, me, role }: { d: Data; me: Me; role: Role }) {
 }
 
 const ctl = 'h-10 w-full rounded-lg border border-border-input bg-surface px-2.5 text-sm text-text';
-const VIEWS = [['list', 'Тізіммен', List], ['cal', 'Күнтізбе', CalendarDays], ['map', 'Картамен', MapIcon]] as const;
+const VIEWS = [['list', 'Тізім', List], ['cal', 'Күнтізбе', CalendarDays], ['time', 'Таймлайн', ChartGantt], ['map', 'Карта', MapIcon]] as const;
 
 function Sel({ label, v, set, opts, all }: { label: string; v: string; set: (s: string) => void; opts: [string, string][]; all: string }) {
   return <div className="min-w-[7rem] flex-1"><select aria-label={label} className={ctl} value={v} onChange={e => set(e.target.value)}><option value="">{all}</option>{opts.map(o => <option key={o[0]} value={o[0]}>{o[1]}</option>)}</select></div>;
@@ -138,7 +139,7 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
   const tabs = role === 'teacher'
     ? [{ key: 'catalog', label: 'Каталог' }, { key: 'saved', label: 'Сақталғандар' }, { key: 'apps', label: 'Өтінімдер' }, { key: 'mine', label: 'Менің сайыстарым' }]
     : [{ key: 'catalog', label: 'Каталог' }, { key: 'saved', label: 'Сақталғандар' }, { key: 'apps', label: 'Менің өтінімдерім' }];
-  const [tab, setTab] = useState('catalog'), [view, setView] = useState<'list' | 'cal' | 'map'>('list');
+  const [tab, setTab] = useState('catalog'), [view, setView] = useState<'list' | 'cal' | 'time' | 'map'>('list'), [arch, setArch] = useState(false);
   const [q, setQ] = useState(''), [field, setField] = useState(''), [cat, setCat] = useState(''), [level, setLevel] = useState(''), [grade, setGrade] = useState(''), [kind, setKind] = useState(''), [sort, setSort] = useState('date');
   const [month, setMonth] = useState(st.todayIso().slice(0, 7)), [open, setOpen] = useState<string | null>(null), [note, setNote] = useState(''), [msg, setMsg] = useState('');
 
@@ -146,7 +147,9 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
     setMsg(''); setNote('');
     try { await fn(); setNote(done); reload(); } catch (e) { setMsg(e instanceof Error ? e.message : 'Қате'); }
   };
-  const base = useMemo(() => (d ? d.contests.filter(c => tab === 'mine' ? c.author_id === me.id : tab === 'saved' ? d.saves.includes(c.id) : c.status === 'published') : []), [d, tab, me.id]);
+  const inTab = useMemo(() => (d ? d.contests.filter(c => tab === 'mine' ? c.author_id === me.id : tab === 'saved' ? d.saves.includes(c.id) : c.status === 'published') : []), [d, tab, me.id]);
+  const past = useMemo(() => new Set(d ? inTab.filter(c => isPast(c, d.stages.filter(s => s.contest_id === c.id))).map(c => c.id) : []), [d, inTab]);
+  const base = useMemo(() => inTab.filter(c => past.has(c.id) === arch), [inTab, past, arch]);
   // the filters offer only what exists in the data: known fields first, then the teachers' own names
   const fieldOpts = useMemo<[string, string][]>(() => {
     const used = [...new Set(base.map(c => c.field))];
@@ -163,14 +166,15 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
     const out = base.filter(c => (!needle || `${c.title} ${c.organizer ?? ''} ${c.location ?? ''} ${catsOf(c.id).map(x => x.name).join(' ')}`.toLowerCase().includes(needle)) && (!field || c.field === field)
       && (!cat || catsOf(c.id).some(x => x.name === cat)) && (!level || st.levelsOf(c, d.stages.filter(s => s.contest_id === c.id)).includes(level))
       && (!kind || c.kind === kind) && (!grade || ((!c.grades.length || c.grades.includes(Number(grade))))));
-    return out.sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'kk') : (a.starts_on ?? '9999').localeCompare(b.starts_on ?? '9999'));
-  }, [d, base, q, field, cat, level, grade, kind, sort]);
+    const asc = out.sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'kk') : (a.starts_on ?? '9999').localeCompare(b.starts_on ?? '9999'));
+    return arch && sort !== 'title' ? asc.reverse() : asc;
+  }, [d, base, q, field, cat, level, grade, kind, sort, arch]);
   const groups = useMemo(() => { const m = new Map<string, Contest[]>(); for (const c of list) m.set(monthKey(c), [...(m.get(monthKey(c)) ?? []), c]); return [...m]; }, [list]);
   const opened = d?.contests.find(c => c.id === open);
   const pending = d ? d.apps.filter(a => a.status === 'pending' && a.teacher_id === me.id) : [];
   const showInbox = role === 'teacher' && tab !== 'apps' && pending.length > 0;
   const unpinned = list.filter(c => c.lat == null || c.lng == null);
-  const emptyText = tab === 'saved' ? 'Сақталған сайыс жоқ.' : tab === 'mine' ? 'Сіз әлі сайыс қоспағансыз.' : 'Сүзгіге сай сайыс табылмады.';
+  const emptyText = arch ? 'Архивте сайыс жоқ.' : tab === 'saved' ? 'Сақталған сайыс жоқ.' : tab === 'mine' ? 'Сіз әлі сайыс қоспағансыз.' : 'Сүзгіге сай сайыс табылмады.';
 
   return (
     <div className="space-y-3">
@@ -202,12 +206,16 @@ export function ContestCatalog({ me, role }: { me: Me; role: Role }) {
                   <div role="group" aria-label="Көрініс" className="inline-flex rounded-lg bg-surface-2 p-0.5">
                     {VIEWS.map(([k, label, Icon]) => (
                       <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
-                        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm font-medium ${view === k ? 'bg-surface text-on-accent-soft shadow-card' : 'text-text-secondary hover:text-text'}`}><Icon size={16} aria-hidden="true" />{label}</button>
+                        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium sm:px-3 ${view === k ? 'bg-surface text-on-accent-soft shadow-card' : 'text-text-secondary hover:text-text'}`}><Icon size={16} aria-hidden="true" className="hidden sm:block" />{label}</button>
                     ))}
                   </div>
-                  <p className="text-sm text-text-secondary" aria-live="polite">{list.length} сайыс</p>
+                  <div className="flex items-center gap-3">
+                    <button type="button" aria-pressed={arch} onClick={() => setArch(!arch)} className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium ${arch ? 'border-accent bg-accent-soft text-on-accent-soft' : 'border-border text-text-secondary hover:text-text'}`}><Archive size={16} aria-hidden="true" />Архив{past.size > 0 && <span className="text-xs">({past.size})</span>}</button>
+                    <p className="text-sm text-text-secondary" aria-live="polite">{list.length} сайыс</p>
+                  </div>
                 </div>
                 {view === 'cal' ? <Calendar items={list} d={d} month={month} setMonth={setMonth} onOpen={setOpen} />
+                  : view === 'time' ? (list.length ? <Timeline items={list} d={d} onOpen={setOpen} /> : <EmptyState text={emptyText} />)
                   : view === 'map' ? (
                     <div className="space-y-2">
                       <Suspense fallback={<Skeleton rows={4} />}><MapView items={list} onOpen={setOpen} /></Suspense>

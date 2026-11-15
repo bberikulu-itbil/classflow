@@ -36,3 +36,11 @@ export function ContestIcon({ c, size = 'sm' }: { c: Pick<Contest, 'icon' | 'fie
   if (size === 'lg') return <div aria-hidden="true" className="grid h-full w-full place-items-center" style={{ background: `linear-gradient(135deg, hsl(${hue} 80% 94%), hsl(${hue} 70% 84%))`, color: `hsl(${hue} 60% 28%)` }}><Icon size={56} strokeWidth={1.5} /></div>;
   return <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-card" style={{ background: `hsl(${hue} 80% 92%)`, color: `hsl(${hue} 60% 28%)` }}><Icon size={22} /></span>;
 }
+
+/** First and last known date of a contest (own dates and stage dates). hasOpenStage: a stage without a date means it is not over. */
+export function span(c: Contest, stages: { on_date: string | null }[]) {
+  const ds = [c.starts_on, c.ends_on, ...stages.map(s => s.on_date)].filter((x): x is string => !!x).sort();
+  return { from: ds[0] ?? null, to: ds[ds.length - 1] ?? null, openStage: stages.some(s => !s.on_date) };
+}
+/** Past = every known date is before today and no stage is still without a date. No dates at all: stays active. */
+export const isPast = (c: Contest, stages: { on_date: string | null }[]) => { const s = span(c, stages); return !!s.to && !s.openStage && s.to < st.todayIso(); };
