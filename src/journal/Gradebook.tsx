@@ -11,6 +11,7 @@ import { getPrefs } from '../prefs';
 import { loadSched } from '../schedule/store';
 import { loadCurr } from '../curriculum/store';
 import { ClassLogins } from './ClassLogins';
+import { ClassDuties } from './ClassDuties';
 import type { Book, Col, Me } from './store';
 
 const defaultMax = (k: Kind): number => (k === 'kb' ? getPrefs().kbMax : k === 'bzb' ? 15 : 25);
@@ -134,6 +135,7 @@ export function Gradebook({ me }: { me: Me }) {
         <QuarterChips f={{ ...f, q }} set={set} all={false} />
       </Card>
       {cls && classes.data && <ClassLogins classId={cls} className={classes.data.find((c: any) => c.id === cls)?.name || ''} />}
+      {cls && <ClassDuties key={cls} classId={cls} />}
       {book.data?.local && <p role="note" className="rounded-lg bg-surface-2 p-3 text-sm text-text-secondary">Баға тек осы браузерде сақталады: дерекқорда журнал кестелері әлі жоқ (007_gradebook.sql іске қосылмаған).</p>}
       <p role="status" aria-live="polite" className={msg ? 'rounded-lg bg-danger-soft p-3 text-sm text-danger' : 'sr-only'}>{msg}</p>
       {book.error && <ErrorBox message={book.error} onRetry={book.reload} />}

@@ -100,7 +100,16 @@ export const STUDENT: Section[] = [
   ] },
 ];
 
-export const sectionsFor = (role: Role) => (role === 'teacher' ? TEACHER : STUDENT);
+/** Duties a teacher gave this student (cf_duties): 'author' adds course authoring, 'room' adds the Rooms section. Set once after login. */
+let duties: string[] = [];
+export const setDuties = (d: string[]) => { duties = d; };
+export const hasDuty = (d: string) => duties.includes(d);
+const AUTHOR: Sub = { key: 'author', label: 'Курс жасау', to: 'courses/author', also: ['course', 'lesson', 'edit', 'preview', 'plan'] };
+const forStudent = (): Section[] => [
+  ...STUDENT.map(s => (s.key === 'courses' && hasDuty('author') ? { ...s, routes: [...s.routes, 'course', 'lesson', 'edit', 'preview', 'plan'], subs: [s.subs[0], AUTHOR, ...s.subs.slice(1)] } : s)),
+  ...(hasDuty('room') ? TEACHER.filter(s => s.key === 'rooms') : []),
+];
+export const sectionsFor = (role: Role) => (role === 'teacher' ? TEACHER : forStudent());
 
 /** First screen that really exists inside a section (undefined = the whole section is still planned). */
 export const firstReady = (s: Section) => s.subs.find(x => x.to);

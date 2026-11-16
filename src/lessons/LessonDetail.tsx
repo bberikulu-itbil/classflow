@@ -4,7 +4,7 @@ import { DEMO } from '../config';
 import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { Tabs } from '../ui/Tabs';
 import { fmtDate } from '../hw/format';
-import { startSession } from '../views/session';
+import { MODES, startSession } from '../views/session';
 import { byName } from '../views/session';
 import { loadLessonData, loadResults } from './data';
 import { getPrefs } from '../prefs';
@@ -99,11 +99,11 @@ export function LessonDetail({ id, me }: { id: string; me: { id: string } }) {
   const all = lesson && data ? sessionsByLesson(data.lessons, data.sessions).get(lesson.id)! : [];
   // tabs: classes this lesson was taught to, its own class, the one picked in the gallery, and any added here
   const tabIds = [...new Set([...all.map(s => s.class_id || ''), ...(lesson?.class_id ? [lesson.class_id] : []), ...(f.cls ? [f.cls] : []), ...extra])];
-  const name = (cid: string) => data?.classes.find(c => c.id === cid)?.name || 'Сыныпсыз';
+  const name = (cid: string) => [...(data?.classes || []), ...MODES].find(c => c.id === cid)?.name || 'Сыныпсыз';
   const tabs = tabIds.map(k => ({ key: k || '_', label: name(k) })).sort((a, b) => (a.key === '_' ? 1 : b.key === '_' ? -1 : byName(a.label, b.label)));
   const cur = cls ?? (tabs.find(t => t.key === (f.cls || '_'))?.key ?? tabs[0]?.key ?? '');
   useEffect(() => { document.title = lesson ? `${lesson.title} · ClassFlow` : document.title; }, [lesson?.title]);
-  const addable: Cls[] = (data?.classes || []).filter(c => !tabIds.includes(c.id));
+  const addable = [...(data?.classes || []), ...MODES].filter(c => !tabIds.includes(c.id));
   const back = <a href="#lessons/mine" className="inline-flex min-h-[44px] items-center gap-1 text-sm text-accent underline"><ArrowLeft size={16} aria-hidden="true" />Барлық сабақтар</a>;
 
   if (loading && !data) return <main className="mx-auto max-w-5xl space-y-4 p-4">{back}<Skeleton /></main>;

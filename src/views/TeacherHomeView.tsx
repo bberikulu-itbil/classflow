@@ -3,7 +3,7 @@ import { sb, DEMO } from '../config';
 import { api } from '../hw/types';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, SoonCard, inputCls, useLoad } from '../ui';
 import { getPrefs } from '../prefs';
-import { startSession } from './session';
+import { MODES, startSession } from './session';
 import { ArrowUpRight, BookOpen, CalendarDays, ClipboardCheck, NotebookText } from 'lucide-react';
 
 interface Lesson { id: string; title: string; class_id: string | null }
@@ -27,7 +27,7 @@ function StartLesson({ lessons, classes }: { lessons: Lesson[]; classes: Array<{
       </label>
       <div className="flex flex-wrap gap-3">
         <label className="flex-1 min-w-[8rem] space-y-1"><span className="block text-sm font-medium text-text-secondary">Сынып</span>
-          <select className={inputCls} value={cls} onChange={e => setCls(e.target.value)}><option value="">—</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select className={inputCls} value={cls} onChange={e => setCls(e.target.value)}><option value="">Сыныпты таңдаңыз</option>{[...classes, ...MODES].map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         </label>
         <label className="w-24 space-y-1"><span className="block text-sm font-medium text-text-secondary">Топ саны</span>
           <input type="number" min={1} max={8} className={inputCls} value={groups} onChange={e => setGroups(Math.min(8, Math.max(1, +e.target.value || 1)))} />

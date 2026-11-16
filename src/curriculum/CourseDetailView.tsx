@@ -33,7 +33,7 @@ import { Button, Card, EmptyState, ErrorBox, Field, LinkButton, Skeleton, inputC
 import { Chips } from '../ui/Chips';
 import { loadClasses } from '../journal/store';
 import { getPrefs } from '../prefs';
-import { startSession } from '../views/session';
+import { MODES, startSession } from '../views/session';
 import * as st from './store';
 import type { Course, Kind, Me, Mod, Place } from './store';
 import { useLang, LANG_LABEL } from '../lessons/lang';
@@ -347,7 +347,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
   // Classes for starting session
   const classes = useLoad(loadClasses, []);
   const [cls, setCls] = useState(st.selectedClass());
-  const clsName = classes.data?.find(c => c.id === cls)?.name || '';
+  const clsName = [...(classes.data || []), ...MODES].find(c => c.id === cls)?.name || '';
 
   // Past sessions for analysis
   const [sessions, setSessions] = useState<any[]>([]);
@@ -386,7 +386,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
           .filter((s: any) => courseLessonIds.has(s.lesson_id))
           .map((s: any) => ({
             ...s,
-            className: classNames.get(s.class_id) || 'Сыныпсыз',
+            className: classNames.get(s.class_id) || (s.mode === 'guest' ? 'Қонақ' : 'Сыныпсыз'),
           }));
         setSessions(filtered);
       } catch (err) {
@@ -397,6 +397,11 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
     })();
   }, [course?.id, data?.places, sessTick]);
 
+  const assignClass = async (s: any, v: string) => {
+    const { error } = await sb.rpc('cf_set_session_class', { p_session: s.id, p_class: v === 'guest' ? null : v, p_mode: v === 'guest' ? 'guest' : 'class' });
+    if (error) { window.alert(error.message); return; }
+    setSessTick(n => n + 1);
+  };
   const deleteSession = async (s: any) => {
     if (!window.confirm(`«${s.title}» (${s.started_at ? fmtDate(s.started_at) : ''}, ${s.className}) сабағын өшіресіз бе?\nОсы сабақтағы барлық тапсырма, жауап және ұпай біржола жойылады.`)) return;
     const { error } = await sb.rpc('cf_delete_session', { p_session: s.id });
@@ -642,7 +647,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                   }}
                 >
                   <option value="">Сынып таңдалмаған</option>
-                  {classes.data.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {[...classes.data, ...MODES].map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               )}
 
@@ -1146,7 +1151,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             </p>
           </div>
 
-          <ModuleAnalytics me={me} courseId={course.id} onChanged={() => setSessTick(n => n + 1)}
+          <ModuleAnalytics reloadKey={sessTick} me={me} courseId={course.id} onChanged={() => setSessTick(n => n + 1)}
             modules={modules.map(m => ({ id: m.id, title: moduleTitle(m, lang), lessonIds: inModule(m).map(p => p.lesson_id) }))}
             titleOf={id => { const l = lesson(id); return l ? lessonTitle(l, lang) : '—'; }} />
 
@@ -1228,9 +1233,15 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                           {s.title}
                         </td>
                         <td className="py-2.5 pr-3 text-text-secondary">
-                          <span className="rounded-md bg-surface-2 px-2 py-0.5 font-medium">
-                            {s.className}
-                          </span>
+                          {s.class_id || s.mode === 'guest' ? (
+                            <span className="rounded-md bg-surface-2 px-2 py-0.5 font-medium">{s.className}</span>
+                          ) : (
+                            <select aria-label={`Сыныбын тағайындау: ${s.title}`} value="" onChange={e => e.target.value && assignClass(s, e.target.value)}
+                              className="h-9 rounded-lg border border-warning bg-warning-soft px-2 text-xs font-semibold text-text">
+                              <option value="">Сыныпсыз — тағайындау</option>
+                              {[...(classes.data || []), { id: 'guest', name: 'Қонақ' }].map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                          )}
                         </td>
                         <td className="py-2.5 pr-3 text-text-muted">
                           {s.slide_count || '—'}

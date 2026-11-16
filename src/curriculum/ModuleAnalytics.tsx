@@ -18,7 +18,8 @@ const avgOf = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + 
 const heat = (p: number | null) => (p === null ? '#E2E8F0' : p < 50 ? '#FCA5A5' : p < 70 ? '#FDE68A' : p < 85 ? '#BBF7D0' : '#4ADE80');
 const LEGEND: [string, string][] = [['<50', '#FCA5A5'], ['50–69', '#FDE68A'], ['70–84', '#BBF7D0'], ['85+', '#4ADE80'], ['қатыспады', '#E2E8F0']];
 
-export function ModuleAnalytics({ me, courseId, modules, titleOf, onChanged }: {
+export function ModuleAnalytics({ me, courseId, modules, titleOf, onChanged, reloadKey = 0 }: {
+  /** changes when the page changed sessions (class assigned, deleted) */ reloadKey?: number;
   me: Me; courseId: string; modules: { id: string; title: string; lessonIds: string[] }[]; titleOf: (lessonId: string) => string; onChanged?: () => void;
 }) {
   const [modId, setModId] = useState(modules[0]?.id || '');
@@ -40,7 +41,7 @@ export function ModuleAnalytics({ me, courseId, modules, titleOf, onChanged }: {
       if (r.error) { setErr(r.error.message); setRows([]); return; }
       setErr(''); setRows((r.data || []) as Row[]); setStats(((s.data || []) as Stat[]));
     })();
-  }, [modId, tick]);
+  }, [modId, tick, reloadKey]);
 
   const classes = useMemo(() => [...new Map((rows || []).map(r => [r.class_id || '-', r.class_name || 'Сыныпсыз'])).entries()].sort((a, b) => byName(a[1], b[1])), [rows]);
   const cur = classes.some(([k]) => k === cls) ? cls : classes[0]?.[0] || '';

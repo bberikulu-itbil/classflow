@@ -20,7 +20,7 @@ import { makeSupaApi } from './hw/supaApi';
 import { makeFakeApi, DEMO_STUDENT, DEMO_TEACHER } from './hw/fakeApi';
 import { AppShell } from './nav/AppShell';
 import { SectionFrame, SectionPage } from './nav/SectionPage';
-import { activeSection } from './nav/config';
+import { activeSection, hasDuty, setDuties } from './nav/config';
 import type { Role } from './nav/config';
 import { TeacherHomeView } from './views/TeacherHomeView';
 import { StudentHomeView } from './views/StudentHomeView';
@@ -61,6 +61,10 @@ export default function App() {
       setLoading(false);
       return;
     }
+    if (data.role === 'student') { // duties a teacher gave (course author, room helper) open extra screens
+      const du = await sb.from('cf_duties').select('duty').eq('student_id', data.id);
+      setDuties((du.data || []).map((x: any) => x.duty));
+    } else setDuties([]);
     setMe(data);
     setLoading(false);
   };
@@ -105,6 +109,7 @@ export default function App() {
 
   const isStaff = STAFF.includes(me.role);
   const role: Role = isStaff ? 'teacher' : 'student';
+  const canAuthor = isStaff || hasDuty('author');
   const logout = () => setMe(null);
   hw.api = DEMO ? (demoApi ||= makeFakeApi(() => meRef.current)) : makeSupaApi(me);
   const shell = (el: React.ReactNode) => (
@@ -123,9 +128,9 @@ export default function App() {
   if (routeKey === 'hw' || (!isStaff && routeKey === 'tasks')) return shell(routeKey === 'hw' && routeId ? <HomeworkSolve key={routeId} id={routeId} /> : <HomeworkList />);
   if (routeKey === 'assign' && isStaff) return framed('3xl', <AssignView />);
   if (routeKey === 'review' && isStaff) return framed('3xl', <ReviewView id={routeId} />);
-  if (routeKey === 'lesson' && isStaff) return framed('5xl', <LessonDetail key={routeId} id={routeId} me={me} />);
-  if (routeKey === 'course' && isStaff) return framed('5xl', <CourseDetailView key={routeId} courseId={routeId} me={me} />);
-  if (routeKey === 'preview' && isStaff) return framed('5xl', <LessonPreview key={routeId} id={routeId} />);
+  if (routeKey === 'lesson' && canAuthor) return framed('5xl', <LessonDetail key={routeId} id={routeId} me={me} />);
+  if (routeKey === 'course' && canAuthor) return framed('5xl', <CourseDetailView key={routeId} courseId={routeId} me={me} />);
+  if (routeKey === 'preview' && canAuthor) return framed('5xl', <LessonPreview key={routeId} id={routeId} />);
   if (routeKey === 'plans' && isStaff) return framed('5xl', <PlansView />);
   if (routeKey === 'contest' && isStaff) return framed('3xl', <ContestForm key={routeId} me={me} id={routeId || 'new'} />);
   if (routeKey === 'jeopardy-edit') return shell(<SharedEdit key={routeId} payload={routeId} me={me} canSave={isStaff} />);
@@ -148,10 +153,10 @@ export default function App() {
   if (routeKey === 's') {
     return <StudentSessionView sid={routeId} me={me} />;
   }
-  if (routeKey === 'plan' && isStaff) {
+  if (routeKey === 'plan' && canAuthor) {
     return <PlanEditorView id={routeId} me={me} onLogout={logout} />;
   }
-  if (routeKey === 'edit' && isStaff) {
+  if (routeKey === 'edit' && canAuthor) {
     return <LessonEditorView id={routeId} me={me} onLogout={logout} />;
   }
 

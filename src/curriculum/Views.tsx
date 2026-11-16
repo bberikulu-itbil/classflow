@@ -7,7 +7,7 @@ import { Chips } from '../ui/Chips';
 import { NO_SUBJECT, currentQuarter } from '../lessons/model';
 import { loadClasses } from '../journal/store';
 import { getPrefs } from '../prefs';
-import { startSession } from '../views/session';
+import { MODES, startSession } from '../views/session';
 import * as st from './store';
 import type { Course, Curr, Kind, Me, Mod, Place } from './store';
 import { SHOWS, gradeOf, gradesIn, visible } from './filter';
@@ -477,7 +477,7 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
   const classes = useLoad(loadClasses, []);
   const [cls, setCls] = useState(st.selectedClass()), [busy, setBusy] = useState(''), [startErr, setStartErr] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
-  const clsName = classes.data?.find(c => c.id === cls)?.name || '';
+  const clsName = [...(classes.data || []), ...MODES].find(c => c.id === cls)?.name || '';
   const pickClass = (id: string) => { setCls(id); st.selectClass(id); setStartErr(''); };
   /** The lecture is a lesson already: with a class chosen it opens as a live lesson in one click. */
   const start = async (lessonId: string) => {
@@ -567,7 +567,7 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
             <Chips compact legend="Көрсету" name="show" value={show} onChange={v => setShow(v as Show)} options={SHOWS.map(x => ({ v: x.v, label: `${x.label} · ${count(x.v)}` }))} />
             {grades.length > 0 && <select aria-label="Параллель" className={sel} value={grade} onChange={e => setGrade(e.target.value)}><option value="">Барлық параллель</option>{grades.map(g => <option key={g} value={g}>{g}-сынып</option>)}</select>}
             {courses.length > 1 && <select aria-label="Курс" className={sel} value={base.course} onChange={e => pickCourse(e.target.value)}><option value="">Барлық курс</option>{courses.map(c => <option key={c.id} value={c.id}>{courseTitle(c, lang)}</option>)}</select>}
-            {classes.data && classes.data.length > 0 && <select aria-label="Сынып (бастау үшін)" className={sel} value={clsName ? cls : ''} onChange={e => pickClass(e.target.value)}><option value="">Сынып таңдалмаған</option>{classes.data.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
+            {classes.data && classes.data.length > 0 && <select aria-label="Сынып (бастау үшін)" className={sel} value={clsName ? cls : ''} onChange={e => pickClass(e.target.value)}><option value="">Сынып таңдалмаған</option>{[...classes.data, ...MODES].map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
           </div>
           {startErr && <p role="alert" className="text-sm text-danger">{startErr}</p>}
 
