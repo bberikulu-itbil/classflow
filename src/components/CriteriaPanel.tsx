@@ -36,6 +36,7 @@ export function CriteriaPanel({ criteria, lang, open, notOpen, closed, sub, maxP
     score: pick(lang, 'Нәтиже', 'Результат', 'Result'),
     fix: pick(lang, 'Қызыл белгілі критерийді түзетіп, қайта жібер.', 'Исправь критерии с красной меткой и отправь снова.', 'Fix the criteria marked red and send again.'),
     pts: pick(lang, 'ұпай', 'балл', 'pts'),
+    lv: [pick(lang, 'Негізгі', 'Базовый', 'Basic'), pick(lang, 'Орта', 'Средний', 'Medium'), pick(lang, 'Қиын', 'Сложный', 'Hard')],
   };
   return (
     <section data-testid="criteria-panel" aria-label={t.h} className="space-y-3 rounded-2xl border border-border bg-surface p-4 text-text">
@@ -43,11 +44,14 @@ export function CriteriaPanel({ criteria, lang, open, notOpen, closed, sub, maxP
       <ul className="space-y-2">
         {criteria.map((c, i) => {
           const state = !sent ? 'todo' : res[c.id] ? 'ok' : 'bad', now = live(c.cell);
+          const lv = /^\s*★/.test(c.text) ? 3 : (c.points ?? 1) >= 2 ? 2 : 1;
           return (
             <li key={c.id} data-testid={`crit-${c.id}`} data-state={state} className={`flex flex-wrap items-start gap-2 rounded-xl border p-3 ${state === 'ok' ? 'border-success bg-success-soft' : state === 'bad' ? 'border-danger bg-danger-soft' : 'border-border bg-bg'}`}>
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface font-black" aria-hidden="true">{state === 'ok' ? '✓' : state === 'bad' ? '✗' : i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold leading-snug">{c.text}</p>
+                {/* level from the marking scheme itself: ★ = hard, 2+ points = medium, else basic */}
+                <span data-testid="crit-level" className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${lv === 3 ? 'bg-danger-soft text-danger' : lv === 2 ? 'bg-warning-soft text-text' : 'bg-success-soft text-text'}`}>{t.lv[lv - 1]}</span>
                 <p className="mt-0.5 font-mono text-xs text-text-muted">{t.cell} {c.cell} · {t.now}: <b>{now || t.empty}</b></p>
               </div>
               <span className="text-sm font-bold text-text-secondary">{c.points ?? 1} {t.pts}</span>

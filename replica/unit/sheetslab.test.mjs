@@ -103,7 +103,7 @@ assert.deepEqual([acc(5, 'c3'), acc(5, 'c4'), acc(5, 'c5'), acc(5, 'c6')], [['3'
 const demo = D['inf8lab-1'].slides.filter(s => s.demoSheet);
 assert.equal(demo.length, 1, '3.1 has one demo sheet slide');
 const si = D['inf8lab-1'].slides.indexOf(demo[0]);
-assert.match(D['inf8lab-1'].slides[si - 1].title, /Абсолютті/, 'the demo sheet follows the absolute-reference slide');
+assert.equal(D['inf8lab-1'].slides[si - 1].stage, 'together', 'the demo sheet opens the example stage, right after the explanation');
 assert.match(D['inf8lab-1'].slides[si + 1].title, /Мысал: салық/, '...and comes before the tax example');
 for (const lg of LANGS) assert.deepEqual(Object.keys(demo[0][lg].demoSheet.cells), Object.keys(demo[0].demoSheet.cells), `demo sheet ${lg} has the same cells`);
 {
