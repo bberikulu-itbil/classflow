@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { sb } from '../config';
-import { fmtDate } from '../hw/format';
+
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('ru-RU'); // 04.11.2026, as in the school journal
 
 type Row = { session_id: string; lesson_id: string; class_id: string | null; class_name: string | null; started_at: string; student_id: string; full_name: string; points: number; max_points: number; done: number; tasks: number };
 type Col = { key: string; session_id: string; lesson_id: string; started_at: string; max: number; tasks: number };
