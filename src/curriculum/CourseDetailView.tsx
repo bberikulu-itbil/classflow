@@ -511,7 +511,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-xs font-semibold hover:bg-surface-2"
           >
             <Languages size={15} aria-hidden="true" />
-            <span>{lang === 'ru' ? 'ҚАЗ' : 'РУС'}</span>
+            <span>{lang === 'ru' ? 'РУС' : lang === 'en' ? 'ENG' : 'ҚАЗ'}</span>
           </button>
         </div>
       </div>

@@ -215,7 +215,7 @@ export function BoardView({ sid }: { sid: string }) {
               ) : (
                 <>
                   <DockBtn label="Артқа" disabled={!prev} onClick={() => prev?.()}><ArrowLeft size={22} /></DockBtn>
-                  <DockBtn label={lang === 'ru' ? 'РУС' : 'ҚАЗ'} pressed={lang === 'ru'} onClick={flipLang}><Languages size={22} /></DockBtn>
+                  <DockBtn label={lang === 'ru' ? 'РУС' : lang === 'en' ? 'ENG' : 'ҚАЗ'} pressed={lang !== 'kk'} onClick={flipLang}><Languages size={22} /></DockBtn>
                   <DockBtn label="Сызу" onClick={() => setDraw(true)}><Pencil size={22} /></DockBtn>
                   <DockBtn label={tl} pressed={wins.includes('timer')} onClick={() => toggle('timer')}><TimerIcon size={22} /></DockBtn>
                   <DockBtn label="Сан жүйесі" pressed={wins.includes('conv')} onClick={() => toggle('conv')}><Binary size={22} /></DockBtn>

@@ -3,7 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Languages, Pencil } from 'lucide-
 import { sb } from '../config';
 import { EmptyState, ErrorBox, LinkButton, Skeleton, inputCls, useLoad } from '../ui';
 import { renderSlide } from '../components/Widgets';
-import { tr, useLang } from './lang';
+import { tr, useLang, type Lang } from './lang';
 import { spCtx, useSpoilers } from './spoil';
 
 import { isRoboticsLessonId, loadRoboticsLesson } from './robotics';
@@ -11,7 +11,7 @@ import { isSpreadsheetsLessonId, loadSpreadsheetsLesson } from './spreadsheets';
 import { isDatabasesLessonId, loadDatabasesLesson } from './databases';
 
 interface Row { id: string; title: string; subject: string | null; slides: any[] }
-const label = (s: any, i: number, lang: 'kk' | 'ru') => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
+const label = (s: any, i: number, lang: Lang) => `${i + 1}. ${(tr(s, lang) as any)?.title || (tr(s, lang) as any)?.prompt || s.type}`.slice(0, 70);
 /** Teacher-only hint under a slide: the right answer and the lecture notes. Nothing here reaches students. */
 const hint = (s: any): string[] => [
   s.type === 'quiz' && Number.isInteger(s.answer) ? `Дұрыс жауап: ${String.fromCharCode(65 + s.answer)}. ${(s.options || [])[s.answer] ?? ''}` : '',
@@ -90,7 +90,7 @@ export function LessonPreview({ id }: { id: string }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0"><h1 className="text-2xl font-bold break-words">{title}</h1><p className="text-text-secondary">{lesson.subject || 'Пәнсіз'} · {slides.length} слайд</p></div>
         <div className="flex flex-wrap items-center gap-2">
-          {slides.some((x: any) => x.ru) && <button type="button" onClick={flip} aria-label={lang === 'ru' ? 'Язык слайдов: русский. Переключить на казахский' : 'Слайд тілі: қазақша. Орысшаға ауыстыру'} className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'РУС' : 'ҚАЗ'}</button>}
+          {slides.some((x: any) => x.ru || x.en) && <button type="button" onClick={flip} aria-label="Слайд тілі" className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'РУС' : lang === 'en' ? 'ENG' : 'ҚАЗ'}</button>}
           <LinkButton href={'#edit/' + lesson.id}><Pencil size={16} aria-hidden="true" />Өңдеу</LinkButton>
         </div>
       </div>

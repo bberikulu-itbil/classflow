@@ -831,6 +831,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Report (Отчет)"
           ],
           "explanation": "Record (Запись) — это горизонтальная строка со сведениями об одном конкретном объекте. Столбец называется Field (Поле)."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Field and Record",
+          "prompt": "What is a horizontal row in a database table containing all information about a single item (e.g., one student) called?",
+          "options": [
+            "Field",
+            "Record",
+            "Query",
+            "Report"
+          ],
+          "explanation": "A Record is a horizontal row combining all fields of a specific item. A Field is a vertical column storing data of the same type."
         }
       },
       {
@@ -859,6 +870,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Form (Форма)"
           ],
           "explanation": "Query (Запрос) используется для выполнения операций выборки, фильтрации и расчетов над данными."
+        },
+        "en": {
+          "title": "Check question 2 [2 min]: DB component",
+          "prompt": "Which database component is used to filter, search, and perform calculations on data based on specific criteria?",
+          "options": [
+            "Table",
+            "Query",
+            "Report",
+            "Form"
+          ],
+          "explanation": "A Query is used to perform operations such as search, filter, and calculations within a database."
         }
       },
       {
@@ -902,6 +924,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             {
               "l": "Report (Отчет)",
               "r": "Вывод результатов в виде удобного печатного документа"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Core DB concepts and functions",
+          "pairs": [
+            {
+              "l": "Field",
+              "r": "Vertical column storing data of the same type"
+            },
+            {
+              "l": "Record",
+              "r": "Horizontal row containing information about one item"
+            },
+            {
+              "l": "DBMS",
+              "r": "Software system for managing and protecting data"
+            },
+            {
+              "l": "Report",
+              "r": "Formatted document for presenting output to users"
             }
           ]
         }
@@ -1470,6 +1513,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Хранит только дату и время"
           ],
           "explanation": "Первичный ключ уникально идентифицирует каждую строку таблицы и не может быть пустым."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Primary Key",
+          "prompt": "What is the primary characteristic of a Primary Key in a database table?",
+          "options": [
+            "It must always be text format",
+            "It must be unique for each record and cannot be empty",
+            "It automatically resets and changes with each record",
+            "It only stores date and time"
+          ],
+          "explanation": "A Primary Key uniquely identifies each record in a table and cannot contain null or duplicate values."
         }
       },
       {
@@ -1498,6 +1552,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Short Text"
           ],
           "explanation": "Тип Boolean хранит только два логических значения: Истина или Ложь."
+        },
+        "en": {
+          "title": "Check question 2 [2 min]: Data types",
+          "prompt": "Which data type is best suited for storing a student's date of birth in a database?",
+          "options": [
+            "Number",
+            "Short Text",
+            "Date / Time",
+            "Yes/No (Boolean)"
+          ],
+          "explanation": "Dates and calendar events should always use the Date/Time data type to ensure correct formatting and calculations."
         }
       },
       {
@@ -1541,6 +1606,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             {
               "l": "IsAvailable (True)",
               "r": "Boolean (Логический)"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Fields and data types",
+          "pairs": [
+            {
+              "l": "Book title",
+              "r": "Short Text"
+            },
+            {
+              "l": "Price (₸)",
+              "r": "Currency / Number"
+            },
+            {
+              "l": "Date of birth",
+              "r": "Date / Time"
+            },
+            {
+              "l": "Available in library?",
+              "r": "Yes/No (Boolean)"
             }
           ]
         }
@@ -1881,6 +1967,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "На рабочем столе"
           ],
           "explanation": "Ответы форм сохраняются в виде строк таблицы Google Sheets."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Linking forms to tables",
+          "prompt": "When users submit responses through Google Forms, how are they stored in the connected spreadsheet?",
+          "options": [
+            "As a new vertical column (Field)",
+            "As a new horizontal row (Record)",
+            "Overwriting previous responses in cell A1",
+            "In a separate new sheet each time"
+          ],
+          "explanation": "Each form submission creates a new horizontal row (Record) containing answers to all form questions."
         }
       },
       {
@@ -1924,6 +2021,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             {
               "l": "Название книги",
               "r": "Short answer (Текст)"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Form question types and field types",
+          "pairs": [
+            {
+              "l": "Short answer (Full name)",
+              "r": "Short Text"
+            },
+            {
+              "l": "Linear scale / Rating (1-10)",
+              "r": "Number"
+            },
+            {
+              "l": "Date picker",
+              "r": "Date / Time"
+            },
+            {
+              "l": "Checkbox (Confirm rules)",
+              "r": "Yes/No (Boolean)"
             }
           ]
         }
@@ -2240,6 +2358,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Звучит сигнал"
           ],
           "explanation": "В заголовке отфильтрованного столбца отображается иконка воронки."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Filter function",
+          "prompt": "What happens when you apply a filter to a spreadsheet table?",
+          "options": [
+            "Rows that do not match the condition are permanently deleted",
+            "Rows that do not match the condition are temporarily hidden",
+            "Table font colors and styles are reset",
+            "A duplicate copy of the table is created"
+          ],
+          "explanation": "Filtering temporarily hides rows that do not match criteria without deleting any data."
         }
       },
       {
@@ -2283,6 +2412,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             {
               "l": "Select all",
               "r": "Сброс фильтра, показать все"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Sorting and filtering commands",
+          "pairs": [
+            {
+              "l": "Sort A -> Z",
+              "r": "Sort in ascending order"
+            },
+            {
+              "l": "Sort Z -> A",
+              "r": "Sort in descending order"
+            },
+            {
+              "l": "Filter by condition",
+              "r": "Display only rows meeting criteria"
+            },
+            {
+              "l": "Clear filter",
+              "r": "Restore and show all hidden rows"
             }
           ]
         }
@@ -2670,6 +2820,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Обнуление ячеек"
           ],
           "explanation": "Сводная таблица группирует большие массивы строк и вычисляет агрегированные итоги."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Purpose of Pivot table",
+          "prompt": "What is the primary advantage of a Pivot table compared to a standard table?",
+          "options": [
+            "It automatically translates text into another language",
+            "It groups large volumes of data and calculates summaries (SUM, COUNT) in seconds without formulas",
+            "It checks computer spelling and grammar",
+            "It protects files with a password"
+          ],
+          "explanation": "A Pivot table quickly summarizes, groups, and analyzes large amounts of detailed data without writing complex formulas."
         }
       },
       {
@@ -2713,6 +2874,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             {
               "l": "Filters",
               "r": "Фильтрация данных"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Pivot table areas",
+          "pairs": [
+            {
+              "l": "Rows",
+              "r": "Categories for vertical grouping (e.g. Genres)"
+            },
+            {
+              "l": "Columns",
+              "r": "Horizontal breakdown parameters (e.g. Years)"
+            },
+            {
+              "l": "Values",
+              "r": "Calculated metrics (SUM, COUNT, AVERAGE)"
+            },
+            {
+              "l": "Filters",
+              "r": "Conditions to exclude unwanted data"
             }
           ]
         }
@@ -3027,6 +3209,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "Radar chart"
           ],
           "explanation": "Круговая диаграмма (Pie chart) предназначена для наглядного сравнения долей от 100%."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Choosing a chart",
+          "prompt": "Which chart type is best for showing percentage proportions of a whole (100%)?",
+          "options": [
+            "Line chart",
+            "Pie chart",
+            "Scatter plot",
+            "Radar chart"
+          ],
+          "explanation": "A Pie chart divides a circle into proportional slices to compare shares of a whole (100%)."
         }
       },
       {
@@ -3070,6 +3263,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             {
               "l": "Chart editor",
               "r": "Панель настройки диаграммы"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Chart types and their purposes",
+          "pairs": [
+            {
+              "l": "Line chart",
+              "r": "Trends and changes over time (Years)"
+            },
+            {
+              "l": "Pie chart",
+              "r": "Percentage proportions of a whole (%)"
+            },
+            {
+              "l": "Bar / Column chart",
+              "r": "Comparing individual categories"
+            },
+            {
+              "l": "Chart editor",
+              "r": "Panel for customizing chart type and styling"
             }
           ]
         }
@@ -3373,6 +3587,17 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             "=SUM(Quantity:Price)"
           ],
           "explanation": "Общая стоимость равна произведению количества на цену за единицу (=Quantity * Price)."
+        },
+        "en": {
+          "title": "Check question 1 [2 min]: Total product value",
+          "prompt": "Which formula calculates the total inventory value of a product in a shop?",
+          "options": [
+            "=Quantity + Price",
+            "=Quantity * Price",
+            "=Quantity / Price",
+            "=SUM(Quantity:Price)"
+          ],
+          "explanation": "Total value is calculated by multiplying the quantity by the unit price (`=Quantity * Price`)."
         }
       },
       {
@@ -3415,6 +3640,27 @@ export const DATABASES_LESSONS_DATA: Record<string, {
             },
             {
               "l": "Визуализация долей",
+              "r": "Pie chart"
+            }
+          ]
+        },
+        "en": {
+          "title": "Matching: Mini-project elements and tools",
+          "pairs": [
+            {
+              "l": "Product data entry",
+              "r": "Google Forms (5 fields)"
+            },
+            {
+              "l": "Find most expensive product",
+              "r": "Sort Descending (by Price)"
+            },
+            {
+              "l": "Stock totals by category",
+              "r": "Pivot table (SUM of Quantity)"
+            },
+            {
+              "l": "Visual share of stock",
               "r": "Pie chart"
             }
           ]

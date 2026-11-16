@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Square, Play, Sparkles, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Square, Play, Sparkles, Check, X, LogOut } from 'lucide-react';
 import { sb } from '../config';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
 import { Tabs } from '../ui/Tabs';
@@ -45,6 +45,17 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [switching, setSwitching] = useState(false);
   const [note, setNote] = useState<{ text: string; bad: boolean }>({ text: '', bad: false });
   const [ending, setEnding] = useState(false);
+  const [loggingOutClass, setLoggingOutClass] = useState(false);
+  const [autoTask, setAutoTask] = useState(() => {
+    try { return localStorage.getItem('cf_remote_autotask') === '1'; } catch { return false; }
+  });
+  const toggleAutoTask = () => {
+    setAutoTask(v => {
+      const next = !v;
+      try { localStorage.setItem('cf_remote_autotask', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
   const autoTRef = useRef<any>(null);
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -128,6 +139,39 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     const idx = Math.max(0, Math.min(total - 1, i));
     if (idx === cur) return;
     await run(() => sb.rpc('cf_goto', { p_session: sid, p_index: idx }));
+    if (autoTask) {
+      const nextSlide = priv[idx];
+      if (nextSlide && nextSlide.pageType !== 'scroll' && ['quiz', 'task', 'code', 'labTask', 'shortTask', 'matching'].includes(nextSlide.type)) {
+        setTimeout(() => {
+          sb.rpc('cf_open_task', { p_session: sid, p_index: idx }).then(refresh, () => {});
+        }, 350);
+      }
+    }
+  };
+
+  const logoutClass = async (studentId: string | null = null) => {
+    try {
+      const stCh = sb.channel('student-session-' + sid);
+      stCh.subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          stCh.send({
+            type: 'broadcast',
+            event: 'force_logout',
+            payload: { student_id: studentId }
+          });
+        }
+      });
+      await sb.rpc('cf_popup', {
+        p_session: sid,
+        p_student: studentId,
+        p_message: '__FORCE_LOGOUT__'
+      });
+      setNote({ text: studentId ? 'Оқушы жүйеден шығарылды' : 'Сыныптағы барлық оқушылар аккаунттарынан шығарылды (Log out)', bad: false });
+      setLoggingOutClass(false);
+      refresh();
+    } catch (e) {
+      setNote({ text: e instanceof Error ? e.message : 'Шығару қатесі', bad: true });
+    }
   };
   /** One place for every action: shows the server's refusal instead of failing silently, then re-reads. */
   const run = async (fn: () => PromiseLike<{ error: { message: string } | null }>, ok = '') => {
@@ -153,7 +197,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
   const slide = tr(priv[cur] || {}, lang);
   const next = tr(priv[cur + 1], lang);
-  const isTask = slide.pageType !== 'scroll' && ['quiz', 'task', 'code'].includes(slide.type);
+  const isTask = slide.pageType !== 'scroll' && ['quiz', 'task', 'code', 'labTask', 'shortTask', 'matching'].includes(slide.type);
   const open = task && task.status === 'open';
   const onlineCount = parts.filter(p => p.presence === 'online').length;
   const hands = parts.filter(p => p.hand);
@@ -186,8 +230,20 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
           <span className="hidden items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 sm:inline-flex text-xs font-semibold text-success whitespace-nowrap"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />Тікелей</span>
           <span className="rounded-md bg-surface-2 px-3 py-2 text-sm whitespace-nowrap"><span className="text-text-secondary">Код </span><b className="font-mono tracking-wider">{spaced(session.join_code)}</b></span>
           <a href={`#board/${sid}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Monitor size={16} aria-hidden="true" />Тақта<span className="sr-only"> (жаңа терезеде)</span></a>
+          <Button variant="secondary" onClick={() => setLoggingOutClass(true)} className="text-danger hover:bg-danger-soft border-danger/30" title="Кабинеттегі барлық оқушыларды аккаунттарынан шығару (Log out)"><LogOut size={14} aria-hidden="true" />Log Out сынып</Button>
           <Button variant="danger" onClick={() => setEnding(true)} aria-expanded={ending}><Square size={14} aria-hidden="true" />Аяқтау</Button>
         </div>
+        {loggingOutClass && (
+          <div role="alertdialog" aria-label="Сыныпты шығару" className="border-t border-border bg-danger-soft">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-2 text-sm text-danger lg:px-4">
+              <span className="flex-1">
+                <b>Сыныпты Log Out жасау:</b> Барлық оқушылар жүйеден толық шығарылады және құрылғылары таза логин бетіне қайтарылады (келесі сынып үшін). Шығарасыз ба?
+              </span>
+              <Button variant="danger" onClick={() => logoutClass(null)}>Иә, барлығын шығару</Button>
+              <Button variant="secondary" onClick={() => setLoggingOutClass(false)}>Болдырмау</Button>
+            </div>
+          </div>
+        )}
         {ending && (
           <div role="alertdialog" aria-label="Сабақты аяқтау" className="border-t border-border bg-danger-soft">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-2 text-sm text-danger lg:px-4">
@@ -246,6 +302,19 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
           {/* Compact Stats Strip */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-2 sm:p-2.5 shadow-sm text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleAutoTask}
+                aria-pressed={autoTask}
+                className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer transition-colors ${
+                  autoTask ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30' : 'bg-surface-2 text-text hover:bg-border'
+                }`}
+                title="Тапсырма слайдына өткен кезде автоматты түрде оқушыларға ашу"
+              >
+                <Sparkles size={13} className={autoTask ? 'text-amber-500 animate-pulse' : 'text-text-muted'} />
+                <span>{autoTask ? '⚡ Авто-тапсырма: Қосулы' : 'Авто-тапсырма'}</span>
+              </button>
+
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 font-semibold text-text">
                 <span className="h-2 w-2 rounded-full bg-success" />
                 <span>{onlineCount}/{parts.length} онлайн</span>
@@ -299,7 +368,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 aria-label="Слайд тілі"
                 className="!min-h-[32px] !py-1 text-xs font-bold shrink-0"
               >
-                {lang === 'kk' ? 'ҚАЗ' : 'РУС'}
+                {lang === 'kk' ? 'ҚАЗ' : lang === 'ru' ? 'РУС' : 'ENG'}
               </Button>
             </div>
 
@@ -462,6 +531,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                       <IconBtn label={`${p.full_name}: ${p.locked ? 'бұғатты ашу' : 'бұғаттау'}`} tone={p.locked ? 'text-danger' : ''} onClick={() => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: p.student_id, p_locked: !p.locked }))}>{p.locked ? <Lock size={18} aria-hidden="true" /> : <LockOpen size={18} aria-hidden="true" />}</IconBtn>
                       <IconBtn label={`${p.full_name}: хабарлама жіберу`} onClick={() => send(p.student_id, 'Жіберілді')}><Bell size={18} aria-hidden="true" /></IconBtn>
                       <IconBtn label={`${p.full_name}: +1 ұпай`} onClick={() => run(() => sb.rpc('cf_award', { p_session: sid, p_student: p.student_id, p_group: null, p_points: 1, p_reason: 'Белсенділік' }))}><Plus size={18} aria-hidden="true" /></IconBtn>
+                      <IconBtn label={`${p.full_name}: аккаунттан шығару (Log out)`} tone="text-danger hover:bg-danger-soft" onClick={() => logoutClass(p.student_id)}><LogOut size={18} aria-hidden="true" /></IconBtn>
                     </li>
                   ))}
                 </ul>

@@ -102,13 +102,33 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     });
     refresh();
 
+    const doLogout = () => {
+      sb.auth.signOut().finally(() => {
+        try { localStorage.clear(); sessionStorage.clear(); } catch {}
+        window.location.hash = '';
+        window.location.reload();
+      });
+    };
+
     const ch = sb.channel('student-session-' + sid);
     ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_scores', 'cf_submissions'].forEach(tb => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, () => refresh());
     });
 
+    ch.on('broadcast', { event: 'force_logout' }, ({ payload }: any) => {
+      if (!payload?.student_id || payload?.student_id === me.id) {
+        doLogout();
+      }
+    });
+
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cf_commands', filter: `session_id=eq.${sid}` }, e => {
       const c = e.new;
+      if (c.kind === 'logout' || c.message === '__FORCE_LOGOUT__') {
+        if (!c.student_id || c.student_id === me.id) {
+          doLogout();
+          return;
+        }
+      }
       if (c.kind !== 'popup' || seenPopupsRef.current.has(c.id) || (c.student_id && c.student_id !== me.id)) return;
       seenPopupsRef.current.add(c.id);
       setPopupsQueue(q => [...q, c]);

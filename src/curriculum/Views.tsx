@@ -536,7 +536,7 @@ export function ModulesView({ me, courseId }: { me: Me; courseId?: string }) {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Модульдер мен дәрістер</h1>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={flipLang} aria-label={lang === 'ru' ? 'Тілді қазақшаға ауыстыру' : 'Переключить курс на русский'} title={lang === 'ru' ? 'Қазақша' : 'Русский'} className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'ҚАЗ' : 'РУС'}</button>
+          <button type="button" onClick={flipLang} aria-label="Тілді ауыстыру" className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"><Languages size={16} aria-hidden="true" />{lang === 'ru' ? 'РУС' : lang === 'en' ? 'ENG' : 'ҚАЗ'}</button>
           <IconBtn label="Түсініктеме" expanded={info} controls="mod-info" onClick={() => setInfo(v => !v)}><Info size={18} aria-hidden="true" /></IconBtn>
           <CreateMenu onModule={openForm} />
         </div>
