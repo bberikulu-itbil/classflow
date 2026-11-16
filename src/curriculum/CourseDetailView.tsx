@@ -39,6 +39,7 @@ import type { Course, Kind, Me, Mod, Place } from './store';
 import { useLang, LANG_LABEL } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 import { fmtDate } from '../hw/format';
+import { ModuleResults } from './ModuleResults';
 
 export const PRESET_COVERS = [
   {
@@ -350,6 +351,8 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
 
   // Past sessions for analysis
   const [sessions, setSessions] = useState<any[]>([]);
+  const [sessTick, setSessTick] = useState(0); // bumps after a past session is deleted
+  const [resOpen, setResOpen] = useState<Record<string, boolean>>({});
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
@@ -393,7 +396,14 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
         setLoadingSessions(false);
       }
     })();
-  }, [course?.id, data?.places]);
+  }, [course?.id, data?.places, sessTick]);
+
+  const deleteSession = async (s: any) => {
+    if (!window.confirm(`«${s.title}» (${s.started_at ? fmtDate(s.started_at) : ''}, ${s.className}) сабағын өшіресіз бе?\nОсы сабақтағы барлық тапсырма, жауап және ұпай біржола жойылады.`)) return;
+    const { error } = await sb.rpc('cf_delete_session', { p_session: s.id });
+    if (error) { window.alert(error.message); return; }
+    setSessTick(n => n + 1);
+  };
 
   const handleSaveInfo = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1207,6 +1217,10 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                         );
                       })}
                     </div>
+                    <details className="rounded-lg border border-border/60 bg-surface p-2" onToggle={e => { const o = (e.target as HTMLDetailsElement).open; setResOpen(r => ({ ...r, [m.id]: o })); }}>
+                      <summary className="cursor-pointer text-xs font-semibold text-accent">Сыныптың нәтижелері</summary>
+                      {resOpen[m.id] && <div className="pt-2"><ModuleResults key={sessTick} moduleId={m.id} titleOf={id => { const l = lesson(id); return l ? lessonTitle(l, lang) : '—'; }} onDeleted={() => setSessTick(n => n + 1)} /></div>}
+                    </details>
                   </div>
                 );
               })}
@@ -1231,6 +1245,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                       <th className="py-2 pr-3 font-semibold">Сабақ тақырыбы</th>
                       <th className="py-2 pr-3 font-semibold">Сынып</th>
                       <th className="py-2 pr-3 font-semibold">Слайдтар</th>
+                      <th className="py-2 font-semibold"><span className="sr-only">Өшіру</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -1249,6 +1264,10 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                         </td>
                         <td className="py-2.5 pr-3 text-text-muted">
                           {s.slide_count || '—'}
+                        </td>
+                        <td className="py-1 text-right">
+                          <button type="button" onClick={() => deleteSession(s)} aria-label={`Сабақты өшіру: ${s.title}`} title="Сабақты өшіру"
+                            className="grid h-9 w-9 place-items-center rounded-md text-danger hover:bg-danger-soft cursor-pointer"><Trash2 size={15} aria-hidden="true" /></button>
                         </td>
                       </tr>
                     ))}
