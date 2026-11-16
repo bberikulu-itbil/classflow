@@ -39,7 +39,7 @@ import type { Course, Kind, Me, Mod, Place } from './store';
 import { useLang, LANG_LABEL } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 import { fmtDate } from '../hw/format';
-import { ModuleResults } from './ModuleResults';
+import { ModuleAnalytics } from './ModuleAnalytics';
 
 export const PRESET_COVERS = [
   {
@@ -352,7 +352,6 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
   // Past sessions for analysis
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessTick, setSessTick] = useState(0); // bumps after a past session is deleted
-  const [resOpen, setResOpen] = useState<Record<string, boolean>>({});
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
@@ -1147,34 +1146,9 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             </p>
           </div>
 
-          {/* KPI Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-              <span className="text-xs text-text-secondary font-medium">Өткізілген сабақтар</span>
-              <p className="mt-1 text-2xl font-black text-text">{sessions.length}</p>
-              <span className="text-[11px] text-text-muted">тікелей сессиялар</span>
-            </div>
-
-            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-              <span className="text-xs text-text-secondary font-medium">Бағдарлама көлемі</span>
-              <p className="mt-1 text-2xl font-black text-accent">{totalLessons}</p>
-              <span className="text-[11px] text-text-muted">жалпы дәріс саны</span>
-            </div>
-
-            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-              <span className="text-xs text-text-secondary font-medium">Қамтылған сыныптар</span>
-              <p className="mt-1 text-2xl font-black text-success">
-                {new Set(sessions.map(s => s.className).filter(c => c && c !== 'Сыныпсыз')).size || '—'}
-              </p>
-              <span className="text-[11px] text-text-muted">параллельдер</span>
-            </div>
-
-            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
-              <span className="text-xs text-text-secondary font-medium">Модульдер</span>
-              <p className="mt-1 text-2xl font-black text-purple-400">{modules.length}</p>
-              <span className="text-[11px] text-text-muted">бөлімдер</span>
-            </div>
-          </div>
+          <ModuleAnalytics me={me} courseId={course.id} onChanged={() => setSessTick(n => n + 1)}
+            modules={modules.map(m => ({ id: m.id, title: moduleTitle(m, lang), lessonIds: inModule(m).map(p => p.lesson_id) }))}
+            titleOf={id => { const l = lesson(id); return l ? lessonTitle(l, lang) : '—'; }} />
 
           {/* Lessons Progress Map */}
           <Card className="space-y-4">
@@ -1217,10 +1191,6 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                         );
                       })}
                     </div>
-                    <details className="rounded-lg border border-border/60 bg-surface p-2" onToggle={e => { const o = (e.target as HTMLDetailsElement).open; setResOpen(r => ({ ...r, [m.id]: o })); }}>
-                      <summary className="cursor-pointer text-xs font-semibold text-accent">Сыныптың нәтижелері</summary>
-                      {resOpen[m.id] && <div className="pt-2"><ModuleResults key={sessTick} moduleId={m.id} titleOf={id => { const l = lesson(id); return l ? lessonTitle(l, lang) : '—'; }} onDeleted={() => setSessTick(n => n + 1)} /></div>}
-                    </details>
                   </div>
                 );
               })}

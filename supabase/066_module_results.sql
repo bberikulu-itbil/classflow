@@ -58,3 +58,25 @@ begin
 end $$;
 revoke all on function cf_delete_session(uuid) from public, anon;
 grant execute on function cf_delete_session(uuid) to authenticated;
+
+-- 4. Task statistics of one module for the analytics: how many answered, how many fully right, and the most common wrong answer
+--    (quiz: the option index; short answer: the text; sheet and SQL answers are not comparable, so none).
+create or replace function cf_module_task_stats(p_module uuid)
+returns table(task_id uuid, session_id uuid, lesson_id uuid, class_id uuid, kind text, prompt text, options jsonb, points int,
+              subs int, correct int, wrong_answer text, wrong_count int)
+language sql stable security definer set search_path = public as $$
+  select t.id, t.session_id, t.lesson_id, s.class_id, t.kind, t.prompt, t.options, t.points,
+    (select count(*) from cf_submissions b where b.task_id = t.id)::int,
+    (select count(*) from cf_submissions b where b.task_id = t.id and b.is_correct)::int,
+    w.answer, w.n
+  from cf_tasks t join cf_sessions s on s.id = t.session_id
+  left join lateral (
+    select b.answer, count(*)::int n from cf_submissions b
+    where b.task_id = t.id and not coalesce(b.is_correct, false) and t.kind not in ('sheet', 'code') and coalesce(b.meta->>'sql', '') = ''
+    group by b.answer order by n desc limit 1
+  ) w on true
+  where s.teacher_id = auth.uid() and s.status <> 'live'
+    and t.lesson_id in (select cl.lesson_id from cf_curr_lessons cl where cl.module_id = p_module);
+$$;
+revoke all on function cf_module_task_stats(uuid) from public, anon;
+grant execute on function cf_module_task_stats(uuid) to authenticated;
