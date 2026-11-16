@@ -15,6 +15,7 @@ import type { Show } from './filter';
 import { CreateMenu } from '../ui/CreateMenu';
 import { useLang, LANG_LABEL, type Lang } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
+import { CourseAudienceDialog, audienceText } from './CourseAudience';
 
 /** Loads the whole structure and re-reads it after every change, so the screen can never drift from the stored rows. */
 function useCurr(me: Me) {
@@ -41,10 +42,14 @@ function CourseActionMenu({
   course,
   lang,
   onDelete,
+  onAudience,
+  audience,
 }: {
   course: Course;
   lang: Lang;
   onDelete: () => void;
+  onAudience: () => void;
+  /** who sees the course now, one line */ audience: string;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -144,6 +149,12 @@ function CourseActionMenu({
               )}
             </button>
           </li>
+          <li role="none">
+            <button type="button" role="menuitem" className={item} onClick={() => { setOpen(false); onAudience(); }}>
+              {course.shared ? <Eye size={15} className="text-success" aria-hidden="true" /> : <EyeOff size={15} className="text-text-secondary" aria-hidden="true" />}
+              <span className="min-w-0"><span className="block">Оқушыларға көрінуі</span><span className="block truncate text-[11px] text-text-muted">{audience}</span></span>
+            </button>
+          </li>
           <li role="none" className="my-1 border-t border-border/60" />
           <li role="none">
             <button
@@ -171,6 +182,9 @@ export function CoursesView({ me }: { me: Me }) {
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState(''), [subject, setSubject] = useState(''), [grade, setGrade] = useState(''), [err, setErr] = useState('');
   const [ask, setAsk] = useState<Course | null>(null);
+  const [aud, setAud] = useState<Course | null>(null);
+  const cls = useLoad(loadClasses, []);
+  const classNames = Object.fromEntries((cls.data || []).map(c => [c.id, c.name]));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,13 +310,6 @@ export function CoursesView({ me }: { me: Me }) {
                       </a>
                       {c.description && <p className="text-xs text-text-secondary line-clamp-2">{c.description}</p>}
                       <p className="text-xs text-text-muted pt-1">{counts(c)}</p>
-                      <div>
-                        <button type="button" aria-pressed={!!c.shared} onClick={() => act(() => st.setCourseShared(me, c.id, !c.shared))}
-                        title={c.shared ? 'Оқушыларға ашық: жабу үшін басыңыз' : 'Оқушыларға жабық: ашу үшін басыңыз'}
-                        className={`mt-1 inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold ${c.shared ? 'border-success bg-success-soft text-success' : 'border-border-input bg-surface text-text-secondary'}`}>
-                        {c.shared ? <Eye size={14} aria-hidden="true" /> : <EyeOff size={14} aria-hidden="true" />}{c.shared ? 'Оқушыларға ашық' : 'Оқушыларға жабық'}
-                      </button>
-                      </div>
                     </div>
 
                     <div className="flex items-center gap-2 pt-2 border-t border-border/60">
@@ -310,13 +317,14 @@ export function CoursesView({ me }: { me: Me }) {
                         <span>Курсты ашу</span>
                         <ArrowRight size={14} aria-hidden="true" />
                       </LinkButton>
-                      <CourseActionMenu course={c} lang={lang} onDelete={() => setAsk(c)} />
+                      <CourseActionMenu course={c} lang={lang} onDelete={() => setAsk(c)} onAudience={() => setAud(c)} audience={audienceText(c, classNames)} />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+          {aud && <CourseAudienceDialog course={aud} onClose={() => setAud(null)} onSaved={reload} />}
           {ask && (
             <Confirm
               text={`«${ask.title}» курсы мен оның модульдері өшіріледі. Дәрістердің өзі сақталады. Жалғастырасыз ба?`}

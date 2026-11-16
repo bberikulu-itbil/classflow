@@ -10,6 +10,8 @@ import {
   ChevronDown,
   Clock,
   ExternalLink,
+  Eye,
+  EyeOff,
   GraduationCap,
   Image as ImageIcon,
   Info,
@@ -40,6 +42,7 @@ import { useLang, LANG_LABEL } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 import { fmtDate } from '../hw/format';
 import { ModuleAnalytics } from './ModuleAnalytics';
+import { CourseAudienceDialog, audienceText } from './CourseAudience';
 
 export const PRESET_COVERS = [
   {
@@ -351,7 +354,8 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
 
   // Past sessions for analysis
   const [sessions, setSessions] = useState<any[]>([]);
-  const [sessTick, setSessTick] = useState(0); // bumps after a past session is deleted
+  const [sessTick, setSessTick] = useState(0);
+  const [audOpen, setAudOpen] = useState(false); // bumps after a past session is deleted
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
@@ -976,6 +980,16 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
               </Button>
             </div>
           </div>
+
+          <Card className="flex flex-wrap items-center gap-3">
+            {course.shared ? <Eye size={20} className="text-success" aria-hidden="true" /> : <EyeOff size={20} className="text-text-secondary" aria-hidden="true" />}
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold">Оқушыларға көрінуі</h3>
+              <p className="text-sm text-text-secondary">{audienceText(course, Object.fromEntries((classes.data || []).map(c => [c.id, c.name])))}</p>
+            </div>
+            <Button variant="secondary" onClick={() => setAudOpen(true)}>Өзгерту</Button>
+          </Card>
+          {audOpen && <CourseAudienceDialog course={course} onClose={() => setAudOpen(false)} onSaved={reload} />}
 
           <div className="grid gap-6 lg:grid-cols-[21rem_minmax(0,1fr)]">
             {/* Left Column: Live Course Card Preview */}
