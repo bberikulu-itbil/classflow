@@ -1,5 +1,5 @@
 // Informatics 7, textbook chapter 3, lessons 3.5-3.7 and "Check yourself" (kk / ru / en), 45 minutes each.
-import { demoSheet, info, labTask, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
+import { demoSheet, info, labTask, prefill, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
 import { SUBTITLE, plan, reflect, shortTask } from './lib';
 
 const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
@@ -68,6 +68,33 @@ export const L5: LabLesson = {
       ['Оқушының нәтижесі 80%-дан төмен болса, бүкіл жол боялсын (Custom formula).', 'Если результат ученика ниже 80%, окрасить всю строку (Custom formula).', 'If a student’s score is below 80%, colour the entire row (Custom formula).'],
       ['Дайын кестені мұғалімге көрсет. Төмендегі екі есеп автоматты тексеріледі.', 'Покажи готовую таблицу учителю. Две задачи ниже проверяются автоматически.', 'Show the finished sheet to the teacher. The two problems below are marked automatically.'],
     ]), 'practice', ['15 минут. Ереже жасалғанын мұғалім экраннан тексереді: дұрыс диапазон, шарт, түс. Мәндерді өзгертіп көріңіз — түс өзгеруі керек.', '15 минут. Правило проверяйте на экране: верный диапазон, условие, цвет. Измените значения — цвет должен поменяться.', '15 minutes. Check the rule on screen: right range, condition, colour. Change values — the colour must follow.']),
+    tag(prefill(labTask(['Практика 3: ереже платформа кестесінде', 'Практика 3: правило в таблице платформы', 'Practice 3: a rule in the platform sheet'],
+      ['Деректер дайын. Белгішесі 🖍 «Шартты пішімдеу» батырмасын қолданып, ережелер жаса, содан кейін «Жіберу» бас — жүйе боялған ұяшықтарды өзі тексереді.', 'Данные уже введены. С помощью кнопки 🖍 «Условное форматирование» создай правила, затем нажми «Отправить» — система сама проверит окрашенные ячейки.', 'The data is already typed in. Use the 🖍 “Conditional formatting” button to make the rules, then press “Send”: the system checks the painted cells itself.'],
+      {
+        pic: pic('g7-cond', ['Тест нәтижелері', 'Результаты теста', 'Test results'],
+          { A1: ['Оқушы', 'Ученик', 'Student'], B1: ['Балл, %', 'Балл, %', 'Score, %'], C1: ['Үй жұмысы', 'Домашка', 'Homework'],
+            A2: 'Айгерім', B2: '92', C2: '10', A3: 'Нұрлан', B3: '78', C3: '7', A4: 'Дана', B4: '65', C4: '9',
+            A5: 'Ерасыл', B5: '80', C5: '5', A6: 'Мадина', B6: '79', C6: '8', A7: 'Тимур', B7: '85', C7: '6',
+            A9: ['80-нен төмен', 'Ниже 80', 'Below 80'], B9: '?' },
+          ['B9'], 3, 9, [130, 100, 110], NOTE),
+        alt: ['Алты оқушының балы мен үй жұмысы; B9 бос', 'Баллы и домашка шести учеников; B9 пустая', 'Six students’ scores and homework; B9 is empty'],
+        solve: { B9: '=COUNTIF(B2:B7;"<80")' },
+        criteria: [
+          { id: 'c1', text: ['B2:B7: 80-нен төмен балл қызыл (B3 = 78 боялды)', 'B2:B7: балл ниже 80 красный (B3 = 78 окрашена)', 'B2:B7: a score below 80 is red (B3 = 78 is painted)'], cell: 'B3', look: 'rule', points: 2 },
+          { id: 'c2', text: ['Шекара дұрыс: B6 = 79 те боялды', 'Граница верна: B6 = 79 тоже окрашена', 'The boundary is right: B6 = 79 is painted too'], cell: 'B6', look: 'rule', points: 2 },
+          { id: 'c3', text: ['B9 — қызыл ұяшықтар саны (COUNTIF)', 'B9 — число красных ячеек (COUNTIF)', 'B9 — the number of red cells (COUNTIF)'], cell: 'B9', fn: 'COUNTIF', points: 2 },
+          { id: 'c4', text: ['★ C2:C7 — түс шкаласы (Color scale)', '★ C2:C7 — цветовая шкала (Color scale)', '★ C2:C7 — a colour scale'], cell: 'C2', look: 'rule', points: 2 },
+        ],
+        steps: [
+          ['B2:B7 белгіле → 🖍 → «<», мәні 80, қызыл түс → «Қосу».', 'Выдели B2:B7 → 🖍 → «<», значение 80, красный цвет → «Добавить».', 'Select B2:B7 → 🖍 → “<”, value 80, red → “Add”.'],
+          ['B9-ға =COUNTIF(B2:B7;"<80") жаз. Ол қызыл ұяшықтарды санайды.', 'В B9 запиши =COUNTIF(B2:B7;"<80"). Она считает красные ячейки.', 'Type =COUNTIF(B2:B7;"<80") in B9: it counts the red cells.'],
+          ['★ C2:C7 белгіле → 🖍 → «Түс шкаласы» → «Қосу».', '★ Выдели C2:C7 → 🖍 → «Цветовая шкала» → «Добавить».', '★ Select C2:C7 → 🖍 → “Colour scale” → “Add”.'],
+        ],
+      }), {
+        A1: ['Оқушы', 'Ученик', 'Student'], B1: ['Балл, %', 'Балл, %', 'Score, %'], C1: ['Үй жұмысы', 'Домашка', 'Homework'],
+        A2: 'Айгерім', B2: '92', C2: '10', A3: 'Нұрлан', B3: '78', C3: '7', A4: 'Дана', B4: '65', C4: '9',
+        A5: 'Ерасыл', B5: '80', C5: '5', A6: 'Мадина', B6: '79', C6: '8', A7: 'Тимур', B7: '85', C7: '6', A9: ['80-нен төмен', 'Ниже 80', 'Below 80'],
+      }, ['B9']), 'practice'),
     tag(shortTask(['Есеп: қанша ұяшық қызыл?', 'Задача: сколько красных?', 'Problem: how many red cells?'], ['Нәтижелер: 92, 78, 65, 80, 79, 85. Ереже: «Less than 80» → қызыл. Неше ұяшық қызыл болады?', 'Результаты: 92, 78, 65, 80, 79, 85. Правило: «Less than 80» → красный. Сколько ячеек станут красными?', 'Scores: 92, 78, 65, 80, 79, 85. Rule: “Less than 80” → red. How many cells turn red?'], ['3'], 2, ['78, 65, 79 — үшеуі; 80 қызыл болмайды (шарт қатаң «аз»).', '78, 65, 79 — три; 80 красным не станет (условие строго «меньше»).', '78, 65, 79 are three; 80 stays plain (the condition is strictly “less”).']), 'practice'),
     tag(shortTask(['Есеп: сары ұяшықтар', 'Задача: жёлтые ячейки', 'Problem: yellow cells'], ['Нысанаға жету: 14800, 15000, 17200, 9000, 15000, 21000. Ереже: 15000-нан артық — жасыл, кем — қызыл, тең — сары. Неше ұяшық сары?', 'Выполнение: 14800, 15000, 17200, 9000, 15000, 21000. Правило: больше 15000 — зелёный, меньше — красный, равно — жёлтый. Сколько ячеек жёлтые?', 'Targets reached: 14800, 15000, 17200, 9000, 15000, 21000. Rule: above 15000 green, below red, equal yellow. How many cells are yellow?'], ['2'], 2), 'practice'),
     tag(shortTask(['★ Күрделі есеп: екі ереже', '★ Сложная задача: два правила', '★ Hard problem: two rules'], ['Балдар: 45, 82, 79, 91, 60, 80, 88, 74. Екі ереже бар: 80-нен төмен — қызыл; 90 және одан жоғары — жасыл. Неше ұяшық боялмай қалады?', 'Баллы: 45, 82, 79, 91, 60, 80, 88, 74. Правил два: меньше 80 — красный; 90 и больше — зелёный. Сколько ячеек останутся без цвета?', 'Scores: 45, 82, 79, 91, 60, 80, 88, 74. Two rules: below 80 is red; 90 and above is green. How many cells stay uncoloured?'], ['3'], 3,

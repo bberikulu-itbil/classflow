@@ -1,5 +1,5 @@
 // Informatics 7, textbook chapter 3, lessons 3.1-3.4 (kk / ru / en). Every lesson is 45 minutes: 5 warm-up + 8 together + 10 by example + 15 practice + 7 check.
-import { demoSheet, info, quiz, tag, titleSlide, type LabLesson } from '../sheetsLab/dsl';
+import { demoSheet, info, labTask, prefill, quiz, tag, titleSlide, type LabLesson } from '../sheetsLab/dsl';
 import { SUBTITLE, plan, reflect, shortTask } from './lib';
 
 export const L1: LabLesson = {
@@ -146,6 +146,31 @@ export const L2: LabLesson = {
       ['Тақырыпты біріктір, тақырып жолын қалың қыл, ұзын мәтінге Text wrapping қос.', 'Объедини ячейки заголовка, сделай строку заголовков жирной, для длинного текста включи Text wrapping.', 'Merge the title cells, make the header row bold and turn on Text wrapping for long text.'],
       ['Тақырып жолын қатыр. Дайын кестені мұғалімге көрсет.', 'Закрепи строку заголовков. Покажи готовую таблицу учителю.', 'Freeze the header row. Show the finished table to the teacher.'],
     ]), 'practice', ['15 минут. Пішімдеуді мұғалім экраннан қарайды. Төмендегі екі есеп автоматты тексеріледі.', '15 минут. Форматирование учитель смотрит на экране. Две задачи ниже проверяются автоматически.', '15 minutes. The teacher checks the formatting on screen. The two problems below are marked automatically.']),
+    tag(prefill(labTask(['Практика: тізімді пішімде', 'Практика: оформи список', 'Practice: format the list'],
+      ['Тізім дайын, оны платформа кестесінде пішімде де «Жіберу» бас.', 'Список готов: оформи его в таблице платформы и нажми «Отправить».', 'The list is ready: format it in the platform sheet and press “Send”.'],
+      {
+        pic: { name: 'g7-todo', title: ['Менің істер тізімім', 'Мой список дел', 'My to-do list'], cols: 4, rows: 6, widths: [70, 230, 110, 110], ask: [],
+          data: { A1: ['Менің істер тізімім', 'Мой список дел', 'My to-do list'], A2: '№', B2: ['Іс', 'Дело', 'Task'], C2: ['Мерзімі', 'Срок', 'Due'], D2: ['Орындалды', 'Выполнено', 'Done'],
+            A3: '1', B3: ['Информатикадан үй тапсырмасын орындап, мұғалімге жіберу', 'Сделать домашнее задание по информатике и отправить учителю', 'Do the informatics homework and send it to the teacher'], C3: ['Дүйсенбі', 'Понедельник', 'Monday'], D3: ['Иә', 'Да', 'Yes'],
+            A4: '2', B4: ['Кітапханаға бару', 'Сходить в библиотеку', 'Go to the library'], C4: ['Сәрсенбі', 'Среда', 'Wednesday'], D4: ['Жоқ', 'Нет', 'No'] } },
+        alt: ['Істер тізімі: тақырып, бағандар атаулары және екі іс', 'Список дел: заголовок, названия столбцов и два дела', 'A to-do list: a title, column names and two tasks'],
+        solve: {},
+        criteria: [
+          { id: 'c1', text: ['A1:D1 біріктірілген (тақырып бір ұяшықта)', 'A1:D1 объединены (заголовок в одной ячейке)', 'A1:D1 are merged (the title is one cell)'], cell: 'A1', look: 'merged', points: 2 },
+          { id: 'c2', text: ['A2 — тақырып жолы қалың қаріппен', 'A2 — строка заголовков жирным', 'A2 — the header row is bold'], cell: 'A2', look: 'bold' },
+          { id: 'c3', text: ['A2 — тақырып жолының фоны боялған', 'A2 — у строки заголовков есть заливка', 'A2 — the header row has a fill colour'], cell: 'A2', look: 'fill' },
+          { id: 'c4', text: ['B3 — ұзын мәтін тасымалданады (Text wrapping)', 'B3 — длинный текст переносится (Text wrapping)', 'B3 — the long text wraps (Text wrapping)'], cell: 'B3', look: 'wrap', points: 2 },
+        ],
+        steps: [
+          ['A1:D1 белгіле → «Біріктіру» батырмасы.', 'Выдели A1:D1 → кнопка «Объединить».', 'Select A1:D1 → the “Merge” button.'],
+          ['A2:D2 белгіле → қалың қаріп (Ctrl+B) және фон түсі.', 'Выдели A2:D2 → жирный (Ctrl+B) и цвет заливки.', 'Select A2:D2 → bold (Ctrl+B) and a fill colour.'],
+          ['B3 ұяшығына «Мәтінді тасымалдау» батырмасын бас.', 'Для B3 нажми «Перенос текста».', 'Press “Wrap text” for B3.'],
+        ],
+      }), {
+        A1: ['Менің істер тізімім', 'Мой список дел', 'My to-do list'], A2: '№', B2: ['Іс', 'Дело', 'Task'], C2: ['Мерзімі', 'Срок', 'Due'], D2: ['Орындалды', 'Выполнено', 'Done'],
+        A3: '1', B3: ['Информатикадан үй тапсырмасын орындап, мұғалімге жіберу', 'Сделать домашнее задание по информатике и отправить учителю', 'Do the informatics homework and send it to the teacher'], C3: ['Дүйсенбі', 'Понедельник', 'Monday'], D3: ['Иә', 'Да', 'Yes'],
+        A4: '2', B4: ['Кітапханаға бару', 'Сходить в библиотеку', 'Go to the library'], C4: ['Сәрсенбі', 'Среда', 'Wednesday'], D4: ['Жоқ', 'Нет', 'No'],
+      }, []), 'practice'),
     tag(shortTask(['Есеп: ұяшықтар', 'Задача: ячейки', 'Problem: cells'], ['Кесте A1:D6 ұяшықтарында орналасқан. Онда неше ұяшық бар?', 'Таблица занимает ячейки A1:D6. Сколько в ней ячеек?', 'A table occupies cells A1:D6. How many cells does it have?'], ['24'], 2, ['4 баған × 6 жол = 24.', '4 столбца × 6 строк = 24.', '4 columns × 6 rows = 24.']), 'practice'),
     tag(shortTask(['Есеп: жолдар саны', 'Задача: число строк', 'Problem: number of rows'], ['Кесте B3:E10 диапазонында. Онда неше жол бар?', 'Таблица находится в диапазоне B3:E10. Сколько в ней строк?', 'A table sits in the range B3:E10. How many rows does it have?'], ['8'], 2, ['3-жолдан 10-жолға дейін: 10 − 3 + 1 = 8.', 'С 3-й по 10-ю строку: 10 − 3 + 1 = 8.', 'From row 3 to row 10: 10 − 3 + 1 = 8.']), 'practice'),
     tag(shortTask(['★ Күрделі есеп: диапазон', '★ Задача сложнее: диапазон', '★ Harder problem: a range'], ['Кесте C2:H9 диапазонында. Онда барлығы неше ұяшық бар? (Алдымен бағандар мен жолдарды сана.)', 'Таблица занимает диапазон C2:H9. Сколько в ней всего ячеек? (Сначала посчитай столбцы и строки.)', 'A table fills the range C2:H9. How many cells does it have in all? (Count the columns and the rows first.)'], ['48'], 3, ['Жылдам оқушыларға. Бағандар C, D, E, F, G, H — 6; жолдар 2–9 — 8; 6 × 8 = 48. Жиі қате: 9 − 2 = 7 жол деп санау.', 'Для быстрых учеников. Столбцы C, D, E, F, G, H — 6; строки 2–9 — 8; 6 × 8 = 48. Частая ошибка: считать 9 − 2 = 7 строк.', 'For fast students. Columns C, D, E, F, G, H make 6; rows 2–9 make 8; 6 × 8 = 48. Common slip: counting 9 − 2 = 7 rows.']), 'practice'),

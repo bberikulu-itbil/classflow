@@ -10,11 +10,11 @@ export const colIndex = (s: string) => [...s].reduce((n, ch) => n * 26 + ch.char
 export const addr = (r: number, c: number) => colName(c) + (r + 1); // zero-based
 export const parseAddr = (a: string): [number, number] | null => { const m = /^\$?([A-Z]{1,2})\$?(\d{1,3})$/.exec(a.toUpperCase()); return m ? [+m[2] - 1, colIndex(m[1])] : null; };
 
-const TOKEN = /\s*(?:(\d+(?:\.\d+)?)|"([^"]*)"|(\$?[A-Za-z]{1,2}\$?\d+)(?![\w(])|([A-Za-z][A-Za-z0-9.]*)\s*\(|(<=|>=|<>|[-+*/^&=<>(),;:%]))/y;
+const TOKEN = /\s*(?:(\d+(?:\.\d+)?)|"([^"]*)"|(\$?[A-Za-z]{1,2}\$?\d+)(?![\w(])|([A-Za-z][A-Za-z0-9.]*)\s*\(|(<=|>=|<>|[-+*/^&=<>(),;:%])|([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])(?![\w(]))/y;
 function parse(src: string): Node {
   const toks: { k: string; v: string }[] = []; TOKEN.lastIndex = 0;
   for (let m: RegExpExecArray | null; TOKEN.lastIndex < src.length && (m = TOKEN.exec(src));) {
-    toks.push(m[1] != null ? { k: 'n', v: m[1] } : m[2] != null ? { k: 's', v: m[2] } : m[3] ? { k: 'ref', v: m[3] } : m[4] ? { k: 'fn', v: m[4] } : { k: 'op', v: m[5] });
+    toks.push(m[1] != null ? { k: 'n', v: m[1] } : m[2] != null ? { k: 's', v: m[2] } : m[3] ? { k: 'ref', v: m[3] } : m[4] ? { k: 'fn', v: m[4] } : m[6] ? { k: 's', v: m[6].toUpperCase() } /* TRUE / FALSE */ : { k: 'op', v: m[5] });
   }
   if (src.slice(TOKEN.lastIndex).trim()) throw new Error('#ERROR!');
   let i = 0;
@@ -37,6 +37,23 @@ function parse(src: string): Node {
   const root = cmp(); if (i < toks.length) throw new Error('#ERROR!'); return root;
 }
 
+/** Does a value pass a COUNTIF-style condition: ">=4", "<>8A", "8A" or a plain value. Also used by conditional formatting and filters. */
+export const matches = (v: Val, crit: Val): boolean => {
+  const m = typeof crit === 'string' ? /^(<=|>=|<>|<|>|=)?(.*)$/.exec(crit) : null;
+  const o = m ? m[1] || '=' : '=', want = m ? literal(m[2]) : crit;
+  const eq = typeof v === 'string' || typeof want === 'string' ? String(v).toLowerCase() === String(want).toLowerCase() : v === want;
+  if (o === '=') return eq; if (o === '<>') return !eq;
+  if (typeof v !== 'number' || typeof want !== 'number') return false;
+  return o === '<' ? v < want : o === '>' ? v > want : o === '<=' ? v <= want : v >= want;
+};
+
+/** Every cell of a range like "B2:D9", row by row. */
+export const cellsOf = (rng: string): string[] => {
+  const [x, y = x] = rng.split(':'), p = parseAddr(x), q = parseAddr(y); if (!p || !q) return [];
+  const out: string[] = [];
+  for (let r = Math.min(p[0], q[0]); r <= Math.max(p[0], q[0]); r++) for (let c = Math.min(p[1], q[1]); c <= Math.max(p[1], q[1]); c++) out.push(addr(r, c));
+  return out;
+};
 const isErr = (v: unknown): v is string => typeof v === 'string' && /^#[A-Z/0!?]+[!?]?$/.test(v) && v.startsWith('#');
 const fail = (e: string): never => { throw new Error(e); };
 /** What a typed text means: a number (dot or comma decimals), TRUE/FALSE, or plain text. */
@@ -78,14 +95,6 @@ export function evaluator(cells: Cells) {
     const n = typeof x === 'string' && /^-?\d+([.,]\d+)?$/.test(x.trim()) ? parseFloat(x.replace(',', '.')) : NaN; return Number.isNaN(n) ? fail('#VALUE!') : n;
   };
   const nums = (args: Node[]): number[] => args.flatMap(a => { const r = run(a); return Array.isArray(r) ? r.filter((x): x is number => typeof x === 'number') : [num(r)]; });
-  const matches = (v: Val, crit: Val): boolean => {
-    const m = typeof crit === 'string' ? /^(<=|>=|<>|<|>|=)?(.*)$/.exec(crit) : null;
-    const o = m ? m[1] || '=' : '=', want = m ? literal(m[2]) : crit;
-    const eq = typeof v === 'string' || typeof want === 'string' ? String(v).toLowerCase() === String(want).toLowerCase() : v === want;
-    if (o === '=') return eq; if (o === '<>') return !eq;
-    if (typeof v !== 'number' || typeof want !== 'number') return false;
-    return o === '<' ? v < want : o === '>' ? v > want : o === '<=' ? v <= want : v >= want;
-  };
   const rangeOf = (n: Node): Val[] => { const r = run(n); return Array.isArray(r) ? r : [r]; };
   const FN: Record<string, (a: Node[]) => Val> = {
     SUM: a => nums(a).reduce((x, y) => x + y, 0),
@@ -109,9 +118,38 @@ export function evaluator(cells: Cells) {
     POWER: a => Math.pow(num(run(a[0])), num(run(a[1]))),
     ROUND: a => { const k = 10 ** (a[1] ? num(run(a[1])) : 0); return Math.round(num(run(a[0])) * k) / k; },
     CEILING: a => { const s = a[1] ? num(run(a[1])) : 1; return s === 0 ? 0 : Math.ceil(num(run(a[0])) / s) * s; },
+    // the *IFS functions take (range, condition) pairs; SUMIFS/AVERAGEIFS start with the range to add up
+    COUNTIFS: a => ifs(a, 0).length,
+    SUMIFS: a => { const s = rangeOf(a[0]); return ifs(a, 1).reduce<number>((t, i) => t + (typeof s[i] === 'number' ? (s[i] as number) : 0), 0); },
+    AVERAGEIFS: a => { const s = rangeOf(a[0]), xs = ifs(a, 1).map(i => s[i]).filter((v): v is number => typeof v === 'number'); return xs.length ? xs.reduce((x, y) => x + y, 0) / xs.length : fail('#DIV/0!'); },
+    VLOOKUP: a => { // (key, table, column, [FALSE = exact]); without FALSE the first column must be sorted, like in Excel
+      const n = a[1]; if (n?.t !== 'rng') return fail('#REF!');
+      const p = parseAddr(n.a), q = parseAddr(n.b); if (!p || !q) return fail('#REF!');
+      const top = Math.min(p[0], q[0]), bot = Math.max(p[0], q[0]), left = Math.min(p[1], q[1]), k = Math.floor(num(run(a[2])));
+      if (k < 1 || left + k - 1 > Math.max(p[1], q[1])) return fail('#REF!');
+      const key = val(a[0]), exact = a[3] ? !truthy(run(a[3])) : false;
+      let hit = -1;
+      for (let r = top; r <= bot; r++) {
+        const v = cell(addr(r, left));
+        if (exact || typeof key !== 'number' || typeof v !== 'number') { if (matches(v, key)) { hit = r; break; } }
+        else if (v <= key) hit = r; else break;
+      }
+      return hit < 0 ? fail('#N/A') : cell(addr(hit, left + k - 1));
+    },
+    CONCAT: a => a.flatMap(rangeOf).map(show).join(''), CONCATENATE: a => a.flatMap(rangeOf).map(show).join(''),
+    LEN: a => show(val(a[0])).length,
+    LEFT: a => show(val(a[0])).slice(0, a[1] ? num(run(a[1])) : 1), RIGHT: a => { const t = show(val(a[0])), k = a[1] ? num(run(a[1])) : 1; return k > 0 ? t.slice(-k) : ''; },
+    UPPER: a => show(val(a[0])).toUpperCase(), LOWER: a => show(val(a[0])).toLowerCase(),
+    TODAY: () => { const d = new Date(); return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 864e5); },
     FLOOR: a => { const s = a[1] ? num(run(a[1])) : 1; return s === 0 ? 0 : Math.floor(num(run(a[0])) / s) * s; },
   };
   const num2 = (n: Node): Val => val(n);
+  /** Positions (in range order) that pass every (range, condition) pair of a[from..]. */
+  const ifs = (a: Node[], from: number): number[] => {
+    if ((a.length - from) % 2 || a.length - from < 2) return fail('#N/A');
+    const pairs: [Val[], Val][] = []; for (let i = from; i < a.length; i += 2) pairs.push([rangeOf(a[i]), val(a[i + 1])]);
+    return pairs[0][0].map((_, i) => i).filter(i => pairs.every(([r, c]) => r[i] !== undefined && matches(r[i], c)));
+  };
   const truthy = (v: Val | Val[]) => { const x = Array.isArray(v) ? v[0] : v; return typeof x === 'string' ? x.toUpperCase() === 'TRUE' : !!x; };
   const val = (n: Node): Val => { const r = run(n); return Array.isArray(r) ? r[0] ?? '' : r; };
   function run(n: Node): Val | Val[] {

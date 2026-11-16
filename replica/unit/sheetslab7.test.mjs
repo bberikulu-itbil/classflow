@@ -57,18 +57,20 @@ for (const m of M) {
     }
   }
 }
-assert.equal(tasks, 7, '7 picture tasks');
-assert.equal(PICS.length, 7);
+assert.equal(tasks, 9, '9 picture tasks');
+assert.equal(PICS.length, 9);
 assert.ok(shorts >= 6, 'short-answer tasks');
 assert.equal(new Set(M.map(m => m.id)).size, 8);
 
 // The marking scheme against reference solutions: mirrors cf_submit (041_sheet_criteria.sql).
 const shown = v => { const n = Number(String(v).replace(',', '.')); return String(v).trim() !== '' && !Number.isNaN(n) ? String(+n.toFixed(2)) : String(v).trim(); };
 const norm = x => String(x).trim().toLowerCase().replace(/,/g, '.');
-const grade = (criteria, sheet) => {
+// `looked`: criteria that check how a cell looks (merged, painted by a rule, hidden by the filter) need the real sheet; the browser test covers them
+const grade = (criteria, sheet, looked = false) => {
   const get = evaluator(sheet); let pts = 0; const res = {};
   for (const c of criteria) {
     const v = shown(get(c.cell)), f = sheet[c.cell] || '';
+    if (c.look) { res[c.id] = looked; if (looked) pts += c.points ?? 1; continue; }
     let ok = v !== '' && (!c.accept.length || c.accept.some(a => norm(a) === norm(v)));
     if (ok && c.fn) ok = f.toUpperCase().includes(c.fn.toUpperCase() + '(');
     if (ok && c.formula) ok = f.trim().startsWith('=');
@@ -82,11 +84,11 @@ for (const [i, sol] of SOLUTIONS.entries()) {
   const t = lessonTasks[i], total = t.points, at = sol.task;
   const solved = { ...sol.data, ...sol.solve };
   for (const [k, v] of Object.entries(sol.data)) if (v === '?') assert.ok(k in sol.solve, `${at}: "?" cell ${k} has a reference formula`);
-  const full = grade(t.criteria, solved);
+  const full = grade(t.criteria, solved, true);
   assert.equal(full.pts, total, `${at}: the reference solution earns every point (${JSON.stringify(full.res)})`);
   const dataOnly = Object.fromEntries(Object.entries(sol.data).filter(([, v]) => v !== '?'));
   assert.ok(grade(t.criteria, dataOnly).pts < total, `${at}: an unfinished sheet does not get full points`);
-  for (const c of t.criteria) if (!(c.cell in sol.solve)) assert.ok(grade(t.criteria, dataOnly).res[c.id], `${at}: data criterion ${c.id} passes with the data alone`);
+  for (const c of t.criteria) if (!c.look && !(c.cell in sol.solve)) assert.ok(grade(t.criteria, dataOnly).res[c.id], `${at}: data criterion ${c.id} passes with the data alone`);
   for (const c of t.criteria.filter(c => c.fn || c.formula)) {
     const cheat = { ...solved, [c.cell]: shown(evaluator(solved)(c.cell)) };
     assert.ok(!grade([c], cheat).res[c.id], `${at}: ${c.id} rejects a typed-in number`);
@@ -94,7 +96,8 @@ for (const [i, sol] of SOLUTIONS.entries()) {
   for (const c of t.criteria.filter(c => c.cell in sol.solve)) assert.ok(!grade([c], { ...solved, [c.cell]: '=999999' }).res[c.id], `${at}: ${c.id} rejects a wrong value`);
 }
 // spot checks of the numbers the teacher's notes promise
-const acc = (n, id) => lessonTasks[n].criteria.find(c => c.id === id).accept;
+const old = lessonTasks.filter(t => !t.criteria.some(c => c.look)); // the sheet-look tasks (3.2 merge, 3.5 rules) are checked in the browser
+const acc = (n, id) => old[n].criteria.find(c => c.id === id).accept;
 assert.deepEqual([acc(0, 'c2'), acc(0, 'c3'), acc(0, 'c4'), acc(0, 'c5'), acc(0, 'c6')], [['5760'], ['15600'], ['1040'], ['23840'], ['15600']], '3.3 currency calculator');
 assert.deepEqual([acc(1, 'c2'), acc(1, 'c3')], [['30'], ['55']], '3.4 copying a formula');
 assert.deepEqual([acc(3, 'c2'), acc(3, 'c3'), acc(3, 'c4'), acc(3, 'c5')].map(a => a.slice(0, 1)), [['2000'], ['0.4'], ['0.25'], ['1']].map(a => a), '3.6 shares (first accepted value)');

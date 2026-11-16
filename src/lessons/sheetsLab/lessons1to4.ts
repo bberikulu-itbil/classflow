@@ -1,5 +1,5 @@
 // Informatics 8, textbook chapter 3 "Spreadsheets": lessons 3.2-3.4 (3.1 is in lesson1.ts). Texts are [kk, ru, en]; the numbers of every table are checked by replica/unit/sheetslab.test.mjs.
-import { demoSheet, info, labTask, quiz, tag, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
+import { demoSheet, info, labTask, prefill, quiz, tag, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
 import { reflect, shortTask } from '../sheetsLab7/lib';
 
 const sub: T = ['Информатика 8-сынып · 3-тарау «Электрондық кестелер»', 'Информатика 8 класс · глава 3 «Электронные таблицы»', 'Informatics Grade 8 · Chapter 3 “Spreadsheets”'];
@@ -277,6 +277,25 @@ export const L4: LabLesson = {
           { id: 'c6', text: ['B14 — екінші ең жоғары ұпай (LARGE)', 'B14 — второй по величине балл (LARGE)', 'B14 — the second highest score (LARGE)'], cell: 'B14', fn: 'LARGE', points: 2 },
         ],
       }),
+    prefill(labTask(['Практика 2: сұрыптау және сүзгі', 'Практика 2: сортировка и фильтр', 'Practice 2: sort and filter'],
+      ['Деректер дайын. Кестені ұпай бойынша сұрыпта, сүзгімен әлсіз нәтижелерді жасыр, содан кейін «Жіберу» бас.', 'Данные готовы. Отсортируй таблицу по баллам, скрой фильтром слабые результаты, затем нажми «Отправить».', 'The data is ready. Sort the table by points, hide the weak results with a filter, then press “Send”.'],
+      {
+        pic: pic('olymp-sort', ['Олимпиаданың іріктеу кезеңі', 'Отборочный тур олимпиады', 'Olympiad qualifying round'], { A1: ['Оқушы', 'Ученик', 'Student'], B1: ['Ұпай', 'Баллы', 'Points'], A2: 'Әлихан', B2: '18', A3: 'Бота', B3: '27', A4: 'Диас', B4: '22', A5: 'Ерлан', B5: '15', A6: 'Зере', B6: '25', A7: 'Камила', B7: '20', A9: ['20 және жоғары', '20 и выше', '20 and above'], B9: '?' }, ['B9'], 2, 9, [140, 110], ['сұрыптап, сүзгі қой; B9 — формула', 'отсортируй, поставь фильтр; B9 — формула', 'sort, add a filter; B9 is a formula']),
+        alt: ['Алты оқушының ұпайы: 18, 27, 22, 15, 25, 20', 'Баллы шести учеников: 18, 27, 22, 15, 25, 20', 'Six students’ points: 18, 27, 22, 15, 25, 20'],
+        // the sheet after "sort descending": the marking checks the sorted order
+        solve: { A2: 'Бота', B2: '27', A3: 'Зере', B3: '25', A4: 'Диас', B4: '22', A5: 'Камила', B5: '20', A6: 'Әлихан', B6: '18', A7: 'Ерлан', B7: '15', B9: '=COUNTIF(B2:B7;">=20")' },
+        criteria: [
+          { id: 'c1', text: ['Кему ретімен сұрыпталды: A2 — ең жоғары ұпай иесі', 'Отсортировано по убыванию: A2 — лучший результат', 'Sorted in descending order: A2 holds the best result'], cell: 'A2', accept: ['Бота'], points: 2 },
+          { id: 'c2', text: ['B7 — ең төмен ұпай (15)', 'B7 — наименьший балл (15)', 'B7 — the lowest score (15)'], cell: 'B7', accept: ['15'] },
+          { id: 'c3', text: ['Сүзгі «Ұпай ≥ 20»: 7-жол жасырылды', 'Фильтр «Баллы ≥ 20»: 7-я строка скрыта', 'Filter “Points ≥ 20”: row 7 is hidden'], cell: 'A7', look: 'hidden', points: 2 },
+          { id: 'c4', text: ['★ B9 — 20 және одан жоғары ұпай саны (COUNTIF)', '★ B9 — число результатов 20 и выше (COUNTIF)', '★ B9 — how many scored 20 or more (COUNTIF)'], cell: 'B9', fn: 'COUNTIF', points: 2 },
+        ],
+        steps: [
+          ['A2:B7 белгіле (тақырыпсыз), белсенді ұяшық B бағанында болсын → «Кему ретімен сұрыптау».', 'Выдели A2:B7 (без заголовка), активная ячейка в столбце B → «Сортировка по убыванию».', 'Select A2:B7 (no header) with the active cell in column B → “Sort descending”.'],
+          ['A1:B7 белгіле (тақырыппен), B бағанын бас → «Сүзгі» → «>=», 20 → «Қолдану».', 'Выдели A1:B7 (с заголовком), щёлкни по столбцу B → «Фильтр» → «>=», 20 → «Применить».', 'Select A1:B7 (with the header), click column B → “Filter” → “>=”, 20 → “Apply”.'],
+          ['★ B9-ға =COUNTIF(B2:B7;">=20") жаз — көрінетін жолдар санына тең болуы керек.', '★ В B9 запиши =COUNTIF(B2:B7;">=20") — должно совпасть с числом видимых строк.', '★ Type =COUNTIF(B2:B7;">=20") in B9: it should equal the number of visible rows.'],
+        ],
+      }), { A1: ['Оқушы', 'Ученик', 'Student'], B1: ['Ұпай', 'Баллы', 'Points'], A2: 'Әлихан', B2: '18', A3: 'Бота', B3: '27', A4: 'Диас', B4: '22', A5: 'Ерлан', B5: '15', A6: 'Зере', B6: '25', A7: 'Камила', B7: '20', A9: ['20 және жоғары', '20 и выше', '20 and above'] }, ['B9']),
     quiz(['COUNTIF', 'COUNTIF', 'COUNTIF'], ['A1:A5 ұяшықтарында 2, 5, 3, 8, 4 сандары бар. =COUNTIF(A1:A5;">3") нәтижесі қандай?', 'В A1:A5 числа 2, 5, 3, 8, 4. Каков результат =COUNTIF(A1:A5;">3")?', 'A1:A5 hold 2, 5, 3, 8, 4. What does =COUNTIF(A1:A5;">3") give?'],
       [['2', '2', '2'], ['3', '3', '3'], ['4', '4', '4'], ['5', '5', '5']], 1,
       ['3-тен үлкен сандар: 5, 8, 4 — барлығы 3.', 'Больше 3: числа 5, 8, 4 — всего 3.', 'Numbers above 3 are 5, 8, 4 — three of them.']),

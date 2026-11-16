@@ -338,8 +338,8 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
                     {hasCrit && <CriteriaPanel
                       criteria={slide.criteria as Criterion[]} lang={lang} sub={mySub} maxPoints={(slide.criteria as Criterion[]).reduce((n, c) => n + (c.points ?? 1), 0)}
                       open={task?.status === 'open' && task.kind === 'sheet'} notOpen={!task || task.kind !== 'sheet'} closed={!!task && task.kind === 'sheet' && task.status !== 'open'}
-                      live={c => cellAnswer(sheetApi.current?.get(c) ?? '')}
-                      onSend={() => submitAnswer(criteriaAnswer(slide.criteria as Criterion[], c => cellAnswer(sheetApi.current?.get(c) ?? ''), c => sheetApi.current?.raw(c) ?? ''))}
+                      live={c => (c.look ? sheetApi.current?.look(c.cell, c.look) ?? '0' : cellAnswer(sheetApi.current?.get(c.cell) ?? ''))}
+                      onSend={() => submitAnswer(criteriaAnswer(slide.criteria as Criterion[], c => cellAnswer(sheetApi.current?.get(c) ?? ''), c => sheetApi.current?.raw(c) ?? '', (c, k) => sheetApi.current?.look(c, k) ?? '0'))}
                     />}
                   </div>
                 )}

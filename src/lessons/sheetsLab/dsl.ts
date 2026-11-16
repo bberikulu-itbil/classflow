@@ -58,7 +58,7 @@ export const SOLUTIONS: { task: string; data: Record<string, string>; solve: Rec
 
 /** One line of the marking scheme. `ref` is the formula (or value) a correct sheet has in `cell`; the engine turns it into the accepted value.
  *  `fn` demands that the cell uses that function, `formula` that it is a formula at all (a typed-in number does not count). */
-export interface Crit { id: string; text: T; cell: string; points?: number; fn?: string; formula?: boolean; accept?: string[] }
+export interface Crit { id: string; text: T; cell: string; points?: number; fn?: string; formula?: boolean; accept?: string[]; /** check how the cell looks: '1' when it is so (see Look in MiniSheet) */ look?: 'rule' | 'hidden' | 'merged' | 'wrap' | 'bold' | 'fill' }
 
 const shown = (v: string) => { const n = Number(v.replace(',', '.')); return v.trim() !== '' && !Number.isNaN(n) ? String(+n.toFixed(2)) : v.trim(); };
 export const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -73,8 +73,8 @@ export const labTask = (t: T, intro: T, o: { pic: Pic; alt: T; solve: Record<str
   const get = evaluator({ ...cells, ...o.solve });
   const total = o.criteria.reduce((n, c) => n + (c.points ?? 1), 0);
   const crit = (i: 0 | 1 | 2) => o.criteria.map(c => ({
-    id: c.id, text: c.text[i], cell: c.cell, points: c.points ?? 1, ...(c.fn ? { fn: c.fn } : {}), ...(c.formula ? { formula: true } : {}),
-    ...(i === 0 ? { accept: c.accept || [shown(get(c.cell))] } : {}),
+    id: c.id, text: c.text[i], cell: c.cell, points: c.points ?? 1, ...(c.fn ? { fn: c.fn } : {}), ...(c.formula ? { formula: true } : {}), ...(c.look ? { look: c.look } : {}),
+    ...(i === 0 ? { accept: c.accept || (c.look ? ['1'] : [shown(get(c.cell))]) } : {}),
   }));
   const pic = (l: string) => `lec/inf8-${o.pic.name}-${l}.svg`;
   return {
@@ -85,6 +85,11 @@ export const labTask = (t: T, intro: T, o: { pic: Pic; alt: T; solve: Record<str
   };
 };
 
+/** Opens a sheet task with the picture's data already typed in (all cells except the yellow «?» ones), so the lesson time goes to formulas, not typing. */
+export const prefill = (task: any, data: Record<string, Cell>, ask: string[]) => {
+  const cells = (i: 0 | 1 | 2) => Object.fromEntries(Object.entries(data).filter(([k]) => !ask.includes(k)).map(([k, v]) => [k, typeof v === 'string' ? v : v[i]]));
+  return { ...task, sheet: { ...task.sheet, cells: cells(0) }, ru: { ...task.ru, sheet: { ...task.sheet, cells: cells(1) } }, en: { ...task.en, sheet: { ...task.sheet, cells: cells(2) } } };
+};
 /** Lesson stage of a page (matches STAGES in src/lessons/stages.ts) and an optional teacher-only note in three languages. */
 export const tag = (s: any, stage: string, notes?: T) => ({
   ...s, stage,

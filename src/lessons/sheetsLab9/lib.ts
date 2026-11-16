@@ -1,6 +1,7 @@
 // Shared bits of the Informatics 9 "Databases" module (textbook chapter 2): the library database, SQL pages and tasks, the lesson plan card.
 // The module leaves the textbook on purpose: every idea is done twice, in the ClassFlow sheet and in SQL (the textbook uses Google Forms and Sheets only).
 import { tag, type LabPlan, type T } from '../sheetsLab/dsl';
+export { prefill } from '../sheetsLab/dsl';
 import { answerOf, type Row } from '../../sql/canon';
 export { reflect, shortTask } from '../sheetsLab7/lib';
 
@@ -75,11 +76,6 @@ export const goodsCells = (): Record<string, Cell> => {
   const c: Record<string, Cell> = { A1: ['Тауар', 'Товар', 'Item'], B1: ['Санаты', 'Категория', 'Category'], C1: HEAD.qty, D1: ['Бағасы', 'Цена', 'Price'], E1: ['Құны', 'Стоимость', 'Value'] };
   GOODS_ROWS.forEach((r, i) => { const n = i + 2; c['A' + n] = r[1]; c['B' + n] = r[2]; c['C' + n] = String(r[3]); c['D' + n] = String(r[4]); });
   return c;
-};
-/** Opens a sheet task with the picture's data already typed in (all cells except the yellow «?» ones), so the lesson time goes to formulas, not typing. */
-export const prefill = (task: any, data: Record<string, Cell>, ask: string[]) => {
-  const cells = (i: 0 | 1 | 2) => Object.fromEntries(Object.entries(data).filter(([k]) => !ask.includes(k)).map(([k, v]) => [k, typeof v === 'string' ? v : v[i]]));
-  return { ...task, sheet: { ...task.sheet, cells: cells(0) }, ru: { ...task.ru, sheet: { ...task.sheet, cells: cells(1) } }, en: { ...task.en, sheet: { ...task.sheet, cells: cells(2) } } };
 };
 /** Adds ready charts to a demo sheet page. */
 export const withCharts = (s: any, charts: { id: string; type: 'bar' | 'line' | 'pie'; range: string }[]) => ({

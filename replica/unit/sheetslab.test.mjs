@@ -30,7 +30,7 @@ for (const m of M) {
     if (s.type === 'task' && !s.criteria) assert.ok(s.accept?.length && s.accept.every(a => a === a.toLowerCase().trim()) && s.points > 0, at + ' short answer');
     else if (s.type === 'task') {
       tasks++;
-      assert.ok(s.criteria?.length >= 5 && !s.levels && s.sheet, at + ' task has a marking scheme and a sheet');
+      assert.ok(s.criteria?.length >= (s.criteria?.some(c => c.look) ? 4 : 5) && !s.levels && s.sheet, at + ' task has a marking scheme and a sheet');
       assert.ok(s.points > 0 && s.points <= 100 && s.points === s.criteria.reduce((n, c) => n + c.points, 0), at + ' points = sum of criteria (cf_tasks allows up to 100)');
       assert.ok(s.criteria.every(c => /^[A-Z]\d+$/.test(c.cell) && c.accept?.length && c.accept.every(a => a === a.trim() && a)), at + ' every criterion names a cell and has an answer');
       for (const lg of LANGS) {
@@ -51,18 +51,20 @@ for (const m of M) {
   }
 }
 assert.ok(M.every(m => D[m.id].slides.some(s => s.type === 'task')) || true);
-assert.equal(tasks, 12, '12 picture tasks');
-assert.equal(PICS.length, 12);
+assert.equal(tasks, 13, '13 picture tasks');
+assert.equal(PICS.length, 13);
 assert.ok(videos >= 1, 'a video lesson');
 assert.ok(D['inf8lab-1'].slides.some(s => s.type === 'task') && D['inf8lab-8'].slides.some(s => s.type === 'task'), 'first and last lessons practise');
 
 // The marking scheme against reference solutions: mirrors cf_submit (041_sheet_criteria.sql).
 const shown = v => { const n = Number(String(v).replace(',', '.')); return String(v).trim() !== '' && !Number.isNaN(n) ? String(+n.toFixed(2)) : String(v).trim(); };
 const norm = x => String(x).trim().toLowerCase().replace(/,/g, '.');
-const grade = (criteria, sheet) => {
+// `looked`: criteria that check how a cell looks (merged, painted by a rule, hidden by the filter) need the real sheet; the browser test covers them
+const grade = (criteria, sheet, looked = false) => {
   const get = evaluator(sheet); let pts = 0; const res = {};
   for (const c of criteria) {
     const v = shown(get(c.cell)), f = sheet[c.cell] || '';
+    if (c.look) { res[c.id] = looked; if (looked) pts += c.points ?? 1; continue; }
     let ok = v !== '' && (!c.accept.length || c.accept.some(a => norm(a) === norm(v)));
     if (ok && c.fn) ok = f.toUpperCase().includes(c.fn.toUpperCase() + '(');
     if (ok && c.formula) ok = f.trim().startsWith('=');
@@ -76,13 +78,13 @@ for (const [i, sol] of SOLUTIONS.entries()) {
   const t = lessonTasks[i], total = t.points, at = sol.task;
   const solved = { ...sol.data, ...sol.solve };
   for (const [k, v] of Object.entries(sol.data)) if (v === '?') assert.ok(k in sol.solve, `${at}: "?" cell ${k} has a reference formula`);
-  const full = grade(t.criteria, solved);
+  const full = grade(t.criteria, solved, true);
   assert.equal(full.pts, total, `${at}: the reference solution earns every point (${JSON.stringify(full.res)})`);
   // data typed in but nothing calculated: only the data-entry criteria pass
   const dataOnly = Object.fromEntries(Object.entries(sol.data).filter(([, v]) => v !== '?'));
   const half = grade(t.criteria, dataOnly);
   assert.ok(half.pts < total, `${at}: an unfinished sheet does not get full points`);
-  for (const c of t.criteria) if (!(c.cell in sol.solve)) assert.ok(half.res[c.id], `${at}: data criterion ${c.id} passes with the data alone`); else assert.ok(!half.res[c.id], `${at}: ${c.id} needs a formula`);
+  for (const c of t.criteria) if (!c.look && !(c.cell in sol.solve)) assert.ok(half.res[c.id], `${at}: data criterion ${c.id} passes with the data alone`); else assert.ok(!half.res[c.id], `${at}: ${c.id} needs a formula`);
   // a typed-in number instead of the function does not count when a function (or any formula) is demanded
   for (const c of t.criteria.filter(c => c.fn || c.formula)) {
     const cheat = { ...solved, [c.cell]: shown(evaluator(solved)(c.cell)) };

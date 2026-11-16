@@ -1,7 +1,7 @@
 // Checks the in-lesson spreadsheet engine (src/sheet/engine.ts). Run: node replica/unit/sheet.test.mjs
 import { build } from 'esbuild'; import assert from 'node:assert/strict';
 await build({ entryPoints: ['src/sheet/engine.ts'], bundle: true, format: 'esm', outfile: '/tmp/sheet-engine.mjs', logLevel: 'error' });
-const { evaluator, shiftFormula, fill, parseAddr, colName, addr } = await import('/tmp/sheet-engine.mjs');
+const { evaluator, shiftFormula, fill, parseAddr, colName, addr, matches, cellsOf } = await import('/tmp/sheet-engine.mjs');
 const ev = c => evaluator(c);
 // textbook formulas (lesson 4): parentheses and copy to the next column
 let g = ev({ A1: '3', A2: '3', A3: '7', A4: '=A1*(A2+A3)', B1: '5', B2: '8', B3: '3', B4: shiftFormula('=A1*(A2+A3)', 0, 1) });
@@ -41,4 +41,13 @@ f = fill({ A1: '2', B1: '=A1*2' }, 0, 1, 0, 1, 3, 1); assert.deepEqual([f.B2, f.
 f = fill({ A1: '1', B1: '2', C1: '=A1+B1' }, 0, 2, 0, 2, 0, 4); assert.deepEqual([f.D1, f.E1], ['=B1+C1', '=C1+D1']);
 // lesson answers: control values the accept lists expect
 g = ev({ A1: '3', A2: '3', A3: '7', B1: '5', B2: '8', B3: '3', A4: '=A1*(A2+A3)', B4: '=B1*(B2+B3)' }); assert.equal(g('B4'), '55');
+// functions added for the 7–9 topics: *IFS, VLOOKUP, text functions
+g = ev({ A1: '8A', A2: '8B', A3: '8A', A4: '8A', B1: '10', B2: '20', B3: '30', B4: '5',
+  C1: '=COUNTIFS(A1:A4;"8A";B1:B4;">=10")', C2: '=SUMIFS(B1:B4;A1:A4;"8A";B1:B4;">5")', C3: '=AVERAGEIFS(B1:B4;A1:A4;"8A")',
+  D1: '1', D2: '2', D3: '3', E1: 'бір', E2: 'екі', E3: 'үш', F1: '=VLOOKUP(2;D1:E3;2;FALSE)', F2: '=VLOOKUP(2.5;D1:E3;2)', F3: '=VLOOKUP(9;D1:E3;2;FALSE)',
+  G1: '=CONCAT(A1;"-";B1)', G2: '=LEN("Абай")', G3: '=LEFT("Абай";2)&RIGHT("Абай")', G4: '=UPPER("abc")', G5: '=TODAY()>45000', G6: '=COUNTIFS(A1:A4;"8A";B1:B3;">1")' });
+assert.deepEqual(['C1', 'C2', 'C3', 'F1', 'F2', 'F3', 'G1', 'G2', 'G3', 'G4', 'G5'].map(g), ['2', '40', '15', 'екі', 'екі', '#N/A', '8A-10', '4', 'Абй', 'ABC', 'TRUE']);
+// conditional formatting and filters reuse the COUNTIF condition; a range lists its cells row by row
+assert.ok(matches(79, '<80') && !matches(80, '<80') && matches('Иә', '=иә') && matches(20, '>=20'));
+assert.deepEqual(cellsOf('A1:B2'), ['A1', 'B1', 'A2', 'B2']);
 console.log('sheet engine ok');

@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { BTN_P } from './Widgets';
 import { pick, type Lang } from '../lessons/lang';
 
-export interface Criterion { id: string; text: string; cell: string; points?: number; fn?: string; formula?: boolean }
+import type { Look } from '../sheet/MiniSheet';
+
+export interface Criterion { id: string; text: string; cell: string; points?: number; fn?: string; formula?: boolean; /** checks how the cell looks ('1'/'0'), not its value */ look?: Look }
 
 /** "c1:1,c2:0" (written by cf_submit for a task of kind 'sheet') -> { c1: true, c2: false } */
 export const parseCriteriaResult = (fb?: string | null): Record<string, boolean> =>
   Object.fromEntries((fb || '').split(',').filter(Boolean).map(x => { const [id, v] = x.split(':'); return [id, v === '1']; }));
 
 /** The answer sent to cf_submit: the value (and formula) of the cell each criterion points at. */
-export const criteriaAnswer = (cr: Criterion[], value: (cell: string) => string, raw: (cell: string) => string) =>
-  JSON.stringify(Object.fromEntries(cr.map(c => [c.id, { v: value(c.cell), f: raw(c.cell) }])));
+export const criteriaAnswer = (cr: Criterion[], value: (cell: string) => string, raw: (cell: string) => string, look: (cell: string, kind: Look) => string = () => '0') =>
+  JSON.stringify(Object.fromEntries(cr.map(c => [c.id, { v: c.look ? look(c.cell, c.look) : value(c.cell), f: raw(c.cell) }])));
 
 /**
  * Student side of a practice slide with `criteria`: a checklist the sheet is graded against. "Send" reads the cells, the server (cf_submit)
@@ -21,7 +23,7 @@ export function CriteriaPanel({ criteria, lang, open, notOpen, closed, sub, maxP
   sub: { points: number | null; feedback?: string | null } | null; maxPoints: number;
   onSend: () => Promise<void> | void;
   /** Current value of a cell on the student's sheet, to show next to its criterion. */
-  live: (cell: string) => string;
+  live: (c: Criterion) => string;
 }) {
   const [busy, setBusy] = useState(false);
   const res = parseCriteriaResult(sub?.feedback), sent = !!sub;
@@ -43,7 +45,7 @@ export function CriteriaPanel({ criteria, lang, open, notOpen, closed, sub, maxP
       <div className="flex items-center gap-2"><h3 className="text-lg font-black">✅ {t.h}</h3><span className="ml-auto rounded-full bg-accent-soft px-3 py-1 text-sm font-bold text-on-accent-soft">{maxPoints} ⭐</span></div>
       <ul className="space-y-2">
         {criteria.map((c, i) => {
-          const state = !sent ? 'todo' : res[c.id] ? 'ok' : 'bad', now = live(c.cell);
+          const state = !sent ? 'todo' : res[c.id] ? 'ok' : 'bad', now = live(c);
           const lv = /^\s*★/.test(c.text) ? 3 : (c.points ?? 1) >= 2 ? 2 : 1;
           return (
             <li key={c.id} data-testid={`crit-${c.id}`} data-state={state} className={`flex flex-wrap items-start gap-2 rounded-xl border p-3 ${state === 'ok' ? 'border-success bg-success-soft' : state === 'bad' ? 'border-danger bg-danger-soft' : 'border-border bg-bg'}`}>
@@ -52,7 +54,7 @@ export function CriteriaPanel({ criteria, lang, open, notOpen, closed, sub, maxP
                 <p className="font-semibold leading-snug">{c.text}</p>
                 {/* level from the marking scheme itself: ★ = hard, 2+ points = medium, else basic */}
                 <span data-testid="crit-level" className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${lv === 3 ? 'bg-danger-soft text-danger' : lv === 2 ? 'bg-warning-soft text-text' : 'bg-success-soft text-text'}`}>{t.lv[lv - 1]}</span>
-                <p className="mt-0.5 font-mono text-xs text-text-muted">{t.cell} {c.cell} · {t.now}: <b>{now || t.empty}</b></p>
+                <p className="mt-0.5 font-mono text-xs text-text-muted">{t.cell} {c.cell} · {t.now}: <b>{c.look ? (now === '1' ? '✓' : '—') : now || t.empty}</b></p>
               </div>
               <span className="text-sm font-bold text-text-secondary">{c.points ?? 1} {t.pts}</span>
             </li>
