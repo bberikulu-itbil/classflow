@@ -7,6 +7,9 @@
 
 alter table cf_sessions add column if not exists auto_task boolean not null default false;
 alter table cf_tasks add column if not exists closes_at timestamptz;
+-- variants were A/B (levels); tests may have up to 8
+alter table cf_tasks drop constraint if exists cf_tasks_variant_check;
+alter table cf_tasks add constraint cf_tasks_variant_check check (variant is null or variant in ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'));
 
 create or replace function cf_set_rule(p_session uuid, p_rule text, p_on boolean) returns void
 language plpgsql security definer set search_path = public as $$
