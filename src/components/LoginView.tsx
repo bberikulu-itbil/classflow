@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Logo } from '../ui/Logo';
+import { LangSwitch } from '../i18n/LangSwitch';
 import { sb, CF } from '../config';
 import { BTN_P, INP } from './Widgets';
 
@@ -97,6 +98,7 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="max-w-sm mx-auto pt-16 px-4 space-y-3 text-text pb-10">
+      <div className="flex justify-center"><LangSwitch /></div>
       <h1 className="text-4xl font-black text-center"><Logo size={44} /></h1>
       <p className="text-center text-slate-400 text-sm">{mode === 'in' ? 'KeyToLife аккаунтыңмен кір' : 'KeyToLife-та тіркел'}</p>
       {error && <div data-testid="login-error" className="p-2 bg-danger-soft text-danger text-sm rounded-xl text-center">{error}</div>}

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Logo } from '../ui/Logo';
-import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { LangSwitch } from '../i18n/LangSwitch';
+import { setUiLang, useUiLang } from '../i18n';
+import { Languages, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { ROLE_NAMES, activeSection, sectionTo, sectionsFor } from './config';
 import type { Role, Section } from './config';
 
@@ -22,6 +24,17 @@ function IconBtn({ label, onClick, children, expanded, controls, ref }: {
     <button ref={ref} type="button" aria-label={label} aria-expanded={expanded} aria-controls={controls} onClick={onClick}
       className="grid place-items-center h-11 w-11 shrink-0 rounded-md text-text-secondary hover:bg-surface-2 hover:text-text cursor-pointer">
       {children}
+    </button>
+  );
+}
+
+/** The collapsed menu has room for one button: it steps ҚАЗ → РУС → ENG. */
+function CycleLang() {
+  const l = useUiLang(), next = ({ kk: 'ru', ru: 'en', en: 'kk' } as const)[l];
+  return (
+    <button type="button" data-no-tr onClick={() => setUiLang(next)} aria-label={`Тіл · Язык · Language: ${l.toUpperCase()}`}
+      className="group relative grid place-items-center h-11 w-11 rounded-md text-text-secondary hover:bg-surface-2 hover:text-text cursor-pointer">
+      <Languages size={18} aria-hidden="true" /><span className="text-[10px] font-bold leading-none">{({ kk: 'ҚАЗ', ru: 'РУС', en: 'ENG' })[l]}</span>
     </button>
   );
 }
@@ -86,6 +99,9 @@ function Body({ sections, active, collapsed, me, profile, onToggle, onClose, clo
           {sections.map(s => <li key={s.key}><NavItem s={s} active={s === active} collapsed={collapsed} /></li>)}
         </ul>
       </nav>
+      <div className={`shrink-0 border-t border-border py-2 ${collapsed ? 'px-2 flex justify-center' : 'px-4'}`}>
+        {collapsed ? <CycleLang /> : <LangSwitch className="w-full justify-between" />}
+      </div>
       {!collapsed && <p className="px-4 pb-1 text-xs text-text-muted">ClassFlow v{__APP_VERSION__}</p>}
     </>
   );

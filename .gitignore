@@ -7,3 +7,4 @@ dist
 public/.fidelity-proof/
 replica/unit/.labw.mjs
 replica/unit/.info10.mjs
+replica/unit/.i18n.mjs
