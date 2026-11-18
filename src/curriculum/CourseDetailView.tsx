@@ -837,7 +837,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
 
                                   {!editing && (
                                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                      <Button
+                                      {!p.exam && <Button
                                         variant="success"
                                         className="!min-h-[38px] px-3.5 gap-1.5 text-xs sm:text-sm font-semibold shadow-sm"
                                         disabled={!!DEMO}
@@ -848,7 +848,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                       >
                                         <Play size={14} className="fill-current" aria-hidden="true" />
                                         <span>Бастау</span>
-                                      </Button>
+                                      </Button>}
 
                                       <LinkButton
                                         href={'#edit/' + l.id}
@@ -884,7 +884,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                         )}
                                       </button>
                                       {p.exam ? (
-                                        <Button variant="secondary" onClick={() => setExamOf({ id: l.id, title: lessonTitle(l, lang) })} className="!min-h-[38px] px-3 gap-1.5 text-xs sm:text-sm font-semibold !border-violet-300 !text-violet-800">
+                                        <Button onClick={() => setExamOf({ id: l.id, title: lessonTitle(l, lang) })} className="!min-h-[38px] px-3.5 gap-1.5 text-xs sm:text-sm font-semibold !bg-violet-600 hover:!bg-violet-700 !text-white" title="Оқушылар тапсырмаларды өздері жылжып орындайды; сабақ өткізу керек емес">
                                           <ClipboardCheck size={14} aria-hidden="true" /><span>Емтихан: ашу, нәтиже</span>
                                         </Button>
                                       ) : null}

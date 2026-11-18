@@ -103,10 +103,14 @@ function ExamItem({ l, onTake }: { l: L; onTake: () => void }) {
 }
 
 /** Taking an exam: the questions of my variant on one page, a countdown to the closing time, one submission. */
-function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
+export function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
   const [lang, flip] = useLang();
   const q = useLoad(async () => { const r = await sb.rpc('cf_exam_get', { p_lesson: lesson.id }); if (r.error) throw new Error(r.error.message); return r.data as { closes_at: string | null; slides: any[] }; }, [lesson.id]);
-  const [ans, setAns] = useState<Record<number, string>>({});
+  const key = `cf_exam_${lesson.id}`;
+  // Answers survive a reload or a dropped connection until the exam is sent.
+  const [ans, setAnsRaw] = useState<Record<number, string>>(() => { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } });
+  const setAns = (f: (a: Record<number, string>) => Record<number, string>) => setAnsRaw(a => { const n = f(a); try { sessionStorage.setItem(key, JSON.stringify(n)); } catch { /* private mode */ } return n; });
+  const [at, setAt] = useState(0); // the task on screen; items.length = the review page
   const [result, setResult] = useState<{ points: number; max: number } | null>(null);
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false), [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
@@ -119,22 +123,41 @@ function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
     setBusy(true); setErr('');
     const r = await sb.rpc('cf_exam_submit', { p_lesson: lesson.id, p_answers: Object.fromEntries(Object.entries(ans).map(([k, v]) => [k, v])) });
     setBusy(false);
-    if (r.error) setErr(r.error.message); else setResult(r.data as { points: number; max: number });
+    if (r.error) setErr(r.error.message); else { setResult(r.data as { points: number; max: number }); try { sessionStorage.removeItem(key); } catch { /* ignore */ } }
   };
   if (result) return <div className="space-y-3">{backBtn}<Card className="text-center"><p className="text-sm text-text-secondary">Емтихан тапсырылды</p><p className="text-4xl font-black">{result.points} / {result.max}</p></Card></div>;
-  const answered = items.filter(x => (ans[x.i] ?? '').trim() !== '' && !(x.s.match && (ans[x.i] ?? '').includes('-'))).length;
+  const done = (x: { s: any; i: number }) => (ans[x.i] ?? '').trim() !== '' && !(x.s.match && (ans[x.i] ?? '').includes('-'));
+  const answered = items.filter(done).length;
+  const review = at >= items.length, x = items[Math.min(at, items.length - 1)];
+  const go = (n: number) => { setAt(Math.max(0, Math.min(items.length, n))); window.scrollTo({ top: 0 }); };
   return (
     <div className="space-y-3">
       {backBtn}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-violet-300 bg-violet-50 p-3">
-        <h2 className="min-w-0 flex-1 break-words text-lg font-bold">{lesson.title}</h2>
-        <span className="text-sm text-text-secondary">{answered} / {items.length}</span>
-        {left !== null && <span className={`rounded-lg px-2 py-1 font-mono text-sm font-bold ${left < 60000 ? 'bg-danger text-white' : 'bg-surface'}`}>{left > 0 ? `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}` : '0:00'}</span>}
-        <button type="button" onClick={flip} aria-label={`Тіл: ${LANG_LABEL[lang]}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-surface px-2 text-sm"><Languages size={15} aria-hidden="true" />{LANG_LABEL[lang]}</button>
+      <div className="sticky top-0 z-10 space-y-2 rounded-xl border border-violet-300 bg-violet-50 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="min-w-0 flex-1 break-words text-lg font-bold">{lesson.title}</h2>
+          {left !== null && <span className={`rounded-lg px-2 py-1 font-mono text-sm font-bold ${left < 60000 ? 'bg-danger text-white' : 'bg-surface'}`}>{left > 0 ? `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}` : '0:00'}</span>}
+          <button type="button" onClick={flip} aria-label={`Тіл: ${LANG_LABEL[lang]}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-surface px-2 text-sm"><Languages size={15} aria-hidden="true" />{LANG_LABEL[lang]}</button>
+        </div>
+        <nav aria-label="Тапсырмалар" className="flex flex-wrap gap-1.5">
+          {items.map((y, k) => (
+            <button key={y.i} type="button" onClick={() => go(k)} aria-current={k === at ? 'step' : undefined} aria-label={`${k + 1}-тапсырма${done(y) ? ', жауап бар' : ''}`}
+              className={`h-10 w-10 rounded-lg border text-sm font-bold cursor-pointer ${k === at ? 'border-violet-700 bg-violet-600 text-white' : done(y) ? 'border-violet-300 bg-violet-200 text-violet-900' : 'border-border bg-surface text-text-secondary'}`}>{k + 1}</button>))}
+          <button type="button" onClick={() => go(items.length)} aria-current={review ? 'step' : undefined}
+            className={`h-10 rounded-lg border px-3 text-sm font-bold cursor-pointer ${review ? 'border-violet-700 bg-violet-600 text-white' : 'border-border bg-surface'}`}>✓ {answered}/{items.length}</button>
+        </nav>
       </div>
-      {items.map((x, k) => (
+      {review ? (
+        <Card className="space-y-3">
+          <p className="font-semibold">Жауап берілген: {answered} / {items.length}</p>
+          {answered < items.length && <p className="text-sm text-text-secondary">Жауапсыз: {items.map((y, k) => done(y) ? null : k + 1).filter(Boolean).join(', ')}. Нөмірін басып, қайта оралуға болады.</p>}
+          {err && <p role="alert" className="text-sm text-danger">{err}</p>}
+          <button type="button" disabled={busy} onClick={() => { if (answered < items.length && !window.confirm(`${items.length - answered} сұраққа жауап жоқ. Жібересің бе?`)) return; void send(); }}
+            className="min-h-[48px] w-full rounded-xl bg-violet-600 px-4 font-bold text-white hover:bg-violet-700 disabled:opacity-50 cursor-pointer">{busy ? 'Жіберілуде…' : 'Емтиханды жіберу (бір-ақ рет)'}</button>
+        </Card>
+      ) : x && (
         <Card key={x.i} className="space-y-2">
-          <p className="text-xs font-bold text-text-muted">{k + 1}. {x.s.title}{x.s.variant ? ` · нұсқа ${x.s.variant}` : ''}</p>
+          <p className="text-xs font-bold text-text-muted">{at + 1} / {items.length} · {x.s.title}{x.s.variant ? ` · нұсқа ${x.s.variant}` : ''}</p>
           <p className="whitespace-pre-wrap font-semibold">{x.s.prompt || x.s.q}</p>
           {x.s.widget && <Suspense fallback={<Skeleton />}><LabWidget w={x.s.widget} lang={lang} /></Suspense>}
           {x.s.match ? <Match m={x.s.match} value={ans[x.i] ?? ''} onChange={v => setAns(a => ({ ...a, [x.i]: v }))} label={x.s.title} />
@@ -145,12 +168,13 @@ function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
                   <input type="radio" name={`q${x.i}`} checked={ans[x.i] === String(j)} onChange={() => setAns(a => ({ ...a, [x.i]: String(j) }))} />{String.fromCharCode(65 + j)}. {o}
                 </label>))}
             </div>
-          ) : <input className={inputCls} value={ans[x.i] ?? ''} onChange={e => setAns(a => ({ ...a, [x.i]: e.target.value }))} placeholder="Жауабың" aria-label={x.s.title} />}
+          ) : <input className={inputCls} value={ans[x.i] ?? ''} onChange={e => setAns(a => ({ ...a, [x.i]: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') go(at + 1); }} placeholder="Жауабың" aria-label={x.s.title} />}
+          <div className="flex gap-2 pt-2">
+            <button type="button" disabled={at === 0} onClick={() => go(at - 1)} className="min-h-[44px] flex-1 rounded-lg border border-border bg-surface font-semibold disabled:opacity-40 cursor-pointer">← Алдыңғы</button>
+            <button type="button" onClick={() => go(at + 1)} className="min-h-[44px] flex-1 rounded-lg bg-violet-600 font-semibold text-white hover:bg-violet-700 cursor-pointer">{at + 1 < items.length ? 'Келесі →' : 'Тексеріп жіберу →'}</button>
+          </div>
         </Card>
-      ))}
-      {err && <p role="alert" className="text-sm text-danger">{err}</p>}
-      <button type="button" disabled={busy} onClick={() => { if (answered < items.length && !window.confirm(`${items.length - answered} сұраққа жауап жоқ. Жібересің бе?`)) return; void send(); }}
-        className="min-h-[48px] w-full rounded-xl bg-violet-600 px-4 font-bold text-white hover:bg-violet-700 disabled:opacity-50 cursor-pointer">{busy ? 'Жіберілуде…' : 'Емтиханды жіберу (бір-ақ рет)'}</button>
+      )}
     </div>
   );
 }
