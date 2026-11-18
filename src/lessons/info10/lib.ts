@@ -48,3 +48,17 @@ export const plan10 = (prior: T, d: T[], stages: [string, number][] = [['warmup'
 });
 
 export { info, tag };
+
+export interface Lv { title: T; prompt: T; accept: string[]; points?: number; why?: T }
+/** Several similar questions on one slide as L1–L3: each student goes at their own pace, L2 opens after L1 is right (LevelsPanel). */
+export const levels = (t: T, intro: T, lv: Lv[], o: { notes?: T; widget?: object; helper?: boolean } = {}) => {
+  const L = (i: 0 | 1 | 2) => lv.map((x, k) => ({ lv: k + 1, title: x.title[i], points: x.points ?? k + 1,
+    variants: [{ v: 'A', prompt: x.prompt[i], ...(i === 0 ? { accept: x.accept, ...(x.why ? { explanation: x.why[0] } : {}) } : {}) }] }));
+  return {
+    type: 'task', pageType: 'interactive', templateId: 'levels', kind: 'practice', title: t[0], prompt: intro[0], levels: L(0),
+    points: lv.reduce((n, x, k) => n + (x.points ?? k + 1), 0),
+    ...(o.notes ? { notes: o.notes[0] } : {}), ...(o.widget ? { widget: o.widget } : {}), ...(o.helper ? { helper: true } : {}),
+    ru: { title: t[1], prompt: intro[1], levels: L(1), ...(o.notes ? { notes: o.notes[1] } : {}) },
+    en: { title: t[2], prompt: intro[2], levels: L(2), ...(o.notes ? { notes: o.notes[2] } : {}) },
+  };
+};

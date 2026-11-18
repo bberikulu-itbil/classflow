@@ -1,7 +1,7 @@
 // 2.2 Logic gates, truth tables and circuits (merges the former 2.3 "Basic logic elements", 2.4 "Truth tables" and 2.5 "Logic gates").
 import { quiz, titleSlide, type LabLesson } from '../sheetsLab/dsl';
 import { reflect } from '../sheetsLab7/lib';
-import { SUBTITLE, info, lab, plan10, tag, task } from './lib';
+import { SUBTITLE, info, lab, levels, plan10, tag } from './lib';
 
 /** Circuits of this lesson (also used by the unit test, which recomputes every accepted answer). */
 export const CIRCUITS = {
@@ -69,19 +69,18 @@ export const L2: LabLesson = {
       ['Кестедегі Q бағанын XOR кестесімен салыстыр: 0110 — бірдей.', 'Сравни столбец Q с таблицей XOR: 0110 — совпадает.', 'Compare the Q column with the XOR table: 0110 — the same.'],
     ], { kind: 'circuit', circuit: CIRCUITS.xor }), 'example'),
 
-    tag(task(['Схема: шығысты тап', 'Схема: найди выход', 'Circuit: find the output'], ['A = 1, B = 1, C = 0 болғанда Q неге тең? (0 немесе 1)', 'Чему равен Q при A = 1, B = 1, C = 0? (0 или 1)', 'What is Q for A = 1, B = 1, C = 0? (0 or 1)'], ['0'], 2, {
-      widget: { kind: 'circuit', circuit: CIRCUITS.t1, hideOut: true },
-      notes: ['15 минут. Схемада шығыс жасырулы: оқушы аралық сымдарды көріп, соңғы вентильді өзі есептейді. Жауаптар: 0; 00010100; 4; ★ 00010111.', '15 минут. Выход на схеме скрыт: ученик видит промежуточные провода и сам считает последний вентиль. Ответы: 0; 00010100; 4; ★ 00010111.', '15 minutes. The output is hidden: students see the inner wires and work out the last gate. Answers: 0; 00010100; 4; ★ 00010111.'],
-    }), 'practice'),
-    tag(task(['Ақиқат кестесі: Q бағаны', 'Таблица истинности: столбец Q', 'Truth table: the Q column'], ['Q бағанын жоғарыдан төмен 8 цифрмен жаз (мысалы 01010101).', 'Запиши столбец Q сверху вниз 8 цифрами (например 01010101).', 'Write the Q column top to bottom as 8 digits (e.g. 01010101).'], ['00010100'], 2, {
-      widget: { kind: 'circuit', circuit: CIRCUITS.t2, hideOut: true, hideMid: true },
-    }), 'practice'),
-    tag(task(['Схема: неше жолда 1?', 'Схема: в скольких строках 1?', 'Circuit: how many rows give 1?'], ['Q = (A AND NOT B) OR (B AND C). Ақиқат кестесінің неше жолында Q = 1?', 'Q = (A AND NOT B) OR (B AND C). В скольких строках таблицы Q = 1?', 'Q = (A AND NOT B) OR (B AND C). In how many rows is Q = 1?'], ['4'], 2, {
-      widget: { kind: 'circuit', circuit: CIRCUITS.t3, hideOut: true, hideMid: true },
-    }), 'practice'),
-    tag(task(['★ Күрделі есеп: дауыс беру', '★ Сложная задача: голосование', '★ Hard problem: majority vote'], ['Үш төрешінің кемінде екеуі «иә» (1) десе, шам жанады. Ақиқат кестесінің Q бағанын 000-ден 111-ге дейін 8 цифрмен жаз.', 'Лампа горит, если хотя бы двое из трёх судей сказали «да» (1). Запиши столбец Q от 000 до 111 восемью цифрами.', 'The lamp lights when at least two of three judges say “yes” (1). Write the Q column from 000 to 111 as 8 digits.'], ['00010111'], 3, {
-      notes: ['Схемасы: Q = (A AND B) OR (A AND C) OR (B AND C). Үлгерген оқушыға схеманы сызып көруді ұсыныңыз.', 'Схема: Q = (A AND B) OR (A AND C) OR (B AND C). Тем, кто успел, предложите нарисовать схему.', 'Circuit: Q = (A AND B) OR (A AND C) OR (B AND C). Fast students can draw it.'],
-    }), 'practice'),
+    tag(levels(['Бір схема — үш сұрақ', 'Одна схема — три вопроса', 'One circuit — three questions'], ['Есептерді ретімен шығар: L1 дұрыс болса, L2 ашылады. Дәптерде шығарып, жауапты жаз.', 'Решай по порядку: после верного L1 откроется L2. Решай в тетради, ответ вводи здесь.', 'Solve in order: L2 opens after L1 is right. Work on paper, type the answer here.'], [
+      { title: ['Бір жол', 'Одна строка', 'One row'], prompt: ['A = 1, B = 0, C = 0 болғанда Q неге тең? (0 немесе 1)', 'Чему равен Q при A = 1, B = 0, C = 0? (0 или 1)', 'What is Q for A = 1, B = 0, C = 0? (0 or 1)'], accept: ['1'] },
+      { title: ['Неше жол?', 'Сколько строк?', 'How many rows?'], prompt: ['Ақиқат кестесінің неше жолында Q = 1?', 'В скольких строках таблицы Q = 1?', 'In how many rows is Q = 1?'], accept: ['4'] },
+      { title: ['Бүкіл баған', 'Весь столбец', 'The whole column'], prompt: ['Q бағанын 000-ден 111-ге дейін 8 цифрмен жаз.', 'Запиши столбец Q от 000 до 111 восемью цифрами.', 'Write the Q column from 000 to 111 as 8 digits.'], accept: ['00011101'] },
+    ], { widget: { kind: 'circuit', circuit: CIRCUITS.t3, hideOut: true, hideMid: true },
+      notes: ['15 минут, екі слайд. Схемада шығыс жасырулы, оқушы кірістерді ауыстырып аралық сымдарды көреді. Жауаптар: 1, 4, 00011101; 0010, 00010100, 00010111.', '15 минут, два слайда. Выход схемы скрыт, промежуточные провода видны. Ответы: 1, 4, 00011101; 0010, 00010100, 00010111.', '15 minutes, two slides. The output is hidden; inner wires show. Answers: 1, 4, 00011101; 0010, 00010100, 00010111.'] }), 'practice'),
+    tag(levels(['Ақиқат кестесі: L1–L3', 'Таблица истинности: L1–L3', 'Truth tables: L1–L3'], ['Есептерді ретімен шығар: L1 дұрыс болса, L2 ашылады. Дәптерде шығарып, жауапты жаз.', 'Решай по порядку: после верного L1 откроется L2. Решай в тетради, ответ вводи здесь.', 'Solve in order: L2 opens after L1 is right. Work on paper, type the answer here.'], [
+      { title: ['Екі кіріс', 'Два входа', 'Two inputs'], prompt: ['Q = A AND NOT B. Q бағанын 00, 01, 10, 11 ретімен 4 цифрмен жаз.', 'Q = A AND NOT B. Запиши столбец Q (00, 01, 10, 11) четырьмя цифрами.', 'Q = A AND NOT B. Write the Q column (00, 01, 10, 11) as 4 digits.'], accept: ['0010'] },
+      { title: ['Үш кіріс', 'Три входа', 'Three inputs'], prompt: ['Q = (A XOR B) AND C. Q бағанын 000-ден 111-ге дейін 8 цифрмен жаз.', 'Q = (A XOR B) AND C. Запиши столбец Q (000 … 111) восемью цифрами.', 'Q = (A XOR B) AND C. Write the Q column (000 … 111) as 8 digits.'], accept: ['00010100'] },
+      { title: ['★ Дауыс беру', '★ Голосование', '★ Majority vote'], prompt: ['Үш төрешінің кемінде екеуі «иә» (1) десе, шам жанады. Q бағанын 000-ден 111-ге дейін жаз.', 'Лампа горит, если хотя бы двое из трёх судей сказали «да» (1). Запиши столбец Q (000 … 111).', 'The lamp lights when at least two of three judges say “yes” (1). Write the Q column (000 … 111).'], accept: ['00010111'],
+        why: ['Q = (A AND B) OR (A AND C) OR (B AND C).', 'Q = (A AND B) OR (A AND C) OR (B AND C).', 'Q = (A AND B) OR (A AND C) OR (B AND C).'] },
+    ]), 'practice'),
 
     tag(quiz(['Тест: NOR', 'Тест: NOR', 'Test: NOR'], ['A = 0, B = 0. NOT (A OR B) неге тең?', 'A = 0, B = 0. Чему равно NOT (A OR B)?', 'A = 0, B = 0. What is NOT (A OR B)?'],
       [['0', '0', '0'], ['1', '1', '1'], ['00', '00', '00'], ['Анықталмайды', 'Не определено', 'Undefined']], 1,

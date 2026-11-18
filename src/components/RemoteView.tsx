@@ -24,6 +24,7 @@ const RULES = [
   { key: 'ask', name: '«Түсінбедім» сұрақтары', hint: 'Оқушы слайдқа сұрақ жаза алады' },
   { key: 'hand', name: 'Қол көтеру', hint: 'Өшірсеңіз, оқушыда батырма жасырылады' },
   { key: 'lock', name: 'Экрандарды бұғаттау', hint: 'Барлық оқушының экраны жабылады' },
+  { key: 'ahead', name: 'Алға өтуді сұрау', hint: 'Тапсырманы бітірген оқушы келесі слайдқа өтуді сұрайды; рұқсат берсеңіз, сол слайдтың тапсырмасын бұрын орындайды' },
   { key: 'auto', name: 'Тапсырманы автоматты жіберу', hint: 'Тапсырма слайдына өткенде өзі ашылады; келесі слайдқа өткенде жібермегендерге 5 секунд беріледі' },
 ];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
@@ -204,7 +205,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     }
     await run(() => sb.rpc('cf_goto', { p_session: sid, p_index: idx }));
     if (auto && ['quiz', 'task', 'code'].includes(priv[idx]?.type)) { // the task opens by itself, once per slide
-      const { count } = await sb.from('cf_tasks').select('id', { count: 'exact', head: true }).eq('session_id', sid).eq('slide_index', idx);
+      const { count } = await sb.from('cf_tasks').select('id', { count: 'exact', head: true }).eq('session_id', sid).eq('slide_index', idx).eq('status', 'closed'); // open ones (opened ahead) are joined by cf_open_task
       if (!count) await run(() => sb.rpc('cf_open_task', { p_session: sid, p_index: idx }));
     }
   };
@@ -247,7 +248,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const toggleNav = () => run(() => sb.rpc('cf_set_nav', { p_session: sid, p_on: !session.student_nav }));
   const lockAll = () => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !session.locked }));
   // allow_ask / allow_hand come with migration 063: without the column the rule counts as on
-  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : k === 'auto' ? !!session.auto_task : session.allow_hand !== false;
+  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : k === 'auto' ? !!session.auto_task : k === 'ahead' ? !!session.allow_ahead : session.allow_hand !== false;
   const setRule = (k: string, on: boolean) => k === 'nav' ? toggleNav() : k === 'lock' ? lockAll() : run(() => sb.rpc('cf_set_rule', { p_session: sid, p_rule: k, p_on: on }));
   const subsDone = new Set(subs.map(x => x.student_id)).size;
   /** What the class grid shows beside a name: the level reached (L1-L3), ✓ answered, … still working. */
@@ -260,7 +261,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     return !task ? '' : mine.length ? '✓' : open ? '…' : '';
   };
   // one list of everything that needs the teacher now: hands, open questions, students who left the page
-  const attention = [
+  const attention: { key: string; name: string; text: string; tone: string; icon: React.ReactNode; label: string; act: () => void; label2?: string; act2?: () => void }[] = [
+    ...parts.filter(p => p.ahead_req != null).map(p => ({ key: 'n' + p.student_id, name: p.full_name, text: `${p.ahead_req + 1}-слайдқа өтуді сұрайды`, tone: 'bg-success-soft', icon: <ArrowRight size={16} aria-hidden="true" />,
+      label: 'Рұқсат', act: () => { run(() => sb.rpc('cf_grant_ahead', { p_session: sid, p_student: p.student_id, p_on: true })); },
+      label2: 'Жоқ', act2: () => { run(() => sb.rpc('cf_grant_ahead', { p_session: sid, p_student: p.student_id, p_on: false })); } })),
     ...hands.map(p => ({ key: 'h' + p.student_id, name: p.full_name, text: 'Қол көтерді', tone: 'bg-warning-soft', icon: <Hand size={16} aria-hidden="true" />, label: 'Көрдім', act: () => { run(() => sb.rpc('cf_clear_hand', { p_session: sid, p_student: p.student_id })); } })),
     ...asks.filter(q => !q.resolved).map(q => ({ key: 'q' + q.id, name: `${nameOf(q.student_id)} · ${q.slide_index + 1}-слайд`, text: q.body, tone: 'bg-accent/10', icon: <Icon n="help" size={16} />, label: 'Жауап бердім', act: () => { sb.rpc('cf_resolve_question', { p_id: q.id, p_on: true }).then(loadAsks, () => {}); } })),
     ...parts.filter(p => p.presence === 'away').map(p => ({ key: 'a' + p.student_id, name: p.full_name, text: `Беттен шықты${p.away_count ? ` · ${p.away_count} рет` : ''}`, tone: 'bg-danger-soft', icon: <Eye size={16} aria-hidden="true" />, label: 'Хабар', act: () => send(p.student_id, 'Жіберілді') })),
@@ -420,6 +424,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface">{a.icon}</span>
                         <div className="min-w-0 flex-1 text-sm"><b className="break-words">{a.name}</b><div className="break-words text-text-secondary">{a.text}</div></div>
                         <Button variant="secondary" onClick={a.act}>{a.label}</Button>
+                        {a.act2 && <Button variant="secondary" onClick={a.act2}>{a.label2}</Button>}
                       </div>
                     ))}
                   </div>

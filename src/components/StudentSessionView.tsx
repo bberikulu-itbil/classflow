@@ -56,6 +56,10 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   // «auto task» rule: when the teacher moves on, an open task I have not sent stays on my screen until its closes_at (5 s)
   const [hold, setHold] = useState<string | null>(null);
   const taskRef = useRef<any>(null), slideIdxRef = useRef<number | null>(null), shortRef = useRef('');
+  // «ask to go ahead» rule: a slide beyond the board the teacher allowed me (cf_participants.ahead_ok, migration 072)
+  const [ahead, setAhead] = useState<number | null>(null);
+  const aheadRef = useRef<number | null>(null);
+  const goAhead = (i: number | null) => { aheadRef.current = i; setAhead(i); setTimeout(() => refresh(), 0); };
   shortRef.current = shortAnswer;
 
   const refresh = async () => {
@@ -66,8 +70,9 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         setEnded(true);
         return;
       }
+      if (aheadRef.current !== null && sRes.data && sRes.data.current_slide >= aheadRef.current) { aheadRef.current = null; setAhead(null); } // the board caught up
       const prev = taskRef.current;
-      if (prev && prev.status === 'open' && slideIdxRef.current !== null && sRes.data && sRes.data.current_slide !== slideIdxRef.current) {
+      if (aheadRef.current === null && prev && prev.status === 'open' && slideIdxRef.current !== null && sRes.data && sRes.data.current_slide !== slideIdxRef.current) {
         const [row, sent] = await Promise.all([
           sb.from('cf_tasks').select('status,closes_at').eq('id', prev.id).single(),
           sb.from('cf_submissions').select('id').eq('task_id', prev.id).eq('student_id', me.id),
@@ -79,7 +84,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       }
       setHold(null);
       const [curRes, partsRes, lbRes] = await Promise.all([
-        sb.rpc('cf_slide', { p_session: sid }),
+        aheadRef.current !== null ? sb.rpc('cf_slide_at', { p_session: sid, p_index: aheadRef.current }) : sb.rpc('cf_slide', { p_session: sid }),
         sb.from('cf_participants').select('*').eq('session_id', sid).eq('student_id', me.id),
         sb.rpc('cf_leaderboard', { p_session: sid }),
       ]);
@@ -96,9 +101,9 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       setMePart(partsRes.data?.[0] || null);
       setLeaderboard(lbRes.data || []);
 
-      let activeTask = sRes.data?.active_task_id
-        ? (await sb.from('cf_tasks').select('*').eq('id', sRes.data.active_task_id).single()).data
-        : null;
+      let activeTask = aheadRef.current !== null
+        ? ((await sb.from('cf_tasks').select('*').eq('session_id', sid).eq('slide_index', aheadRef.current).eq('status', 'open').order('variant').limit(1)).data || [])[0] || null
+        : sRes.data?.active_task_id ? (await sb.from('cf_tasks').select('*').eq('id', sRes.data.active_task_id).single()).data : null;
       if (activeTask && activeTask.level == null && activeTask.variant) { // a quiz with variants: my own variant's task
         const batch = (await sb.from('cf_tasks').select('*').eq('session_id', sid).eq('slide_index', activeTask.slide_index).eq('opened_at', activeTask.opened_at)).data || [];
         activeTask = batch.find((x: any) => x.variant === qvariantOf(me.id, activeTask.slide_index, batch.length)) || activeTask;
@@ -294,6 +299,15 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       </header>
 
       <LessonMap kinds={kinds} count={session.slide_count || 0} cur={cur} viewing={viewing} nav={nav} lang={lang} onPick={setViewIdx} />
+      {session.allow_ahead && viewing === null && (
+        <div data-testid="ahead-bar" className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-surface p-2 text-sm">
+          {ahead !== null && <><span className="font-semibold text-emerald-700">{pick(lang, 'Сен алдағы слайдтасың', 'Ты на слайде впереди', 'You are ahead of the board')}</span>
+            <button className={TOP} onClick={() => goAhead(null)}>{pick(lang, 'Тақтадағы слайдқа', 'К слайду на доске', 'Back to the board')}</button></>}
+          {(mePart?.ahead_ok ?? -1) > cur ? <button className={TOP + ' !border-emerald-700 !bg-emerald-700 !text-white'} onClick={() => goAhead(cur + 1)}>→ {cur + 2}-{pick(lang, 'слайдқа өту', 'й слайд', 'slide')}</button>
+            : mePart?.ahead_req != null ? <span className="text-text-secondary">⏳ {pick(lang, 'Сұрау жіберілді, мұғалімнің рұқсатын күт', 'Запрос отправлен, жди разрешения', 'Asked — wait for the teacher')}</span>
+            : cur < (session.slide_count || 0) - 1 && <button className={TOP} onClick={() => quiet('cf_ask_ahead', { p_session: sid }).then(refresh)}>{pick(lang, 'Келесі слайдқа өтуге рұқсат сұрау', 'Попросить перейти дальше', 'Ask to go ahead')}</button>}
+        </div>
+      )}
       {viewing !== null && (
         <div data-testid="student-nav" className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-surface p-2 text-sm">
           <button data-testid="to-live" className={TOP + ' !border-blue-700 !bg-blue-700 !text-white'} onClick={() => setViewIdx(null)}>{pick(lang, 'Тақтадағы слайдқа', 'К слайду на доске', 'To the board slide')}</button>

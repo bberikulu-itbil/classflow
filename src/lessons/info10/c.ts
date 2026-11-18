@@ -2,7 +2,7 @@
 import { quiz, titleSlide, walk, type LabLesson } from '../sheetsLab/dsl';
 import { reflect } from '../sheetsLab7/lib';
 import { CIRCUITS } from './b';
-import { SUBTITLE, info, lab, opts, plan10, same, tag, task, vquiz, type Var } from './lib';
+import { SUBTITLE, info, lab, levels, opts, plan10, same, tag, vquiz, type Var } from './lib';
 
 export const L3: LabLesson = {
   id: 'inf10-3',
@@ -61,17 +61,18 @@ export const L3: LabLesson = {
        ['00001001 + 11111011 = 1 00000100. 9-шы бит тасталады.', '00001001 + 11111011 = 1 00000100. 9-й бит отбрасываем.', '00001001 + 11111011 = 1 00000100. Drop the 9th bit.']],
       ['00000100 = 4 ✓', '00000100 = 4 ✓', '00000100 = 4 ✓']), 'example'),
 
-    tag(task(['Қосымша код', 'Дополнительный код', 'Two’s complement'], ['−20 санының 8 биттік қосымша кодын жаз.', 'Запиши 8-битный дополнительный код числа −20.', 'Write the 8-bit two’s complement of −20.'], ['11101100'], 2, {
-      helper: true, notes: ['15 минут. Жауаптар: 11101100; −2; 67; 10; ★ −106. Құралда (2.3 слайдтары) тексеруге болады.', '15 минут. Ответы: 11101100; −2; 67; 10; ★ −106. Можно проверять в инструментах урока.', '15 minutes. Answers: 11101100; −2; 67; 10; ★ −106. The lesson’s tools can check.'],
-    }), 'practice'),
-    tag(task(['Кодты оқу', 'Чтение кода', 'Reading a code'], ['11111110 — 8 биттік таңбалы сан (қосымша код). Ол ондықта неге тең?', '11111110 — 8-битное число со знаком (доп. код). Чему оно равно в десятичной?', '11111110 is a signed 8-bit number (two’s complement). What is it in decimal?'], ['-2', '−2'], 2), 'practice'),
-    tag(task(['ASCII', 'ASCII', 'ASCII'], ['A әрпінің ASCII коды — 65. C әрпінің коды қандай (ондықта)?', 'Код буквы A в ASCII — 65. Каков код буквы C (в десятичной)?', 'The ASCII code of A is 65. What is the code of C (in decimal)?'], ['67'], 2), 'practice'),
-    tag(task(['UTF-8 көлемі', 'Объём в UTF-8', 'Size in UTF-8'], ['«Сәлем» сөзі UTF-8 кодтауында неше байт алады?', 'Сколько байт занимает слово «Сәлем» в UTF-8?', 'How many bytes does the word «Сәлем» take in UTF-8?'], ['10'], 2, {
-      widget: { kind: 'code', mode: 'text', value: 'Hello' },
-    }), 'practice'),
-    tag(task(['★ Күрделі есеп: толып кету', '★ Сложная задача: переполнение', '★ Hard problem: overflow'], ['8 биттік таңбалы сандар: 100 + 50 есептелгенде қандай сан шығады (ондықта)?', '8-битные числа со знаком: какое число получится при 100 + 50 (в десятичной)?', 'Signed 8-bit numbers: what does 100 + 50 give (in decimal)?'], ['-106', '−106'], 3, {
-      notes: ['150 = 10010110: таңба биті 1 болып кетті, таңбалы оқығанда 150 − 256 = −106. Бұл — толып кету; ойындардағы «ұпай теріс болып кетті» қатесінің себебі.', '150 = 10010110: знаковый бит стал 1, со знаком это 150 − 256 = −106. Это переполнение — причина ошибок «очки стали отрицательными» в играх.', '150 = 10010110: the sign bit became 1, so signed it reads 150 − 256 = −106. That is overflow — the cause of “the score went negative” bugs.'],
-    }), 'practice'),
+    tag(levels(['Сандарды кодтау: L1–L3', 'Кодирование чисел: L1–L3', 'Coding numbers: L1–L3'], ['Есептерді ретімен шығар: L1 дұрыс болса, L2 ашылады. Дәптерде шығарып, жауапты жаз.', 'Решай по порядку: после верного L1 откроется L2. Решай в тетради, ответ вводи здесь.', 'Solve in order: L2 opens after L1 is right. Work on paper, type the answer here.'], [
+      { title: ['Қосымша код', 'Доп. код', 'Two’s complement'], prompt: ['−20 санының 8 биттік қосымша кодын жаз.', 'Запиши 8-битный дополнительный код числа −20.', 'Write the 8-bit two’s complement of −20.'], accept: ['11101100'] },
+      { title: ['Кодты оқу', 'Чтение кода', 'Reading a code'], prompt: ['11111110 — 8 биттік таңбалы сан. Ол ондықта неге тең?', '11111110 — 8-битное число со знаком. Чему оно равно?', '11111110 is a signed 8-bit number. What is it in decimal?'], accept: ['-2', '−2'] },
+      { title: ['★ Толып кету', '★ Переполнение', '★ Overflow'], prompt: ['8 биттік таңбалы сандар: 100 + 50 қандай сан болып шығады (ондықта)?', '8-битные числа со знаком: что получится при 100 + 50 (в десятичной)?', 'Signed 8-bit numbers: what does 100 + 50 give (in decimal)?'], accept: ['-106', '−106'],
+        why: ['150 = 10010110: таңба биті 1 болды, 150 − 256 = −106.', '150 = 10010110: знаковый бит стал 1, 150 − 256 = −106.', '150 = 10010110: the sign bit became 1, 150 − 256 = −106.'] },
+    ], { helper: true, notes: ['15 минут, екі слайд. Жауаптар: 11101100, −2, −106; 67, 10, Hi.', '15 минут, два слайда. Ответы: 11101100, −2, −106; 67, 10, Hi.', '15 minutes, two slides. Answers: 11101100, −2, −106; 67, 10, Hi.'] }), 'practice'),
+    tag(levels(['Мәтінді кодтау: L1–L3', 'Кодирование текста: L1–L3', 'Coding text: L1–L3'], ['Есептерді ретімен шығар: L1 дұрыс болса, L2 ашылады. Дәптерде шығарып, жауапты жаз.', 'Решай по порядку: после верного L1 откроется L2. Решай в тетради, ответ вводи здесь.', 'Solve in order: L2 opens after L1 is right. Work on paper, type the answer here.'], [
+      { title: ['ASCII', 'ASCII', 'ASCII'], prompt: ['A әрпінің ASCII коды — 65. C әрпінің коды қандай?', 'Код A в ASCII — 65. Каков код C?', 'The ASCII code of A is 65. What is the code of C?'], accept: ['67'] },
+      { title: ['UTF-8 көлемі', 'Объём UTF-8', 'UTF-8 size'], prompt: ['«Сәлем» сөзі UTF-8-те неше байт алады?', 'Сколько байт занимает «Сәлем» в UTF-8?', 'How many bytes does «Сәлем» take in UTF-8?'], accept: ['10'] },
+      { title: ['★ Хабар', '★ Сообщение', '★ Message'], prompt: ['01001000 01101001 — ASCII-дағы екі таңба. Хабарды жаз.', '01001000 01101001 — два символа ASCII. Запиши сообщение.', '01001000 01101001 — two ASCII characters. Write the message.'], accept: ['Hi'],
+        why: ['72 = H, 105 = i.', '72 = H, 105 = i.', '72 = H, 105 = i.'] },
+    ], { widget: { kind: 'code', mode: 'text', value: 'Hello' } }), 'practice'),
 
     tag(quiz(['Тест: ASCII', 'Тест: ASCII', 'Test: ASCII'], ['Стандарт ASCII кестесінде неше таңба бар?', 'Сколько символов в стандартной таблице ASCII?', 'How many characters does standard ASCII have?'],
       [['256', '256', '256'], ['65 536', '65 536', '65 536'], ['128', '128', '128'], ['100', '100', '100']], 2,
@@ -162,14 +163,12 @@ export const L4: LabLesson = {
     tag(quiz(['Жылы кіріс', 'Разминка', 'Warm-up'], ['Қай жүйеде 9 цифры жоқ?', 'В какой системе нет цифры 9?', 'Which system has no digit 9?'],
       [['Ондық', 'Десятичной', 'Decimal'], ['16-лық', '16-ричной', 'Hexadecimal'], ['Сегіздік', 'Восьмеричной', 'Octal'], ['Ешқайсысында', 'Ни в какой', 'None']], 2,
       ['Сегіздікте цифрлар 0–7 ғана.', 'В восьмеричной только цифры 0–7.', 'Octal uses only 0–7.']), 'warmup'),
-    tag(task(['Есеп 1: 16-лық қосу', 'Задача 1: сложение в 16-ричной', 'Problem 1: hex addition'], ['1A₁₆ + 0F₁₆ = ?₁₆', '1A₁₆ + 0F₁₆ = ?₁₆', '1A₁₆ + 0F₁₆ = ?₁₆'], ['29'], 2, {
-      helper: true, notes: ['15 минут. Жауаптар: 29 (26 + 15 = 41 = 29₁₆), 1001, 11110110; ★ 6.', '15 минут. Ответы: 29 (26 + 15 = 41 = 29₁₆), 1001, 11110110; ★ 6.', '15 minutes. Answers: 29 (26 + 15 = 41 = 29₁₆), 1001, 11110110; ★ 6.'],
-    }), 'practice'),
-    tag(task(['Есеп 2: ақиқат кестесі', 'Задача 2: таблица истинности', 'Problem 2: truth table'], ['Q = NOT (A XOR B). Q бағанын (00, 01, 10, 11 ретімен) 4 цифрмен жаз.', 'Q = NOT (A XOR B). Запиши столбец Q (в порядке 00, 01, 10, 11) четырьмя цифрами.', 'Q = NOT (A XOR B). Write the Q column (order 00, 01, 10, 11) as 4 digits.'], ['1001'], 2), 'practice'),
-    tag(task(['Есеп 3: қосымша код', 'Задача 3: дополнительный код', 'Problem 3: two’s complement'], ['−10 санының 8 биттік қосымша кодын жаз.', 'Запиши 8-битный дополнительный код числа −10.', 'Write the 8-bit two’s complement of −10.'], ['11110110'], 2, { helper: true }), 'practice'),
-    tag(task(['★ Есеп 4: биттер саны', '★ Задача 4: число битов', '★ Problem 4: number of bits'], ['Сыныпта 35 оқушы. Әр оқушыға бөлек екілік нөмір беру үшін ең аз неше бит керек?', 'В классе 35 учеников. Сколько бит минимум нужно, чтобы дать каждому свой двоичный номер?', 'A class has 35 students. What is the fewest bits that give each a different binary number?'], ['6'], 3, {
-      notes: ['2⁵ = 32 < 35 ≤ 64 = 2⁶, сондықтан 6 бит.', '2⁵ = 32 < 35 ≤ 64 = 2⁶, значит 6 бит.', '2⁵ = 32 < 35 ≤ 64 = 2⁶, so 6 bits.'],
-    }), 'practice'),
+    tag(levels(['Есептер: L1–L3', 'Задачи: L1–L3', 'Problems: L1–L3'], ['Есептерді ретімен шығар: L1 дұрыс болса, L2 ашылады. Дәптерде шығарып, жауапты жаз.', 'Решай по порядку: после верного L1 откроется L2. Решай в тетради, ответ вводи здесь.', 'Solve in order: L2 opens after L1 is right. Work on paper, type the answer here.'], [
+      { title: ['16-лық қосу', 'Сложение в 16-ричной', 'Hex addition'], prompt: ['1A₁₆ + 0F₁₆ = ?₁₆', '1A₁₆ + 0F₁₆ = ?₁₆', '1A₁₆ + 0F₁₆ = ?₁₆'], accept: ['29'] },
+      { title: ['Ақиқат кестесі', 'Таблица истинности', 'Truth table'], prompt: ['Q = NOT (A XOR B). Q бағанын (00, 01, 10, 11) 4 цифрмен жаз.', 'Q = NOT (A XOR B). Запиши столбец Q (00, 01, 10, 11) четырьмя цифрами.', 'Q = NOT (A XOR B). Write the Q column (00, 01, 10, 11) as 4 digits.'], accept: ['1001'] },
+      { title: ['★ Биттер саны', '★ Число битов', '★ Number of bits'], prompt: ['Сыныпта 35 оқушы. Әрқайсына бөлек екілік нөмір беру үшін ең аз неше бит керек?', 'В классе 35 учеников. Сколько бит минимум нужно для разных двоичных номеров?', 'A class has 35 students. What is the fewest bits that give each a different binary number?'], accept: ['6'],
+        why: ['2⁵ = 32 < 35 ≤ 64 = 2⁶.', '2⁵ = 32 < 35 ≤ 64 = 2⁶.', '2⁵ = 32 < 35 ≤ 64 = 2⁶.'] },
+    ], { helper: true, notes: ['15 минут. Жауаптар: 29, 1001, 6.', '15 минут. Ответы: 29, 1001, 6.', '15 minutes. Answers: 29, 1001, 6.'] }), 'practice'),
     ...TESTS.map(([t, vars], i) => tag(vquiz(t, VP, vars), 'check', i === 0 ? ['25 минут: 7 тест. Автоматты ереже қосулы болса, әр тестке ~3 минут беріп, келесі слайдқа өтіңіз. «Жауаптар» бөлімінде әр жауаптың алдында нұсқа әрпі тұрады.', '25 минут: 7 тестов. С правилом автоотправки давайте ~3 минуты на тест и переходите дальше. В «Ответах» перед ответом стоит буква варианта.', '25 minutes: 7 tests. With the auto rule on, allow ~3 minutes per test, then move on. In “Answers” each answer shows its variant letter.'] : undefined)),
     reflect(),
   ],
