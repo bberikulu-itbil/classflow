@@ -116,7 +116,7 @@ const ascii: Var[] = [['B', 66], ['F', 70], ['b', 98], ['d', 100]].map(([ch, n],
   ...opts(String(n), [String(+n + 1), String(+n - 1), String(+n + 32 > 127 ? +n - 32 : +n + 32)], AT[(i + 2) % 4]), why: same(`«${ch}» = ${n}`) }));
 
 /** Truth column of a circuit (same rule as LabWidgets.truthColumn, kept here so the lesson data does not import UI code). */
-function truth(c: any): string {
+export function truth(c: any): string {
   const fn = (t: string, xs: number[]) => { const v = t === 'AND' || t === 'NAND' ? +xs.every(Boolean) : t === 'OR' || t === 'NOR' ? +xs.some(Boolean) : t === 'XOR' ? xs.reduce((a, b) => a ^ b, 0) : xs[0] ? 0 : 1; return t === 'NAND' || t === 'NOR' ? 1 - v : v; };
   return Array.from({ length: 2 ** c.inputs.length }, (_, r) => {
     const v: Record<string, number> = Object.fromEntries(c.inputs.map((n: string, i: number) => [n, (r >> (c.inputs.length - 1 - i)) & 1]));

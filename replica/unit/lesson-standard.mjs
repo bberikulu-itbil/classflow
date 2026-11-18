@@ -10,6 +10,10 @@ let bad = 0;
 for (const l of all) {
   if (want.length && !want.includes(l.id)) continue;
   const e = [], st = l.plan?.stages || [], sl = l.slides;
+  if (l.exam) { // an exam: only the translations and the variants are checked
+    sl.forEach((s, i) => { if (!s.ru?.title || !s.en?.title) e.push(`#${i + 1}: no ru/en title`); if ((s.xvariants || s.qvariants) && (s.xvariants || s.qvariants).length < 2) e.push(`#${i + 1}: fewer than 2 variants`); });
+    console.log(`${l.id} ${l.title[0]} (exam): ${e.length ? '\n  - ' + e.join('\n  - ') : 'ok'}`); if (e.length) bad++; continue;
+  }
   if (st.reduce((n, x) => n + x.min, 0) !== 45) e.push('plan is not 45 minutes');
   let last = -1;
   sl.forEach((s, i) => {

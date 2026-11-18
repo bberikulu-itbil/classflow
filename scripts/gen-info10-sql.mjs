@@ -6,8 +6,8 @@ const out = `${tmpdir()}/info10-gen.mjs`;
 await build({ entryPoints: ['src/lessons/info10/index.ts'], bundle: true, format: 'esm', outfile: out, logLevel: 'error' });
 const { INFO10_LESSONS_DATA: D, INFO10_COURSE: C, INFO10_MODULE: M } = await import(out);
 const q = s => { if (s.includes('$i10$')) throw new Error('dollar tag clash'); return `$i10$${s}$i10$`; };
-const rows = D.map((l, i) => `    (${q(l.id)}, ${q(l.title)}, ${q(l.subject)}, ${i}, ${q(JSON.stringify(l.plan))}::jsonb, ${q(JSON.stringify(l.terms))}::jsonb, ${q(JSON.stringify(l.slides))}::jsonb)`);
-writeFileSync('supabase/070_informatics10_ch2.sql', `-- Migration 070 (data): Informatics 10, chapter 2 "Data representation" — 3 lessons + Check yourself. Needs 069 (test variants).
+const rows = D.map((l, i) => `    (${q(l.id)}, ${q(l.title)}, ${q(l.subject)}, ${i}, ${q(JSON.stringify(l.plan))}::jsonb, ${q(JSON.stringify(l.terms))}::jsonb, ${q(JSON.stringify(l.slides))}::jsonb, ${l.exam})`);
+writeFileSync('supabase/070_informatics10_ch2.sql', `-- Migration 070 (data): Informatics 10, chapter 2 "Data representation" — 3 lessons + Check yourself. Needs 069 (test variants), 071 (exam flag), 073 (exam task variants).
 -- Idempotent: lessons are found by plan->>'gen'. The module keeps only these lessons; former ones leave the module, their rows stay.
 
 do $info10$
@@ -20,7 +20,7 @@ begin
 
   for v_spec in select * from (values
 ${rows.join(',\n')}
-  ) as t(gen, title, subject, position, plan, terms, slides)
+  ) as t(gen, title, subject, position, plan, terms, slides, exam)
   loop
     select l.id into v_lesson from public.cf_lessons l where l.school_id = v_school and l.plan->>'gen' = v_spec.gen limit 1;
     if v_lesson is null then
@@ -30,8 +30,8 @@ ${rows.join(',\n')}
       update public.cf_lessons set title = v_spec.title, subject = v_spec.subject, plan = v_spec.plan, slides = v_spec.slides, terms = v_spec.terms, updated_at = now() where id = v_lesson;
     end if;
     v_ids := v_ids || v_lesson;
-    insert into public.cf_curr_lessons (lesson_id, module_id, position) values (v_lesson, v_module, 100 + v_spec.position)
-    on conflict (lesson_id) do update set module_id = excluded.module_id, position = excluded.position;
+    insert into public.cf_curr_lessons (lesson_id, module_id, position, exam) values (v_lesson, v_module, 100 + v_spec.position, v_spec.exam)
+    on conflict (lesson_id) do update set module_id = excluded.module_id, position = excluded.position, exam = excluded.exam;
     v_lesson := null;
   end loop;
   delete from public.cf_curr_lessons where module_id = v_module and not (lesson_id = any(v_ids));

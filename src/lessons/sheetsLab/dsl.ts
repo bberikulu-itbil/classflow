@@ -99,4 +99,4 @@ export const tag = (s: any, stage: string, notes?: T) => ({
 /** The lesson plan card: what students already know, the software, the source and the timed stages (`do` = what the student does). */
 export interface LabPlan { prior: T; env: T; source: T; stages: { k: string; min: number; do: T }[] }
 
-export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string, string][]; slides: any[]; plan?: LabPlan }
+export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string, string][]; slides: any[]; plan?: LabPlan; /** taken only as an exam (cf_exam_get), not shown in class */ exam?: boolean }

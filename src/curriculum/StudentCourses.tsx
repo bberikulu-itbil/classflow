@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, GraduationCap, Languages, Lock } from 'lucide-react';
 import { sb, DEMO } from '../config';
 import { Card, EmptyState, ErrorBox, Skeleton, inputCls, useLoad } from '../ui';
 import { renderSlide } from '../components/Widgets';
 import { tr, useLang, LANG_LABEL } from '../lessons/lang';
+
+const LabWidget = lazy(() => import('../components/LabWidgets').then(m => ({ default: m.LabWidget })));
 
 // The student reads only through cf_student_courses / cf_course_lesson (058_course_share.sql): the teacher opened the course, answers and notes are stripped.
 /** `open`: a lesson the class has had (or a self-study course); an exam open now. `done`: the exam is sent in this opening. (071) */
@@ -120,7 +122,7 @@ function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
     if (r.error) setErr(r.error.message); else setResult(r.data as { points: number; max: number });
   };
   if (result) return <div className="space-y-3">{backBtn}<Card className="text-center"><p className="text-sm text-text-secondary">Емтихан тапсырылды</p><p className="text-4xl font-black">{result.points} / {result.max}</p></Card></div>;
-  const answered = items.filter(x => (ans[x.i] ?? '').trim() !== '').length;
+  const answered = items.filter(x => (ans[x.i] ?? '').trim() !== '' && !(x.s.match && (ans[x.i] ?? '').includes('-'))).length;
   return (
     <div className="space-y-3">
       {backBtn}
@@ -134,7 +136,9 @@ function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
         <Card key={x.i} className="space-y-2">
           <p className="text-xs font-bold text-text-muted">{k + 1}. {x.s.title}{x.s.variant ? ` · нұсқа ${x.s.variant}` : ''}</p>
           <p className="whitespace-pre-wrap font-semibold">{x.s.prompt || x.s.q}</p>
-          {x.s.type === 'quiz' ? (
+          {x.s.widget && <Suspense fallback={<Skeleton />}><LabWidget w={x.s.widget} lang={lang} /></Suspense>}
+          {x.s.match ? <Match m={x.s.match} value={ans[x.i] ?? ''} onChange={v => setAns(a => ({ ...a, [x.i]: v }))} label={x.s.title} />
+          : x.s.type === 'quiz' ? (
             <div className="grid gap-1.5" role="radiogroup" aria-label={x.s.title}>
               {(x.s.options || []).map((o: string, j: number) => (
                 <label key={j} className={`flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border px-3 ${ans[x.i] === String(j) ? 'border-accent bg-accent-soft' : 'border-border hover:bg-surface-2'}`}>
@@ -147,6 +151,25 @@ function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
       {err && <p role="alert" className="text-sm text-danger">{err}</p>}
       <button type="button" disabled={busy} onClick={() => { if (answered < items.length && !window.confirm(`${items.length - answered} сұраққа жауап жоқ. Жібересің бе?`)) return; void send(); }}
         className="min-h-[48px] w-full rounded-xl bg-violet-600 px-4 font-bold text-white hover:bg-violet-700 disabled:opacity-50 cursor-pointer">{busy ? 'Жіберілуде…' : 'Емтиханды жіберу (бір-ақ рет)'}</button>
+    </div>
+  );
+}
+
+/** Matching in an exam: a letter of the right column for every left row; the answer is the letters in row order ("-" = none yet). */
+export function Match({ m, value, onChange, label }: { m: { left: string[]; right: string[] }; value: string; onChange: (v: string) => void; label: string }) {
+  const cur = m.left.map((_, k) => value[k] && value[k] !== '-' ? value[k] : '-');
+  const set = (k: number, ch: string) => onChange(cur.map((c, j) => (j === k ? ch : c)).join(''));
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <ul className="space-y-1.5" aria-label={`${label}: сол жақ`}>{m.left.map((l, k) => (
+        <li key={k} className="flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-3">
+          <span className="min-w-0 flex-1 font-mono">{k + 1}. {l}</span>
+          <select value={cur[k]} onChange={e => set(k, e.target.value)} aria-label={`${k + 1}. ${l}`} className="min-h-[40px] rounded-md border border-border bg-surface px-2 font-bold">
+            <option value="-">—</option>{m.right.map((_, j) => <option key={j} value={String.fromCharCode(65 + j)}>{String.fromCharCode(65 + j)}</option>)}
+          </select>
+        </li>))}</ul>
+      <ul className="space-y-1.5" aria-label={`${label}: оң жақ`}>{m.right.map((r, j) => (
+        <li key={j} className="flex min-h-[44px] items-center gap-2 rounded-lg bg-surface-2 px-3 font-mono"><b>{String.fromCharCode(65 + j)}.</b> {r}</li>))}</ul>
     </div>
   );
 }

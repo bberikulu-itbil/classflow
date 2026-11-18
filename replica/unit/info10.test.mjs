@@ -50,4 +50,22 @@ for (const s of L[3].slides.filter(s => s.qvariants)) {
   for (const lng of ['ru', 'en']) assert.equal(s[lng].qtext.length, 4);
   assert.ok(!JSON.stringify(s.qtext).includes('"answer"'), 'qtext carries no answers');
 }
+// 2.5 exam: every variant's answer recomputed
+const X = L[4].slides;
+assert.equal(L[4].exam, true);
+assert.equal(X.slice(1).reduce((n, s) => n + s.points, 0), 20, 'the exam is 20 points');
+const key = (s, v) => s.xvariants[v].accept[0], num = (str, re) => str.match(re).slice(1);
+for (let v = 0; v < 3; v++) {
+  const q = s => s.xtext[v].prompt;
+  { const [a, b] = num(q(X[3]), /x \+ ([01]+)₂ = ([01]+)₂/); assert.equal(key(X[3], v), (parseInt(b, 2) - parseInt(a, 2)).toString(2)); }
+  { const [h, o, b] = num(q(X[4]), /= ([0-9A-F]+)₁₆ \+ ([0-7]+)₈ − ([01]+)₂/); assert.equal(+key(X[4], v), parseInt(h, 16) + parseInt(o, 8) - parseInt(b, 2)); }
+  { const m = X[5].xtext[v].match; const col = { AND: '0001', OR: '0111', XOR: '0110', NAND: '1110', NOR: '1000' };
+    const gf = { AND: (a, b) => a & b, OR: (a, b) => a | b, XOR: (a, b) => a ^ b, NAND: (a, b) => 1 - (a & b), NOR: (a, b) => 1 - (a | b) };
+    assert.equal(key(X[5], v), m.left.map(l => { const g = l.split('(')[0]; const c = [[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, b]) => gf[g](a, b)).join(''); assert.equal(c, col[g]); return String.fromCharCode(65 + m.right.indexOf(c)); }).join(''));
+    assert.equal(new Set(m.right).size, 4); }
+  assert.equal(key(X[6], v), truthColumn(X[6].xtext[v].widget.circuit));
+  { const [n] = num(q(X[7]), /^(-\d+)/); assert.equal(key(X[7], v), tc(+n)); }
+  for (const s of X.slice(1)) for (const g of ['ru', 'en']) assert.ok(!JSON.stringify(s[g]).includes('accept'));
+}
+assert.ok(new Set([0, 1, 2].map(v => key(X[4], v))).size === 3, 'task 4 variants differ');
 console.log('info10 ok');

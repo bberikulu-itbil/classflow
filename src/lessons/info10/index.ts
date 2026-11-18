@@ -3,10 +3,11 @@
 import { L1 } from './a';
 import { L2 } from './b';
 import { L3, L4 } from './c';
+import { L5 } from './exam';
 import type { LabLesson } from '../sheetsLab/dsl';
 import { markLesson } from '../sheetsLab/cv';
 
-export const INFO10_LESSONS: LabLesson[] = [L1, L2, L3, L4].map(markLesson);
+export const INFO10_LESSONS: LabLesson[] = [L1, L2, L3, L4, L5].map(markLesson);
 /** The teacher's own course and module (found by title by the SQL generator). */
 export const INFO10_COURSE = { title: 'informatics 10th', grade: 10 };
 export const INFO10_MODULE = { title: '2-тарау. Деректерді көрсету' };
@@ -20,5 +21,5 @@ export const INFO10_LESSONS_DATA = INFO10_LESSONS.map(l => ({
     en: { summary: l.summary[2], objectives: l.objectives.map(o => o[2]), ...(l.plan ? { prior: l.plan.prior[2], env: l.plan.env[2], source: l.plan.source[2], stages: l.plan.stages.map(x => x.do[2]) } : {}) },
   },
   terms: l.terms.map(([term, kk, ru, en]) => ({ term, definition: `${kk} · ${ru} · ${en}` })),
-  slides: l.slides,
+  slides: l.slides, exam: !!l.exam,
 }));
