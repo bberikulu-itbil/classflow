@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, GraduationCap, Languages } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, GraduationCap, Languages, Lock } from 'lucide-react';
 import { sb, DEMO } from '../config';
 import { Card, EmptyState, ErrorBox, Skeleton, inputCls, useLoad } from '../ui';
 import { renderSlide } from '../components/Widgets';
 import { tr, useLang, LANG_LABEL } from '../lessons/lang';
 
 // The student reads only through cf_student_courses / cf_course_lesson (058_course_share.sql): the teacher opened the course, answers and notes are stripped.
-interface L { id: string; title: string; n: number }
+/** `open`: a lesson the class has had (or a self-study course); an exam open now. `done`: the exam is sent in this opening. (071) */
+interface L { id: string; title: string; n: number; exam?: boolean; open?: boolean; done?: boolean; closes_at?: string | null; result?: { points: number; max: number } | null }
 interface M { id: string; title: string; kind: 'lesson' | 'course'; quarter: number | null; lessons: L[] }
 interface C { id: string; title: string; subject: string | null; grade: number | null; description: string | null; cover_url: string | null; instructor: string | null; modules: M[] }
 interface Lesson { title: string; slides: any[] }
@@ -65,7 +66,7 @@ export function StudentCourses() {
   if (loading && !data) return <Skeleton rows={3} />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   const course = data?.find(c => c.id === cid);
-  if (course && les) return <Reader lesson={les} back={() => setLes(null)} />;
+  if (course && les) return les.exam ? <ExamTaker lesson={les} back={() => { setLes(null); reload(); }} /> : <Reader lesson={les} back={() => setLes(null)} />;
   if (course) return (
     <div className="space-y-3">
       <button type="button" onClick={() => setCid('')} className="inline-flex min-h-[44px] items-center gap-1 text-sm text-accent underline"><ArrowLeft size={16} aria-hidden="true" />Барлық курстар</button>
@@ -73,7 +74,7 @@ export function StudentCourses() {
       {course.modules.length === 0 ? <EmptyState text="Бұл курста әзірге модуль жоқ." /> : course.modules.map(m => (
         <section key={m.id} aria-label={m.title} className="space-y-2"><h3 className="font-semibold">{m.title}{m.quarter ? <span className="ml-2 text-sm font-normal text-text-secondary">{m.quarter}-тоқсан</span> : null}</h3>
           {m.lessons.length === 0 ? <p className="text-sm text-text-secondary">Дәріс жоқ.</p> : <ul className="grid gap-2 sm:grid-cols-2">{m.lessons.map(l => (
-            <li key={l.id}><button type="button" disabled={!l.n} onClick={() => setLes(l)} className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2 disabled:opacity-50"><span className="min-w-0 break-words font-medium">{l.title}</span><span className="shrink-0 text-xs text-text-secondary">{l.n ? `${l.n} бет` : 'бос'}</span></button></li>))}</ul>}
+            <li key={l.id}>{l.exam ? <ExamItem l={l} onTake={() => setLes(l)} /> : l.open === false ? <div className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-surface-2/50 px-3 py-2 text-text-muted" title="Сыныпта өтілгеннен кейін ашылады"><span className="min-w-0 truncate">{l.title}</span><Lock size={15} aria-hidden="true" className="shrink-0" /><span className="sr-only">сыныпта өткен соң ашылады</span></div> : <button type="button" disabled={!l.n} onClick={() => setLes(l)} className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2 disabled:opacity-50"><span className="min-w-0 break-words font-medium">{l.title}</span><span className="shrink-0 text-xs text-text-secondary">{l.n ? `${l.n} бет` : 'бос'}</span></button>}</li>))}</ul>}
         </section>))}
     </div>
   );
@@ -83,5 +84,69 @@ export function StudentCourses() {
         <div className="h-28 w-full shrink-0 bg-accent-soft">{c.cover_url ? <img src={c.cover_url} alt="" className="h-full w-full object-cover" /> : <div aria-hidden="true" className="grid h-full w-full place-items-center text-on-accent-soft"><GraduationCap size={40} strokeWidth={1.5} /></div>}</div>
         <div className="space-y-1 p-3"><h3 className="line-clamp-2 font-semibold leading-tight">{c.title}</h3><p className="text-xs text-text-secondary">{[c.subject, c.grade && `${c.grade}-сынып`].filter(Boolean).join(' · ')}</p><p className="text-xs text-text-muted">{c.modules.length} модуль · {c.modules.reduce((a, m) => a + m.lessons.length, 0)} дәріс</p></div>
       </button>))}</div>
+  );
+}
+
+/** An exam in the course list: locked until the teacher opens it, then «Тапсыру»; after it, the result. */
+function ExamItem({ l, onTake }: { l: L; onTake: () => void }) {
+  const res = l.result ? `${l.result.points} / ${l.result.max}` : '';
+  return (
+    <div className={`flex min-h-[48px] w-full flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${l.open && !l.done ? 'border-violet-400 bg-violet-50' : 'border-border bg-surface'}`}>
+      <ClipboardCheck size={16} aria-hidden="true" className="shrink-0 text-violet-700" />
+      <span className="min-w-0 flex-1 font-medium">{l.title} <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-xs font-bold text-violet-800">Емтихан</span></span>
+      {l.open && !l.done ? <button type="button" onClick={onTake} className="min-h-[40px] rounded-lg bg-violet-600 px-3 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer">Тапсыру{l.closes_at ? ` · ${new Date(l.closes_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} дейін` : ''}</button>
+        : <span className="inline-flex items-center gap-1 text-xs text-text-muted">{res ? <>Нәтиже: <b className="text-text">{res}</b></> : <><Lock size={13} aria-hidden="true" />Мұғалім ашқанда тапсырасың</>}</span>}
+    </div>
+  );
+}
+
+/** Taking an exam: the questions of my variant on one page, a countdown to the closing time, one submission. */
+function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
+  const [lang, flip] = useLang();
+  const q = useLoad(async () => { const r = await sb.rpc('cf_exam_get', { p_lesson: lesson.id }); if (r.error) throw new Error(r.error.message); return r.data as { closes_at: string | null; slides: any[] }; }, [lesson.id]);
+  const [ans, setAns] = useState<Record<number, string>>({});
+  const [result, setResult] = useState<{ points: number; max: number } | null>(null);
+  const [err, setErr] = useState(''), [busy, setBusy] = useState(false), [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const backBtn = <button type="button" onClick={back} className="inline-flex min-h-[44px] items-center gap-1 text-sm text-accent underline"><ArrowLeft size={16} aria-hidden="true" />Курсқа оралу</button>;
+  if (q.loading && !q.data) return <div className="space-y-3">{backBtn}<Skeleton /></div>;
+  if (q.error) return <div className="space-y-3">{backBtn}<ErrorBox message={q.error} onRetry={q.reload} /></div>;
+  const items = (q.data?.slides || []).map((s, i) => ({ s: tr(s, lang) as any, i })).filter(x => x.s.type === 'quiz' || (x.s.type === 'task' && !x.s.criteria && !x.s.levels && !x.s.sql));
+  const left = q.data?.closes_at ? new Date(q.data.closes_at).getTime() - now : null;
+  const send = async () => {
+    setBusy(true); setErr('');
+    const r = await sb.rpc('cf_exam_submit', { p_lesson: lesson.id, p_answers: Object.fromEntries(Object.entries(ans).map(([k, v]) => [k, v])) });
+    setBusy(false);
+    if (r.error) setErr(r.error.message); else setResult(r.data as { points: number; max: number });
+  };
+  if (result) return <div className="space-y-3">{backBtn}<Card className="text-center"><p className="text-sm text-text-secondary">Емтихан тапсырылды</p><p className="text-4xl font-black">{result.points} / {result.max}</p></Card></div>;
+  const answered = items.filter(x => (ans[x.i] ?? '').trim() !== '').length;
+  return (
+    <div className="space-y-3">
+      {backBtn}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-violet-300 bg-violet-50 p-3">
+        <h2 className="min-w-0 flex-1 break-words text-lg font-bold">{lesson.title}</h2>
+        <span className="text-sm text-text-secondary">{answered} / {items.length}</span>
+        {left !== null && <span className={`rounded-lg px-2 py-1 font-mono text-sm font-bold ${left < 60000 ? 'bg-danger text-white' : 'bg-surface'}`}>{left > 0 ? `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}` : '0:00'}</span>}
+        <button type="button" onClick={flip} aria-label={`Тіл: ${LANG_LABEL[lang]}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-surface px-2 text-sm"><Languages size={15} aria-hidden="true" />{LANG_LABEL[lang]}</button>
+      </div>
+      {items.map((x, k) => (
+        <Card key={x.i} className="space-y-2">
+          <p className="text-xs font-bold text-text-muted">{k + 1}. {x.s.title}{x.s.variant ? ` · нұсқа ${x.s.variant}` : ''}</p>
+          <p className="whitespace-pre-wrap font-semibold">{x.s.prompt || x.s.q}</p>
+          {x.s.type === 'quiz' ? (
+            <div className="grid gap-1.5" role="radiogroup" aria-label={x.s.title}>
+              {(x.s.options || []).map((o: string, j: number) => (
+                <label key={j} className={`flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border px-3 ${ans[x.i] === String(j) ? 'border-accent bg-accent-soft' : 'border-border hover:bg-surface-2'}`}>
+                  <input type="radio" name={`q${x.i}`} checked={ans[x.i] === String(j)} onChange={() => setAns(a => ({ ...a, [x.i]: String(j) }))} />{String.fromCharCode(65 + j)}. {o}
+                </label>))}
+            </div>
+          ) : <input className={inputCls} value={ans[x.i] ?? ''} onChange={e => setAns(a => ({ ...a, [x.i]: e.target.value }))} placeholder="Жауабың" aria-label={x.s.title} />}
+        </Card>
+      ))}
+      {err && <p role="alert" className="text-sm text-danger">{err}</p>}
+      <button type="button" disabled={busy} onClick={() => { if (answered < items.length && !window.confirm(`${items.length - answered} сұраққа жауап жоқ. Жібересің бе?`)) return; void send(); }}
+        className="min-h-[48px] w-full rounded-xl bg-violet-600 px-4 font-bold text-white hover:bg-violet-700 disabled:opacity-50 cursor-pointer">{busy ? 'Жіберілуде…' : 'Емтиханды жіберу (бір-ақ рет)'}</button>
+    </div>
   );
 }

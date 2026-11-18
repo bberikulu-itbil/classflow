@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   Clock,
+  ClipboardCheck,
   ExternalLink,
   Eye,
   EyeOff,
@@ -43,6 +44,7 @@ import { courseTitle, lessonTitle, moduleTitle } from './display';
 import { fmtDate } from '../hw/format';
 import { ModuleAnalytics } from './ModuleAnalytics';
 import { CourseAudienceDialog, audienceText } from './CourseAudience';
+import { ExamDialog } from './ExamPanel';
 
 export const PRESET_COVERS = [
   {
@@ -355,7 +357,8 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
   // Past sessions for analysis
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessTick, setSessTick] = useState(0);
-  const [audOpen, setAudOpen] = useState(false); // bumps after a past session is deleted
+  const [audOpen, setAudOpen] = useState(false);
+  const [examOf, setExamOf] = useState<{ id: string; title: string } | null>(null); // bumps after a past session is deleted
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
@@ -629,6 +632,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
       {startErr && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{startErr}</p>}
 
       {/* TAB 1: SYLLABUS */}
+      {examOf && <ExamDialog lessonId={examOf.id} title={examOf.title} onClose={() => setExamOf(null)} />}
       {tab === 'syllabus' && (
         <section aria-label="Курс силлабусы" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -828,6 +832,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                     <a href={'#edit/' + l.id} className="min-w-0 font-medium text-text hover:text-accent transition-colors break-words text-sm sm:text-base leading-snug">
                                       {lessonTitle(l, lang)}
                                     </a>
+                                    {p.exam && <span className="shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">Емтихан</span>}
                                   </div>
 
                                   {!editing && (
@@ -878,6 +883,14 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                           </>
                                         )}
                                       </button>
+                                      {p.exam ? (
+                                        <Button variant="secondary" onClick={() => setExamOf({ id: l.id, title: lessonTitle(l, lang) })} className="!min-h-[38px] px-3 gap-1.5 text-xs sm:text-sm font-semibold !border-violet-300 !text-violet-800">
+                                          <ClipboardCheck size={14} aria-hidden="true" /><span>Емтихан: ашу, нәтиже</span>
+                                        </Button>
+                                      ) : null}
+                                      <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-text-secondary" title="Оқушылар емтиханды курста көреді, тек сіз ашқанда тапсырады">
+                                        <input type="checkbox" className="h-4 w-4" checked={!!p.exam} onChange={async e => { await st.setExam(me, l.id, e.target.checked); reload(); }} aria-label={`${lessonTitle(l, lang)}: емтихан`} />Емтихан
+                                      </label>
                                     </div>
                                   )}
 

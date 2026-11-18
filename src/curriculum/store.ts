@@ -24,7 +24,7 @@ export interface Course {
 export type Kind = 'lesson' | 'course';
 /** kind 'lesson' = school-lesson module (may belong to one quarter); 'course' = course module (no quarter). grade empty = the course's grade. */
 export interface Mod { id: string; course_id: string; title: string; position: number; kind: Kind; quarter: number | null; grade: number | null }
-export interface Place { lesson_id: string; module_id: string; position: number }
+export interface Place { lesson_id: string; module_id: string; position: number; /** an exam: students see it, take it only while open (071) */ exam?: boolean }
 export interface Les { id: string; title: string; title_kk?: string; title_ru?: string; subject: string | null }
 export interface Curr { courses: Course[]; modules: Mod[]; places: Place[]; lessons: Les[]; local: boolean; kindCol?: boolean }
 export interface Me { id: string; school_id: string }
@@ -154,7 +154,7 @@ export async function loadCurr(me: Me): Promise<Curr> {
     const [c, m0, p] = await Promise.all([
       readCourses(),
       readMods(),
-      sb.from('cf_curr_lessons').select('lesson_id,module_id,position'),
+      sb.from('cf_curr_lessons').select('lesson_id,module_id,position,exam').then(r => (r.error?.code === '42703' ? sb.from('cf_curr_lessons').select('lesson_id,module_id,position') : r)), // 071 not run yet: no exams
     ]);
     let m = m0;
     if (m.error?.code === '42703' && !noKindCol) { noKindCol = true; m = await readMods(); } // 012 not run yet: every module is a quarter-less lesson module
@@ -265,6 +265,9 @@ export const swapLessons = (me: Me, a: Place, b: Place) =>
     const r = await sb.from('cf_curr_lessons').update({ position: b.position }).eq('lesson_id', a.lesson_id);
     return r.error ? r : sb.from('cf_curr_lessons').update({ position: a.position }).eq('lesson_id', b.lesson_id);
   }, s => ({ ...s, places: s.places.map(p => (p.lesson_id === a.lesson_id ? { ...p, position: b.position } : p.lesson_id === b.lesson_id ? { ...p, position: a.position } : p)) }));
+/** Marks a lesson of a module as an exam (or back to a lesson). */
+export const setExam = (me: Me, lessonId: string, exam: boolean) =>
+  run(me, () => sb.from('cf_curr_lessons').update({ exam }).eq('lesson_id', lessonId), s => ({ ...s, places: s.places.map(p => (p.lesson_id === lessonId ? { ...p, exam } : p)) }));
 export { next as nextPosition };
 
 const SEL = 'cf_curriculum_course';
