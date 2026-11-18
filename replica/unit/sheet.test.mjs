@@ -50,4 +50,6 @@ assert.deepEqual(['C1', 'C2', 'C3', 'F1', 'F2', 'F3', 'G1', 'G2', 'G3', 'G4', 'G
 // conditional formatting and filters reuse the COUNTIF condition; a range lists its cells row by row
 assert.ok(matches(79, '<80') && !matches(80, '<80') && matches('Иә', '=иә') && matches(20, '>=20'));
 assert.deepEqual(cellsOf('A1:B2'), ['A1', 'B1', 'A2', 'B2']);
+g = ev({ A1: '=DEC2BIN(13)', A2: '=BIN2DEC("1101")', A3: '=DEC2HEX(255)', A4: '=HEX2DEC("ff")', A5: '=DEC2BIN(5;8)', A6: '=BASE(255;8)', A7: '=DECIMAL("777";8)', A8: '=BIN2DEC("102")', A9: '=DEC2OCT(64)' });
+assert.deepEqual(['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9'].map(g), ['1101', '13', 'FF', '255', '00000101', '377', '511', '#NUM!', '100']);
 console.log('sheet engine ok');

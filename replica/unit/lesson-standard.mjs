@@ -1,9 +1,9 @@
 // Lesson standard audit (docs: the «ЖИ көмегімен сабақ жасау» guide). Run: node replica/unit/lesson-standard.mjs [ids...]
 // Exits 1 when a listed lesson breaks the standard. Without ids it reports every lesson and never fails.
 import { build } from 'esbuild';
-await build({ stdin: { contents: "export { SHEETSLAB_LESSONS } from './src/lessons/sheetsLab'; export { SHEETS7_LESSONS } from './src/lessons/sheetsLab7'; export { SHEETS9_LESSONS } from './src/lessons/sheetsLab9';", resolveDir: '.', loader: 'ts' }, bundle: true, format: 'esm', outfile: '/tmp/lessons-std.mjs', logLevel: 'error' });
+await build({ stdin: { contents: "export { SHEETSLAB_LESSONS } from './src/lessons/sheetsLab'; export { SHEETS7_LESSONS } from './src/lessons/sheetsLab7'; export { SHEETS9_LESSONS } from './src/lessons/sheetsLab9'; export { INFO10_LESSONS } from './src/lessons/info10';", resolveDir: '.', loader: 'ts' }, bundle: true, format: 'esm', outfile: '/tmp/lessons-std.mjs', logLevel: 'error' });
 const m = await import('/tmp/lessons-std.mjs');
-const all = [...m.SHEETS7_LESSONS, ...m.SHEETSLAB_LESSONS, ...m.SHEETS9_LESSONS], want = process.argv.slice(2);
+const all = [...m.SHEETS7_LESSONS, ...m.SHEETSLAB_LESSONS, ...m.SHEETS9_LESSONS, ...m.INFO10_LESSONS], want = process.argv.slice(2);
 const ORDER = ['warmup', 'explain', 'together', 'example', 'practice', 'check', 'reflect'];
 const KIND = { warmup: ['check'], explain: ['explain', 'video'], together: ['explain', 'video', 'example', 'exampletask'], example: ['example', 'exampletask', 'video'], practice: ['practice'], check: ['check'] };
 let bad = 0;
@@ -21,14 +21,15 @@ for (const l of all) {
     if (o < last) e.push(`${n}: stage ${s.stage} comes after a later stage`);
     last = Math.max(last, o);
     if (KIND[s.stage] && !KIND[s.stage].includes(s.kind)) e.push(`${n}: kind ${s.kind} in stage ${s.stage}`);
-    if (s.type === 'quiz' && (!s.explanation || s.options.length !== 4)) e.push(`${n}: quiz needs 4 options and an explanation`);
+    if (s.type === 'quiz' && !s.qvariants && (!s.explanation || s.options.length !== 4)) e.push(`${n}: quiz needs 4 options and an explanation`);
+    if (s.qvariants && (s.qvariants.length < 2 || s.qvariants.some(v => v.options.length !== 4 || !v.explanation) || s.ru?.qtext?.length !== s.qvariants.length)) e.push(`${n}: test variants need 4 options, an explanation and ru/en text`);
   });
   for (const x of st) {
     const mine = sl.filter(s => s.stage === x.k);
     if (!mine.length) e.push(`stage ${x.k}: no slide`);
     else if (!mine.some(s => s.notes)) e.push(`stage ${x.k}: no teacher note`);
   }
-  const quiz = sl.filter(s => s.type === 'quiz');
+  const quiz = sl.filter(s => s.type === 'quiz' && !s.qvariants);
   if (quiz.length > 2 && new Set(quiz.map(q => q.answer)).size === 1) e.push(`all ${quiz.length} quizzes have the correct answer in position ${quiz[0].answer + 1}`);
   const prac = sl.filter(s => s.stage === 'practice' && s.type === 'task');
   if (!prac.length) e.push('practice: no auto-checked task');

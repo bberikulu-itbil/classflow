@@ -24,6 +24,7 @@ const RULES = [
   { key: 'ask', name: '«Түсінбедім» сұрақтары', hint: 'Оқушы слайдқа сұрақ жаза алады' },
   { key: 'hand', name: 'Қол көтеру', hint: 'Өшірсеңіз, оқушыда батырма жасырылады' },
   { key: 'lock', name: 'Экрандарды бұғаттау', hint: 'Барлық оқушының экраны жабылады' },
+  { key: 'auto', name: 'Тапсырманы автоматты жіберу', hint: 'Тапсырма слайдына өткенде өзі ашылады; келесі слайдқа өткенде жібермегендерге 5 секунд беріледі' },
 ];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
 
@@ -62,6 +63,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [task, setTask] = useState<any>(null);
   const [subs, setSubs] = useState<any[]>([]);
   const [lvTasks, setLvTasks] = useState<any[]>([]); // every task of an open L1-L3 batch
+  const [varTasks, setVarTasks] = useState<any[]>([]); // the tasks of an open quiz with variants (A, B, C …)
   const [pairs, setPairs] = useState<any[]>([]);
   const [roster, setRoster] = useState<any[]>([]);
   const [pf, setPf] = useState({ host: '', partner: '' });
@@ -106,7 +108,11 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
       const activeTask = sRes.data?.active_task_id ? (await sb.from('cf_tasks').select('*').eq('id', sRes.data.active_task_id).single()).data : null;
       setTask(activeTask);
-      if (activeTask?.level != null) {
+      if (activeTask?.level == null && activeTask?.variant) { // quiz variants: one task per variant, answers of all of them
+        const batch = (await sb.from('cf_tasks').select('id,variant,options').eq('session_id', sid).eq('slide_index', activeTask.slide_index).eq('opened_at', activeTask.opened_at)).data || [];
+        setLvTasks([]); setVarTasks(batch);
+        setSubs((await sb.from('cf_submissions').select('*').in('task_id', batch.map((b: any) => b.id))).data || []);
+      } else if (activeTask?.level != null) {
         const batch = (await sb.from('cf_tasks').select('*').eq('session_id', sid).eq('slide_index', activeTask.slide_index).eq('opened_at', activeTask.opened_at).order('level').order('variant')).data || [];
         setLvTasks(batch);
         setSubs((await sb.from('cf_submissions').select('*').in('task_id', batch.map((b: any) => b.id))).data || []);
@@ -189,8 +195,18 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const goSlide = async (i: number) => {
     const idx = Math.max(0, Math.min(total - 1, i));
     if (idx === cur) return;
-    if (task?.status === 'open' && idx > cur && waiting.length && !window.confirm(`${waiting.length} оқушы әлі тапсырмаған (${waiting.slice(0, 5).map(p => p.full_name.split(' ')[0]).join(', ')}). Келесі слайдқа өтсең, тапсырма жабылады. Өтесің бе?`)) return;
+    const auto = !!session.auto_task;
+    if (!auto && task?.status === 'open' && idx > cur && waiting.length && !window.confirm(`${waiting.length} оқушы әлі тапсырмаған (${waiting.slice(0, 5).map(p => p.full_name.split(' ')[0]).join(', ')}). Келесі слайдқа өтсең, тапсырма жабылады. Өтесің бе?`)) return;
+    if (auto && task?.status === 'open' && !task.closes_at) { // students who have not sent get 5 more seconds on their own screen
+      const tid = task.id;
+      await sb.rpc('cf_close_soon', { p_task: tid, p_secs: 5 });
+      setTimeout(() => { sb.rpc('cf_close_task', { p_task: tid }).then(refresh, () => {}); }, 5600);
+    }
     await run(() => sb.rpc('cf_goto', { p_session: sid, p_index: idx }));
+    if (auto && ['quiz', 'task', 'code'].includes(priv[idx]?.type)) { // the task opens by itself, once per slide
+      const { count } = await sb.from('cf_tasks').select('id', { count: 'exact', head: true }).eq('session_id', sid).eq('slide_index', idx);
+      if (!count) await run(() => sb.rpc('cf_open_task', { p_session: sid, p_index: idx }));
+    }
   };
   /** One place for every action: shows the server's refusal instead of failing silently, then re-reads. */
   const run = async (fn: () => PromiseLike<{ error: { message: string } | null }>, ok = '') => {
@@ -231,7 +247,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const toggleNav = () => run(() => sb.rpc('cf_set_nav', { p_session: sid, p_on: !session.student_nav }));
   const lockAll = () => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !session.locked }));
   // allow_ask / allow_hand come with migration 063: without the column the rule counts as on
-  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : session.allow_hand !== false;
+  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : k === 'auto' ? !!session.auto_task : session.allow_hand !== false;
   const setRule = (k: string, on: boolean) => k === 'nav' ? toggleNav() : k === 'lock' ? lockAll() : run(() => sb.rpc('cf_set_rule', { p_session: sid, p_rule: k, p_on: on }));
   const subsDone = new Set(subs.map(x => x.student_id)).size;
   /** What the class grid shows beside a name: the level reached (L1-L3), ✓ answered, … still working. */
@@ -502,7 +518,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                           </span>
                         </div>
                         {m && <p className={`text-sm ${m.passed === m.total ? 'text-success' : 'text-warning'}`}>Автотест: {m.passed}/{m.total}</p>}
-                        <pre className="whitespace-pre-wrap break-words text-sm text-text-secondary font-sans">{task.kind === 'quiz' ? (task.options || [])[+s.answer] ?? s.answer : s.meta?.sql || s.answer}</pre>
+                        <pre className="whitespace-pre-wrap break-words text-sm text-text-secondary font-sans">{task.kind === 'quiz' ? (() => { const vt = varTasks.find(x => x.id === s.task_id); return `${vt ? vt.variant + ' · ' : ''}${((vt || task).options || [])[+s.answer] ?? s.answer}`; })() : s.meta?.sql || s.answer}</pre>
                         {['text', 'code', 'short'].includes(task.kind) && (
                           <div className="flex items-center gap-2 pt-1">
                             <input aria-label={`${nameOf(s.student_id)}: ұпай (0–${task.points})`} className={inputCls + ' !w-20'} type="number" min={0} max={task.points} value={ptsVal} onChange={e => setGradingPoints({ ...gradingPoints, [s.id]: e.target.value })} />

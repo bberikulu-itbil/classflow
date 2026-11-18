@@ -171,11 +171,11 @@ export function designSlide(s: any) {
 /** Marks the title, content and worked-example slides of a lesson for the designed look. */
 /** A lesson whose quizzes all keep the correct option in one position teaches "always A": move it to a different place in every quiz (kk, ru and en alike). */
 export function spreadAnswers(slides: any[]): any[] {
-  const qz = slides.filter(s => s.type === 'quiz');
+  const qz = slides.filter(s => s.type === 'quiz' && !s.qvariants);
   if (qz.length < 2 || new Set(qz.map(q => q.answer)).size > 1) return slides;
   let n = 0;
   return slides.map(s => {
-    if (s.type !== 'quiz') return s;
+    if (s.type !== 'quiz' || s.qvariants) return s;
     const to = (++n * 3) % s.options.length; // 3, 2, 1, 0, 3 … for four options
     const mv = (a: any[]) => { const b = a.filter((_, i) => i !== s.answer); b.splice(to, 0, a[s.answer]); return b; };
     return { ...s, options: mv(s.options), answer: to, ru: { ...s.ru, options: mv(s.ru.options) }, en: { ...s.en, options: mv(s.en.options) } };
@@ -184,7 +184,7 @@ export function spreadAnswers(slides: any[]): any[] {
 
 export function markLesson<L extends { slides: any[] }>(l: L): L {
   return { ...l, slides: spreadAnswers(l.slides).map((s: any) => {
-    if (!['title', 'content', 'solution'].includes(s.type) || s.demoSheet || s.sql) return s; // a demo sheet slide has its own page, an SQL page keeps room for the editor
+    if (!['title', 'content', 'solution'].includes(s.type) || s.demoSheet || s.sql || s.widget) return s; // a demo sheet slide has its own page, an SQL page keeps room for the editor
     if (s.art && !(s.art in ART_H)) throw new Error(`unknown picture ${s.art}`);
     return { ...s, design: 'lab' };
   }) };

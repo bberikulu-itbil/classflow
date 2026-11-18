@@ -141,9 +141,24 @@ export function evaluator(cells: Cells) {
     LEFT: a => show(val(a[0])).slice(0, a[1] ? num(run(a[1])) : 1), RIGHT: a => { const t = show(val(a[0])), k = a[1] ? num(run(a[1])) : 1; return k > 0 ? t.slice(-k) : ''; },
     UPPER: a => show(val(a[0])).toUpperCase(), LOWER: a => show(val(a[0])).toLowerCase(),
     TODAY: () => { const d = new Date(); return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 864e5); },
+    // number systems (10th grade): DEC2BIN(13) = 1101, BIN2DEC("1101") = 13, BASE(255;16) = FF, DECIMAL("FF";16) = 255
+    DEC2BIN: a => toBase(a, 2), DEC2OCT: a => toBase(a, 8), DEC2HEX: a => toBase(a, 16),
+    BIN2DEC: a => fromBase(show(val(a[0])), 2), OCT2DEC: a => fromBase(show(val(a[0])), 8), HEX2DEC: a => fromBase(show(val(a[0])), 16),
+    BASE: a => { const r = Math.floor(num(run(a[1]))); return r < 2 || r > 36 ? fail('#NUM!') : toBase([a[0], a[2]].filter(Boolean) as Node[], r); },
+    DECIMAL: a => { const r = Math.floor(num(run(a[1]))); return r < 2 || r > 36 ? fail('#NUM!') : fromBase(show(val(a[0])), r); },
     FLOOR: a => { const s = a[1] ? num(run(a[1])) : 1; return s === 0 ? 0 : Math.floor(num(run(a[0])) / s) * s; },
   };
   const num2 = (n: Node): Val => val(n);
+  /** A non-negative whole number written in base r (as text, so leading zeros of `places` stay). */
+  const toBase = (a: Node[], r: number): Val => {
+    const n = num(run(a[0])); if (n < 0 || !Number.isInteger(n)) return fail('#NUM!');
+    const t = n.toString(r).toUpperCase(), w = a[1] ? Math.floor(num(run(a[1]))) : 0;
+    return w > t.length ? t.padStart(w, '0') : t;
+  };
+  const fromBase = (t: string, r: number): Val => {
+    const x = t.trim().toUpperCase(), digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.slice(0, r);
+    return x && [...x].every(ch => digits.includes(ch)) ? parseInt(x, r) : fail('#NUM!');
+  };
   /** Positions (in range order) that pass every (range, condition) pair of a[from..]. */
   const ifs = (a: Node[], from: number): number[] => {
     if ((a.length - from) % 2 || a.length - from < 2) return fail('#N/A');

@@ -13,6 +13,7 @@ import { coalesce } from '../utils/coalesce';
 import { Icon } from './Icons';
 import { LessonMap } from './LessonMap';
 import { AskPanel } from './AskPanel';
+import { qvariantOf } from '../utils/qvariant';
 
 const TOP = 'inline-flex h-10 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-text transition hover:bg-bg cursor-pointer';
 const KIND_NAME: Record<string, [string, string, string]> = { info: ['Ақпарат', 'Информация', 'Information'], example: ['Мысал', 'Пример', 'Example'], practice: ['Практика', 'Практика', 'Practice'], check: ['Өзіңді тексер', 'Проверь себя', 'Check yourself'] };
@@ -52,6 +53,10 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   const ideCacheRef = useRef<{ [idx: number]: any }>({});
 
   const quiet = (fn: string, args: any) => sb.rpc(fn, args).then(() => {}, () => {});
+  // «auto task» rule: when the teacher moves on, an open task I have not sent stays on my screen until its closes_at (5 s)
+  const [hold, setHold] = useState<string | null>(null);
+  const taskRef = useRef<any>(null), slideIdxRef = useRef<number | null>(null), shortRef = useRef('');
+  shortRef.current = shortAnswer;
 
   const refresh = async () => {
     try {
@@ -61,6 +66,18 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         setEnded(true);
         return;
       }
+      const prev = taskRef.current;
+      if (prev && prev.status === 'open' && slideIdxRef.current !== null && sRes.data && sRes.data.current_slide !== slideIdxRef.current) {
+        const [row, sent] = await Promise.all([
+          sb.from('cf_tasks').select('status,closes_at').eq('id', prev.id).single(),
+          sb.from('cf_submissions').select('id').eq('task_id', prev.id).eq('student_id', me.id),
+        ]);
+        if (row.data?.status === 'open' && row.data.closes_at && !(sent.data || []).length && new Date(row.data.closes_at).getTime() > Date.now() - 1000) {
+          setHold(row.data.closes_at);
+          return;
+        }
+      }
+      setHold(null);
       const [curRes, partsRes, lbRes] = await Promise.all([
         sb.rpc('cf_slide', { p_session: sid }),
         sb.from('cf_participants').select('*').eq('session_id', sid).eq('student_id', me.id),
@@ -79,10 +96,15 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       setMePart(partsRes.data?.[0] || null);
       setLeaderboard(lbRes.data || []);
 
-      const activeTask = sRes.data?.active_task_id
+      let activeTask = sRes.data?.active_task_id
         ? (await sb.from('cf_tasks').select('*').eq('id', sRes.data.active_task_id).single()).data
         : null;
+      if (activeTask && activeTask.level == null && activeTask.variant) { // a quiz with variants: my own variant's task
+        const batch = (await sb.from('cf_tasks').select('*').eq('session_id', sid).eq('slide_index', activeTask.slide_index).eq('opened_at', activeTask.opened_at)).data || [];
+        activeTask = batch.find((x: any) => x.variant === qvariantOf(me.id, activeTask.slide_index, batch.length)) || activeTask;
+      }
       setTask(activeTask);
+      taskRef.current = activeTask; slideIdxRef.current = curRes.data?.index ?? null;
 
       if (activeTask) {
         const subRes = (await sb.from('cf_submissions').select('*').eq('task_id', activeTask.id).eq('student_id', me.id)).data;
@@ -218,6 +240,18 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     if (error) alert(error.message);
     await refresh();
   };
+  /** End of the extra seconds: what is on the screen is sent (typed answer or sheet), then the student follows the teacher. */
+  const autoSend = async () => {
+    const t = taskRef.current;
+    let ans = '';
+    if (t?.kind === 'sheet' && Array.isArray(slide.criteria) && sheetApi.current)
+      ans = criteriaAnswer(slide.criteria as Criterion[], c => cellAnswer(sheetApi.current?.get(c) ?? ''), c => sheetApi.current?.raw(c) ?? '', (c, k) => sheetApi.current?.look(c, k) ?? '0');
+    else if (t && ['short', 'text'].includes(t.kind)) ans = shortRef.current.trim();
+    if (t && ans) await sb.rpc('cf_submit', { p_task: t.id, p_answer: ans, p_meta: { auto: true } }).then(() => {}, () => {});
+    taskRef.current = null; setHold(null); refresh();
+  };
+  /** The variant's text in the student's language (`qtext` of the slide: prompts and options without answers, same order as the variants). */
+  const vText = (t: any): { prompt?: string; options?: string[] } | undefined => (t?.variant && t.level == null && Array.isArray(slide.qtext) ? slide.qtext[t.variant.charCodeAt(0) - 65] : undefined);
   const submitAnswer = async (ans: string, meta: any = null) => {
     if (!task) return;
     await sb.rpc('cf_submit', { p_task: task.id, p_answer: ans, p_meta: meta });
@@ -227,6 +261,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   return (
     <div data-theme="light" className="min-h-screen bg-bg text-text flex flex-col">
       {bannerShow && <div className="bg-red-600 text-center font-bold p-2">{bannerText}</div>}
+      {hold && <HoldTimer until={hold} lang={lang} onEnd={autoSend} />}
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 text-sm sm:px-5">
         <b className="min-w-0 truncate">{session.title}</b>
         <div className="flex items-center gap-2">
@@ -384,7 +419,10 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           <div className="p-4 rounded-2xl bg-slate-900 text-red-400 font-bold">⏹ Уақыт бітті</div>
         ) : task.kind === 'quiz' ? (
           <div className="grid gap-2">
-            {(task.options || []).map((o: string, i: number) => (
+            {task.variant && task.level == null && <div data-testid="my-variant" className="rounded-2xl border-2 border-violet-400 bg-violet-50 p-4">
+              <div className="text-xs font-bold uppercase tracking-wide text-violet-700">{pick(lang, 'Сенің нұсқаң', 'Твой вариант', 'Your variant')}: {task.variant}</div>
+              <p className="mt-1 whitespace-pre-wrap text-lg font-semibold text-slate-900">{vText(task)?.prompt ?? task.prompt}</p></div>}
+            {(vText(task)?.options ?? task.options ?? []).map((o: string, i: number) => (
               <button
                 key={i}
                 className="p-4 rounded-2xl bg-slate-800 hover:bg-blue-700 text-left text-lg border border-slate-600 cursor-pointer"
@@ -434,6 +472,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
       </div>
       </>)}
 
+      {!locked && slide.helper && <HelperSheet key={sid} sid={sid} lang={lang} />}
       {!locked && !popupActive && !dictOpen && session.allow_ask !== false && <AskPanel sid={sid} me={me} slide={viewing ?? cur} kind={pick(lang, ...(KIND_NAME[kinds[viewing ?? cur]] || KIND_NAME.info))} lang={lang} />}
 
       {popupActive && (
@@ -518,6 +557,44 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A scratch sheet for calculations, opened from a tab on the left edge of slides marked `helper` (kept per session in this browser). */
+function HelperSheet({ sid, lang }: { sid: string; lang: 'kk' | 'ru' | 'en' }) {
+  const [open, setOpen] = useState(false);
+  const label = pick(lang, 'Көмекші кесте', 'Таблица-помощник', 'Helper sheet');
+  return <>
+    {!open && <button type="button" onClick={() => setOpen(true)} aria-label={label} data-testid="helper-sheet-tab"
+      className="fixed bottom-4 left-4 z-30 flex h-12 items-center gap-2 rounded-full bg-emerald-600 px-4 text-sm font-semibold text-white shadow-pop sm:bottom-auto sm:left-0 sm:top-1/2 sm:h-36 sm:w-11 sm:-translate-y-1/2 sm:rounded-l-none sm:rounded-r-2xl sm:px-0 cursor-pointer">
+      <span className="sm:[writing-mode:vertical-rl] sm:rotate-180">▦ {label}</span></button>}
+    {open && <div role="dialog" aria-label={label} className="fixed bottom-0 left-0 top-0 z-40 flex w-full flex-col gap-3 overflow-y-auto border-r border-border bg-slate-950 p-4 shadow-pop sm:w-[34rem]">
+      <div className="flex items-center gap-2"><b className="flex-1 text-text">▦ {label}</b>
+        <button type="button" onClick={() => setOpen(false)} aria-label={pick(lang, 'Жабу', 'Закрыть', 'Close')} className="grid h-10 w-10 place-items-center rounded-lg text-text hover:bg-slate-800 cursor-pointer">✕</button></div>
+      <p className="text-xs text-slate-400">{pick(lang, 'Есептеуге: =DEC2BIN(45), =BIN2DEC("101101"), =DEC2HEX(255), =HEX2DEC("FF"), =BASE(100;8)', 'Для расчётов: =DEC2BIN(45), =BIN2DEC("101101"), =DEC2HEX(255), =HEX2DEC("FF"), =BASE(100;8)', 'For calculations: =DEC2BIN(45), =BIN2DEC("101101"), =DEC2HEX(255), =HEX2DEC("FF"), =BASE(100;8)')}</p>
+      <Suspense fallback={null}><MiniSheet cfg={{ rows: 15, cols: 6 }} storageKey={`cf-helper:${sid}`} /></Suspense>
+    </div>}
+  </>;
+}
+
+/** The extra seconds of a task the teacher has moved past: a countdown on top; at zero the screen's answer is sent. */
+function HoldTimer({ until, lang, onEnd }: { until: string; lang: 'kk' | 'ru' | 'en'; onEnd: () => void }) {
+  const [left, setLeft] = useState(() => new Date(until).getTime() - Date.now());
+  const done = useRef(false);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const l = new Date(until).getTime() - Date.now();
+      setLeft(l);
+      if (l <= 600 && !done.current) { done.current = true; onEnd(); }
+    }, 200);
+    return () => clearInterval(id);
+  }, [until]);
+  const sec = Math.max(0, Math.ceil(left / 1000));
+  return (
+    <div role="alert" data-testid="hold-timer" className="sticky top-0 z-40 flex items-center justify-center gap-3 bg-amber-400 p-3 text-center font-bold text-slate-900">
+      <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-900 text-xl text-amber-300 tabular-nums">{sec}</span>
+      {pick(lang, 'Мұғалім келесі слайдқа өтті: жауабыңды қазір жібер!', 'Учитель перешёл дальше: отправь ответ сейчас!', 'The teacher moved on: send your answer now!')}
     </div>
   );
 }
