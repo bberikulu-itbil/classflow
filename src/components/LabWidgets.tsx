@@ -18,7 +18,7 @@ const inp = 'h-11 rounded-xl border border-slate-500 bg-slate-950 px-3 font-mono
 export function LabWidget({ w, lang = 'kk', big = false }: { w: any; lang?: Lang; big?: boolean }) {
   if (!w) return null;
   const inner = w.kind === 'base' ? (w.mode === 'arith' ? <BaseArith w={w} lang={lang} /> : <BaseConvert w={w} lang={lang} />)
-    : w.kind === 'circuit' ? <Circuit w={w} lang={lang} /> : w.kind === 'code' ? (w.mode === 'text' ? <TextCode w={w} lang={lang} /> : <IntCode w={w} lang={lang} />) : null;
+    : w.kind === 'circuit' ? <Circuit w={w} lang={lang} /> : w.kind === 'adder' ? <Adder w={w} lang={lang} /> : w.kind === 'code' ? (w.mode === 'text' ? <TextCode w={w} lang={lang} /> : <IntCode w={w} lang={lang} />) : null;
   return <div data-testid={`widget-${w.kind}`} className={`mx-auto w-full max-w-5xl px-4 pb-4 text-slate-100 ${big ? 'text-lg' : ''}`}>{inner}</div>;
 }
 
@@ -263,6 +263,95 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
           <p className="mt-1 text-xs text-slate-400">{2 ** c.inputs.length} {t('жол', 'строк', 'rows')} = 2{sup(c.inputs.length)}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ───────────── adders: 1 bit (half adder) and 2 bits (half + full adder) ───────────── */
+type AG = { id: string; type: Gate['type']; in: string[]; x: number; y: number };
+// Hand-placed gates; a wire is [source, gate, input index, x of its vertical part] so the wires do not overlap.
+const ADD1 = { W: 520, H: 270, ins: { A: 70, B: 190 } as Record<string, number>, outs: ['S', 'C'],
+  gates: [{ id: 'S', type: 'XOR', in: ['A', 'B'], x: 250, y: 90 }, { id: 'C', type: 'AND', in: ['A', 'B'], x: 250, y: 190 }] as AG[],
+  mid: { 'S0': 140, 'S1': 175, 'C0': 120, 'C1': 155 } as Record<string, number> };
+const ADD2 = { W: 860, H: 420, ins: { A0: 50, B0: 120, A1: 250, B1: 330 } as Record<string, number>, outs: ['S0', 'S1', 'C2'],
+  gates: [
+    { id: 'S0', type: 'XOR', in: ['A0', 'B0'], x: 230, y: 60 }, { id: 'C0', type: 'AND', in: ['A0', 'B0'], x: 230, y: 140 },
+    { id: 'X', type: 'XOR', in: ['A1', 'B1'], x: 230, y: 260 }, { id: 'C1a', type: 'AND', in: ['A1', 'B1'], x: 230, y: 340 },
+    { id: 'S1', type: 'XOR', in: ['X', 'C0'], x: 450, y: 200 }, { id: 'C1b', type: 'AND', in: ['X', 'C0'], x: 450, y: 280 },
+    { id: 'C2', type: 'OR', in: ['C1a', 'C1b'], x: 640, y: 320 },
+  ] as AG[],
+  mid: { 'S00': 130, 'S01': 165, 'C00': 115, 'C01': 150, 'X0': 130, 'X1': 165, 'C1a0': 115, 'C1a1': 150, 'S10': 350, 'S11': 400, 'C1b0': 335, 'C1b1': 385, 'C20': 560, 'C21': 590 } as Record<string, number> };
+/** All gate values of an adder for the given input bits. */
+export const evalAdder = (bits: 1 | 2, ins: Record<string, number>) =>
+  evalCircuit({ inputs: Object.keys((bits === 1 ? ADD1 : ADD2).ins), gates: (bits === 1 ? ADD1 : ADD2).gates, out: '' }, ins);
+
+function Adder({ w, lang }: { w: any; lang: Lang }) {
+  const t = (kk: string, ru: string, en: string) => pick(lang, kk, ru, en);
+  const L = w.bits === 2 ? ADD2 : ADD1;
+  const [ins, setIns] = useState<Record<string, number>>({});
+  const cur = Object.fromEntries(Object.keys(L.ins).map(n => [n, ins[n] ?? 0]));
+  const v = evalAdder(w.bits === 2 ? 2 : 1, cur);
+  const on = '#facc15', off = '#64748b', IX = 50;
+  const outX = (id: string) => (id in L.ins ? IX + 30 : L.gates.find(g => g.id === id)!.x + 50);
+  const outY = (id: string) => (id in L.ins ? L.ins[id] : L.gates.find(g => g.id === id)!.y);
+  const lampX = L.W - 50;
+  const flip = (n: string) => setIns(x => ({ ...x, [n]: cur[n] ? 0 : 1 }));
+  const a = w.bits === 2 ? cur.A1 * 2 + cur.A0 : cur.A, b = w.bits === 2 ? cur.B1 * 2 + cur.B0 : cur.B;
+  const res = w.bits === 2 ? [v.C2, v.S1, v.S0] : [v.C, v.S];
+  const bin = (x: number, n: number) => x.toString(2).padStart(n, '0');
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_15rem]">
+        <div className={`${box} overflow-x-auto`}>
+          <svg viewBox={`0 0 ${L.W} ${L.H}`} className="w-full min-w-[24rem]" role="img" aria-label={`${bin(a, w.bits || 1)} + ${bin(b, w.bits || 1)} = ${res.join('')}`}>
+            {L.gates.map(g => g.in.map((src, j) => {
+              const ty = g.y - 12 + 24 * j, sx = outX(src), sy = outY(src), mx = L.mid[g.id + j] ?? (sx + g.x) / 2;
+              return <path key={g.id + j} d={`M${sx},${sy} H${mx} V${ty} H${g.x + (g.type === 'XOR' || g.type === 'OR' ? 6 : 0)}`} fill="none" stroke={v[src] ? on : off} strokeWidth={v[src] ? 4 : 3} strokeLinejoin="round" />;
+            }))}
+            {L.gates.filter(g => L.outs.includes(g.id)).map(g => (
+              <g key={'o' + g.id}>
+                <path d={`M${g.x + 50},${g.y} H${lampX - 18}`} stroke={v[g.id] ? on : off} strokeWidth={4} />
+                <circle cx={lampX} cy={g.y} r={18} fill={v[g.id] ? on : '#334155'} stroke={v[g.id] ? '#fde68a' : off} strokeWidth={3} />
+                <text x={lampX} y={g.y + 6} textAnchor="middle" fontSize="17" fontWeight="900" fill={v[g.id] ? '#0f172a' : '#e2e8f0'}>{v[g.id]}</text>
+                <text x={lampX} y={g.y - 26} textAnchor="middle" fontSize="13" fontWeight="800" fill="#fbbf24">{g.id}</text>
+              </g>))}
+            {Object.keys(L.ins).map(n => (
+              <g key={n} role="button" tabIndex={0} aria-label={`${n} = ${cur[n]}`} className="cursor-pointer" onClick={() => flip(n)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && flip(n)}>
+                <rect x={IX - 30} y={L.ins[n] - 18} width={60} height={36} rx={10} fill={cur[n] ? on : '#1e293b'} stroke={cur[n] ? on : off} strokeWidth={2} />
+                <text x={IX} y={L.ins[n] + 6} textAnchor="middle" fontSize="17" fontWeight="800" fill={cur[n] ? '#0f172a' : '#e2e8f0'}>{n}={cur[n]}</text>
+              </g>))}
+            {L.gates.map(g => (
+              <g key={g.id}>
+                <path d={SHAPE[g.type](g.x, g.y)} fill="#1e293b" stroke={v[g.id] ? on : '#94a3b8'} strokeWidth={2.5} />
+                <text x={g.x + 20} y={g.y + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#cbd5e1">{g.type}</text>
+                {!L.outs.includes(g.id) && <text x={g.x + 54} y={g.y - 8} fontSize="12" fill="#94a3b8">{g.id}</text>}
+              </g>))}
+            {w.bits === 2 && <>
+              <text x={250} y={L.H - 8} textAnchor="middle" fontSize="12" fill="#7dd3fc">{t('0-разряд: жарты қосындылағыш', '0-й разряд: полусумматор', 'bit 0: half adder')}</text>
+              <text x={520} y={L.H - 8} textAnchor="middle" fontSize="12" fill="#7dd3fc">{t('1-разряд: толық қосындылағыш (C0 көшеді)', '1-й разряд: полный сумматор (перенос C0)', 'bit 1: full adder (carry C0)')}</text>
+            </>}
+          </svg>
+          <p className="mt-1 text-xs text-slate-400">{t('Кірістерді басып 0/1 ауыстыр', 'Нажимай на входы (0/1)', 'Click the inputs (0/1)')}</p>
+        </div>
+        <div className={`${box} space-y-2 text-center`}>
+          <p className="text-sm font-semibold text-sky-300">{t('Нәтиже', 'Результат', 'Result')}</p>
+          <div className="font-mono text-2xl leading-relaxed">
+            <div><span className="text-slate-400">A</span> {bin(a, w.bits || 1).padStart(res.length, '\u00a0')}</div>
+            <div className="border-b-2 border-slate-500 pb-1"><span className="text-slate-400">+B</span> {bin(b, w.bits || 1).padStart(res.length, '\u00a0')}</div>
+            <div className="font-black text-amber-300">{res.join('')}<sub className="text-sm">2</sub></div>
+          </div>
+          <div aria-live="polite" className="rounded-xl bg-black/60 py-2 font-mono text-5xl font-black text-emerald-400">{a + b}</div>
+          <p className="font-mono text-sm text-slate-300">{a} + {b} = {a + b}</p>
+          <p className="text-xs text-slate-400">{w.bits === 2 ? 'S0 = A0 XOR B0 · C0 = A0 AND B0 · S1 = A1 XOR B1 XOR C0 · C2 = (A1 AND B1) OR ((A1 XOR B1) AND C0)' : 'S = A XOR B · C = A AND B'}</p>
+        </div>
+      </div>
+      {w.bits !== 2 && (
+        <div className={`${box} overflow-x-auto`}>
+          <table className="mx-auto font-mono text-base"><thead><tr className="text-slate-400"><th className="px-3">A</th><th className="px-3">B</th><th className="px-3 text-amber-300">C</th><th className="px-3 text-amber-300">S</th><th className="px-3">A+B</th></tr></thead>
+            <tbody>{[[0, 0], [0, 1], [1, 0], [1, 1]].map(([x, y]) => (
+              <tr key={`${x}${y}`} className={x === cur.A && y === cur.B ? 'bg-amber-400/20' : ''}><td className="px-3 text-center">{x}</td><td className="px-3 text-center">{y}</td>
+                <td className="px-3 text-center font-black text-amber-300">{x & y}</td><td className="px-3 text-center font-black text-amber-300">{x ^ y}</td><td className="px-3 text-center">{x + y} = {bin(x + y, 2)}₂</td></tr>))}</tbody></table>
+        </div>)}
     </div>
   );
 }

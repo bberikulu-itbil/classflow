@@ -69,6 +69,19 @@ export const L2: LabLesson = {
       ['Кестедегі Q бағанын XOR кестесімен салыстыр: 0110 — бірдей.', 'Сравни столбец Q с таблицей XOR: 0110 — совпадает.', 'Compare the Q column with the XOR table: 0110 — the same.'],
     ], { kind: 'circuit', circuit: CIRCUITS.xor }), 'example'),
 
+    tag(lab('example', ['Вентильдер санайды: 1 биттік қосу', 'Вентили считают: сложение 1 бита', 'Gates can count: adding 1 bit'], [
+      ['A + B: 0+0 = 0, 0+1 = 1, 1+1 = 10₂. Нәтиже екі разрядты: S (қосынды) және C (көшу).', 'A + B: 0+0 = 0, 0+1 = 1, 1+1 = 10₂. Ответ из двух разрядов: S (сумма) и C (перенос).', 'A + B: 0+0 = 0, 0+1 = 1, 1+1 = 10₂. The answer has two digits: S (sum) and C (carry).'],
+      ['S бағаны 0110 — бұл XOR; C бағаны 0001 — бұл AND. Екі вентиль = жарты қосындылағыш.', 'Столбец S — 0110, это XOR; столбец C — 0001, это AND. Два вентиля = полусумматор.', 'The S column is 0110 — XOR; the C column is 0001 — AND. Two gates = a half adder.'],
+    ], { kind: 'adder', bits: 1 }, {
+      notes: ['5 минут. Алдымен сыныптан «1 + 1 екілікте неше?» деп сұраңыз (10). Сосын A=1, B=1 басып, C шамы жанатынын көрсетіңіз: көшу — келесі разрядқа берілетін 1.', '5 минут. Сначала спросите класс: «Сколько 1 + 1 в двоичной?» (10). Затем нажмите A=1, B=1: загорается C — перенос в следующий разряд.', '5 minutes. First ask the class “What is 1 + 1 in binary?” (10). Then set A=1, B=1: C lights up — the carry into the next digit.'],
+    }), 'example'),
+    tag(lab('example', ['2 биттік қосындылағыш', '2-битный сумматор', 'A 2-bit adder'], [
+      ['0-разряд: A0 + B0 — жарты қосындылағыш (XOR, AND). Көшу C0 келесі разрядқа барады.', 'Разряд 0: A0 + B0 — полусумматор (XOR, AND). Перенос C0 идёт в следующий разряд.', 'Bit 0: A0 + B0 — a half adder (XOR, AND). The carry C0 goes to the next bit.'],
+      ['1-разряд: A1 + B1 + C0 — толық қосындылағыш: S1 = A1 XOR B1 XOR C0, C2 = (A1 AND B1) OR ((A1 XOR B1) AND C0).', 'Разряд 1: A1 + B1 + C0 — полный сумматор: S1 = A1 XOR B1 XOR C0, C2 = (A1 AND B1) OR ((A1 XOR B1) AND C0).', 'Bit 1: A1 + B1 + C0 — a full adder: S1 = A1 XOR B1 XOR C0, C2 = (A1 AND B1) OR ((A1 XOR B1) AND C0).'],
+      ['Тексер: 11₂ + 11₂ = 110₂ (3 + 3 = 6). Процессор осындай блоктарды 64 рет қатар қояды.', 'Проверь: 11₂ + 11₂ = 110₂ (3 + 3 = 6). Процессор ставит такие блоки в ряд 64 раза.', 'Check: 11₂ + 11₂ = 110₂ (3 + 3 = 6). A processor chains 64 such blocks.'],
+    ], { kind: 'adder', bits: 2 }, {
+      notes: ['7 минут. Оқушыларға сан айтқызыңыз (мыс. 2 + 3), кірістерді солай қойып, шамдар мен табломен тексеріңіз. Сұрақ: «Неге C0 сымы екінші разрядқа барады?» — бағанмен қосудағы «есте 1».', '7 минут. Пусть ученики называют числа (напр. 2 + 3), выставьте входы и проверьте по лампам и табло. Вопрос: «Зачем провод C0 идёт во второй разряд?» — это «1 в уме» при сложении столбиком.', '7 minutes. Let students name numbers (e.g. 2 + 3), set the inputs and check the lamps and display. Ask: “Why does the C0 wire go to the second bit?” — it is the “carry 1” of column addition.'],
+    }), 'example'),
     tag(levels(['Бір схема — үш сұрақ', 'Одна схема — три вопроса', 'One circuit — three questions'], ['Есептерді ретімен шығар: L1 дұрыс болса, L2 ашылады. Дәптерде шығарып, жауапты жаз.', 'Решай по порядку: после верного L1 откроется L2. Решай в тетради, ответ вводи здесь.', 'Solve in order: L2 opens after L1 is right. Work on paper, type the answer here.'], [
       { title: ['Бір жол', 'Одна строка', 'One row'], prompt: ['A = 1, B = 0, C = 0 болғанда Q неге тең? (0 немесе 1)', 'Чему равен Q при A = 1, B = 0, C = 0? (0 или 1)', 'What is Q for A = 1, B = 0, C = 0? (0 or 1)'], accept: ['1'] },
       { title: ['Неше жол?', 'Сколько строк?', 'How many rows?'], prompt: ['Ақиқат кестесінің неше жолында Q = 1?', 'В скольких строках таблицы Q = 1?', 'In how many rows is Q = 1?'], accept: ['4'] },
