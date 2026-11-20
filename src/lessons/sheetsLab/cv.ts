@@ -15,7 +15,7 @@ const INK = '#0F172A', MUTE = '#475569', PAPER = '#F1F5F9';
 const SHADOW = { x: 0, y: 2.5, blur: 9, color: 'rgba(15,23,42,0.13)' };
 
 /** Pictures in public/lec (see scripts/gen-sheetslab-art.mjs): name -> viewBox height (the width is always 640). A lesson names the picture of a slide with `art`. */
-export const ART_H: Record<string, number> = { anatomy: 420, range: 380, recalc: 330, formula: 380, copy: 380, refs: 400, functions: 380, charts: 330, ifflow: 330, wallet: 380, salary: 330, hero: 420, stats: 360, countif: 360, steps: 330, analysis: 330 };
+export const ART_H: Record<string, number> = { anatomy: 420, range: 380, recalc: 330, formula: 380, copy: 380, refs: 400, functions: 380, charts: 330, ifflow: 330, wallet: 380, salary: 330, hero: 420, stats: 360, countif: 360, steps: 330, analysis: 330, gdocs: 380, tabletools: 360, timetable: 380, collab: 360, mergewrap: 400, cfpanel: 380, cfformula: 360, chartsteps: 330, nestedif: 380, toolbar: 260, formats: 380 };
 
 /** Largest font size (px of the 960 canvas) at which both languages of a text fit the box. */
 export function fit(texts: string[], w: number, h: number, max: number, min: number, lh = 1.28): number {

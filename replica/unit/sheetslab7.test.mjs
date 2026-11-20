@@ -44,6 +44,10 @@ for (const m of M) {
         assert.ok(s[lg].picture.endsWith(`-${lg}.svg`) && existsSync('public/' + s[lg].picture), `${at} picture ${lg} exists`);
       }
       assert.ok(existsSync('public/' + s.picture), at + ' picture kk exists');
+    } else if (s.type === 'task' && s.levels) { // L1–L3 on one slide
+      shorts += s.levels.length;
+      assert.ok(s.levels.every(l => l.variants[0].accept?.length && l.variants[0].accept.every(a => a === a.toLowerCase().trim())), at + ' level answers');
+      for (const lg of LANGS) assert.ok(s[lg].levels.length === s.levels.length && !JSON.stringify(s[lg]).includes('"accept"'), `${at} ${lg} levels without answers`);
     } else if (s.type === 'task') {
       shorts++;
       assert.ok(s.accept?.length && s.accept.every(a => a === a.toLowerCase().trim()) && s.points > 0, at + ' short answer');
@@ -57,8 +61,8 @@ for (const m of M) {
     }
   }
 }
-assert.equal(tasks, 9, '9 picture tasks');
-assert.equal(PICS.length, 9);
+assert.equal(tasks, 10, '10 picture tasks');
+assert.equal(PICS.length, 10);
 assert.ok(shorts >= 6, 'short-answer tasks');
 assert.equal(new Set(M.map(m => m.id)).size, 8);
 
@@ -96,7 +100,7 @@ for (const [i, sol] of SOLUTIONS.entries()) {
   for (const c of t.criteria.filter(c => c.cell in sol.solve)) assert.ok(!grade([c], { ...solved, [c.cell]: '=999999' }).res[c.id], `${at}: ${c.id} rejects a wrong value`);
 }
 // spot checks of the numbers the teacher's notes promise
-const old = lessonTasks.filter(t => !t.criteria.some(c => c.look)); // the sheet-look tasks (3.2 merge, 3.5 rules) are checked in the browser
+const old = lessonTasks.filter(t => !t.criteria.some(c => c.look) || t.criteria.some(c => c.id === 'c9')); // the final task keeps its place: only its ★ c9 is a look // the sheet-look tasks (3.2 merge, 3.5 rules) are checked in the browser
 const acc = (n, id) => old[n].criteria.find(c => c.id === id).accept;
 assert.deepEqual([acc(0, 'c2'), acc(0, 'c3'), acc(0, 'c4'), acc(0, 'c5'), acc(0, 'c6')], [['5760'], ['15600'], ['1040'], ['23840'], ['15600']], '3.3 currency calculator');
 assert.deepEqual([acc(1, 'c2'), acc(1, 'c3')], [['30'], ['55']], '3.4 copying a formula');
@@ -105,8 +109,9 @@ assert.deepEqual([acc(4, 'c4'), acc(4, 'c5'), acc(4, 'c6')], [['Pass'], ['Fail']
 assert.deepEqual([acc(5, 'c2'), acc(5, 'c3'), acc(5, 'c4'), acc(5, 'c5')], [['240000'], ['320000'], ['180000'], ['1200000']], '3.7 salaries');
 assert.deepEqual([acc(6, 'c2'), acc(6, 'c3'), acc(6, 'c5'), acc(6, 'c6'), acc(6, 'c7'), acc(6, 'c8')], [['85'], ['75'], ['Pass'], ['Fail'], ['Pass'], ['95']], 'check yourself: results table');
 // the short answers and the facts in the notes
-const sa = Object.fromEntries(Object.values(D).flatMap(l => l.slides.filter(s => s.type === 'task' && !s.criteria).map(s => [s.title, s.accept])));
-assert.deepEqual(sa['Есеп: ұяшықтар саны'], ['63']);
+const sa = Object.fromEntries(Object.values(D).flatMap(l => l.slides.filter(s => s.type === 'task' && !s.criteria).flatMap(s => s.levels ? s.levels.map(x => [`${s.title} / L${x.lv}`, x.variants[0].accept]) : [[s.title, s.accept]])));
+assert.deepEqual(sa['Есептер: кесте өлшемі / L1'], ['63']);
+assert.deepEqual([sa['Есептер: кесте өлшемі / L3'], sa['Есептер: диапазон / L3'], sa['Есептер: қай ұяшық боялады? / L3']], [['40'], ['48'], ['3']]);
 assert.equal(4 * 6, 24); assert.equal(10 - 3 + 1, 8); assert.equal(31 + 28, 59);
 assert.deepEqual([92, 78, 65, 80, 79, 85].filter(x => x < 80).length, 3);
 assert.equal([14800, 15000, 17200, 9000, 15000, 21000].filter(x => x === 15000).length, 2);

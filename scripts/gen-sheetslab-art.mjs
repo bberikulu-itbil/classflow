@@ -79,5 +79,54 @@ const flow = (h, steps, y = 110) => svg(640, h, defs(C.mute) + pane(640, h) + st
 }).join('') + t(320, 62, 'step by step', { s: 22, w: 900, c: C.teal }) + t(320, 276, 'check the result: does it make sense?', { s: 17, c: C.mute, w: 700 }));
 files.steps = flow(330, [['📖', 'read', C.sky], ['🗂️', 'data', C.mint], ['ƒx', 'formula', C.sun], ['✅', 'check', '#FFE4E6']]);
 files.analysis = flow(330, [['❓', 'question', C.sky], ['🗂️', 'data', C.mint], ['ƒx', 'calculate', C.sun], ['📊', 'chart', '#EDE9FE'], ['💬', 'conclusion', '#FFE4E6']]);
+// ── Informatics 7 (tables, merge, conditional formatting, charts, nested IF) ──
+const mono = 'ui-monospace,monospace';
+const btn = (x, y, w, label, c, on = false) => r(x, y, w, 34, on ? c : '#fff', { r: 8, st: c, sw: 2 }) + t(x + w / 2, y + 23, label, { s: 14, w: 800, c: on ? '#fff' : c });
+files.gdocs = svg(640, 380, defs(C.blue) + pane(640, 380) + r(24, 20, 592, 40, C.pane, { st: C.line }) + ['File', 'Edit', 'View', 'Insert', 'Format', 'Table'].map((m, i) => t(60 + i * 72, 46, m, { s: 15, w: m === 'Insert' ? 900 : 600, c: m === 'Insert' ? C.blue : C.ink })).join('')
+  + r(250, 64, 170, 112, '#fff', { st: C.blue, sw: 2 }) + ['Image', 'Table  ▸', 'Drawing', 'Chart'].map((m, i) => (i === 1 ? r(254, 70 + i * 26, 162, 24, C.sky, { r: 4 }) : '') + t(270, 88 + i * 26, m, { s: 14, a: 'start', w: i === 1 ? 800 : 500 })).join('')
+  + r(424, 92, 190, 212, '#fff', { st: C.line, sw: 2 }) + Array.from({ length: 49 }, (_, k) => { const c = k % 7, w = Math.floor(k / 7); return r(436 + c * 24, 104 + w * 24, 20, 20, c < 4 && w < 3 ? C.sky : '#fff', { r: 3, st: c < 4 && w < 3 ? C.blue : C.line, sw: 1.5 }); }).join('') + t(519, 292, '4 × 3', { s: 16, w: 900, c: C.blue })
+  + grid(40, 200, 4, 3, 86, 40, {}, {}) + t(210, 360, 'Insert → Table → columns × rows', { s: 17, w: 800 }));
+files.tabletools = svg(640, 360, pane(640, 360) + r(24, 22, 592, 52, C.pane, { st: C.line })
+  + [['B', 40, C.ink], ['I', 80, C.ink], ['U', 120, C.ink]].map(([k, x, c]) => t(x, 56, k, { s: 22, w: k === 'B' ? 900 : 500, c })).join('')
+  + r(160, 34, 30, 28, C.amber, { r: 6 }) + t(175, 54, 'A', { s: 16, w: 900, c: '#fff' }) + r(204, 34, 30, 28, C.sky, { r: 6, st: C.blue }) + ['≡', '≣'].map((k, i) => t(270 + i * 36, 57, k, { s: 22, c: C.mute })).join('')
+  + r(350, 33, 54, 30, '#fff', { r: 6, st: C.violet, sw: 2 }) + t(377, 54, '⊞', { s: 20, c: C.violet, w: 900 }) + r(420, 33, 90, 30, C.violet, { r: 6 }) + t(465, 53, 'merge', { s: 14, c: '#fff', w: 800 })
+  + [['bold', 40], ['colour', 175], ['fill', 219], ['align', 290], ['borders', 377], ['merge cells', 465]].map(([k, x]) => t(x, 96, k, { s: 12, c: C.mute })).join('')
+  + r(40, 130, 260, 44, C.violet, { r: 0 }) + t(170, 158, 'Timetable', { s: 17, w: 900, c: '#fff' }) + [0, 1, 2].map(k => r(40 + k * 86.6, 174, 86.6, 38, C.sky, { r: 0, st: C.line, sw: 1 }) + t(83 + k * 86.6, 199, ['#', 'Mon', 'Tue'][k], { s: 15, w: 800 })).join('')
+  + [0, 1, 2].map(k => [0, 1, 2].map(j => r(40 + k * 86.6, 212 + j * 38, 86.6, 38, '#fff', { r: 0, st: C.line, sw: 1 })).join('')).join('')
+  + t(470, 160, 'A1:C1 → one cell', { s: 17, w: 800, c: C.violet }) + t(470, 196, 'header: bold + fill', { s: 16, w: 700, c: C.blue }) + t(470, 232, 'text: centre', { s: 16, w: 700, c: C.teal }) + t(470, 268, 'borders: all', { s: 16, w: 700, c: C.mute }));
+files.timetable = svg(640, 380, pane(640, 380) + r(30, 24, 580, 46, C.teal, { r: 0 }) + t(320, 54, '7A · lessons timetable', { s: 20, w: 900, c: '#fff' })
+  + ['#', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => r(30 + i * 96.6, 70, 96.6, 36, C.mint, { r: 0, st: C.line, sw: 1 }) + t(78 + i * 96.6, 94, d, { s: 15, w: 800 })).join('')
+  + [['Algebra', 'Kazakh', 'Physics', 'History', 'Informatics'], ['English', 'Geometry', 'Biology', 'Algebra', 'Geography'], ['Russian', 'PE', 'Music', 'Art', 'Chemistry'], ['Literature', 'Algebra', 'English', 'PE', 'Self-study']].map((row, k) => r(30, 106 + k * 50, 96.6, 50, C.mint, { r: 0, st: C.line, sw: 1 }) + t(78, 136 + k * 50, k + 1, { s: 15, w: 800 }) + row.map((x, i) => r(126.6 + i * 96.6, 106 + k * 50, 96.6, 50, '#fff', { r: 0, st: C.line, sw: 1 }) + t(175 + i * 96.6, 136 + k * 50, x, { s: 13 })).join('')).join('')
+  + t(320, 340, 'merged title · bold coloured header · centred text', { s: 15, c: C.mute, w: 700 }));
+files.collab = svg(640, 360, pane(640, 360) + r(24, 20, 592, 300, '#fff', { r: 14, st: C.line }) + r(24, 20, 592, 34, C.green, { r: 14 }) + r(24, 40, 592, 14, C.green, { r: 0 }) + t(60, 43, 'Google Sheets', { s: 15, w: 800, c: '#fff', a: 'start' })
+  + ['#2563EB', '#E11D48', '#F59E0B'].map((c, i) => `<circle cx="${540 + i * 26}" cy="37" r="11" fill="${c}" stroke="#fff" stroke-width="2"/>`).join('')
+  + grid(44, 70, 5, 5, 104, 36, { A1: 'Name', B1: 'Task', C1: 'Due', A2: 'Asem', A3: 'Bekzat', A4: 'Dana' }, { B2: '#DBEAFE', C3: '#FFE4E6', A4: '#FEF3C7' })
+  + r(181, 132, 104, 36, 'none', { st: '#2563EB', sw: 3, r: 0 }) + r(285, 168, 104, 36, 'none', { st: '#E11D48', sw: 3, r: 0 }) + r(77, 204, 104, 36, 'none', { st: '#F59E0B', sw: 3, r: 0 })
+  + t(320, 290, 'free · in a browser · many people edit at once', { s: 16, w: 800, c: C.teal }) + t(320, 344, 'Excel · Calc · Numbers · ClassFlow sheet', { s: 14, c: C.mute }));
+files.mergewrap = svg(640, 400, defs(C.violet) + pane(640, 400) + t(160, 40, 'Merge cells', { s: 20, w: 900, c: C.violet }) + t(480, 40, 'Wrap text', { s: 20, w: 900, c: C.blue })
+  + [0, 1, 2].map(k => r(40 + k * 80, 60, 80, 40, '#fff', { r: 0, st: C.line, sw: 1.5 })).join('') + t(80, 86, 'Title', { s: 15, w: 700 }) + line(160, 110, 160, 136, C.violet, 3, true)
+  + r(40, 146, 240, 40, C.sky, { r: 0, st: C.violet, sw: 2.5 }) + t(160, 172, 'Title', { s: 16, w: 900 }) + t(160, 210, 'A1:C1 → A1', { s: 15, f: mono, c: C.mute, w: 700 })
+  + r(370, 60, 220, 40, '#fff', { r: 0, st: C.line, sw: 1.5 }) + t(380, 86, 'Do the informatics hom…', { s: 15, a: 'start' }) + line(480, 110, 480, 136, C.blue, 3, true)
+  + r(370, 146, 220, 66, C.sky, { r: 0, st: C.blue, sw: 2.5 }) + t(380, 172, 'Do the informatics', { s: 15, a: 'start' }) + t(380, 196, 'homework', { s: 15, a: 'start' })
+  + t(160, 270, 'View → Freeze', { s: 20, w: 900, c: C.teal }) + r(40, 284, 240, 30, C.mint, { r: 0, st: C.teal, sw: 2 }) + t(160, 305, 'header row stays 📌', { s: 14, w: 700 }) + [0, 1].map(k => r(40, 318 + k * 28, 240, 28, '#fff', { r: 0, st: C.line, sw: 1 })).join('') + t(160, 382, '↕ scroll', { s: 13, c: C.mute })
+  + t(480, 270, 'Resize', { s: 20, w: 900, c: C.amber }) + r(370, 290, 110, 40, '#fff', { r: 0, st: C.line, sw: 1.5 }) + r(480, 290, 110, 40, '#fff', { r: 0, st: C.line, sw: 1.5 }) + line(480, 284, 480, 336, C.amber, 4) + t(480, 362, '⟷ drag · double-click = fit', { s: 14, c: C.mute, w: 700 }));
+files.cfpanel = svg(640, 380, pane(640, 380) + grid(24, 24, 2, 7, 92, 38, { A1: 'Name', B1: 'Score', A2: 'Asem', B2: 92, A3: 'Bekzat', B3: 78, A4: 'Dana', B4: 65, A5: 'Erlan', B5: 80, A6: 'Kulash', B6: 79, A7: 'Timur', B7: 85 }, { B3: '#FCA5A5', B4: '#FCA5A5', B6: '#FCA5A5' })
+  + r(300, 24, 316, 330, '#fff', { r: 14, st: C.blue, sw: 2.5 }) + t(458, 54, 'Conditional format rules', { s: 16, w: 900, c: C.blue })
+  + [['Apply to range', 'B2:B7'], ['Format cells if…', 'Less than ▾'], ['Value', '80']].map(([k, v], i) => t(318, 92 + i * 64, k, { s: 13, c: C.mute, a: 'start', w: 700 }) + r(318, 100 + i * 64, 280, 32, C.pane, { r: 6, st: C.line }) + t(330, 122 + i * 64, v, { s: 15, f: mono, a: 'start', w: 800 })).join('')
+  + t(318, 286, 'Formatting style', { s: 13, c: C.mute, a: 'start', w: 700 }) + r(318, 294, 120, 32, '#FCA5A5', { r: 6 }) + t(378, 316, 'Fill', { s: 14, w: 800 }) + btn(516, 294, 82, 'Done', C.blue, true)
+  + ['1', '2', '3'].map((n, i) => `<circle cx="${306}" cy="${116 + i * 64}" r="11" fill="${C.amber}"/>` + t(306, 121 + i * 64, n, { s: 13, w: 900, c: '#fff' })).join(''));
+files.cfformula = svg(640, 360, pane(640, 360) + grid(24, 24, 3, 5, 120, 42, { A1: 'Task', B1: 'Done', C1: 'Due', A2: 'Homework', B2: 'Yes', C2: 'Mon', A3: 'Book', B3: 'No', C3: 'Wed', A4: 'Sport', B4: 'Yes', C4: 'Fri', A5: 'Music', B5: 'No', C5: 'Sat' },
+    Object.fromEntries(['A2', 'B2', 'C2', 'A4', 'B4', 'C4'].map(k => [k, '#A7F3D0'])))
+  + r(420, 40, 196, 120, C.pane, { r: 14, st: C.green, sw: 2.5 }) + t(518, 72, 'Custom formula is', { s: 14, c: C.mute, w: 700 }) + t(518, 112, '=$B2="Yes"', { s: 20, w: 900, f: mono, c: C.teal }) + t(518, 144, 'range A2:C5', { s: 14, c: C.mute, f: mono })
+  + t(518, 200, '$B → always column B', { s: 15, w: 800, c: C.violet }) + t(518, 228, 'the whole row turns green', { s: 14, c: C.mute }) + t(320, 320, 'first true rule wins · rules are checked in order', { s: 15, w: 700, c: C.mute }));
+files.chartsteps = flow(330, [['🔢', 'table', C.sky], ['🖱️', 'select data', C.mint], ['📊', 'Insert', C.sun], ['🎨', 'chart type', '#EDE9FE'], ['🏷️', 'title, labels', '#FFE4E6']]);
+files.nestedif = svg(640, 380, defs() + pane(640, 380) + r(30, 24, 580, 44, C.pane, { st: C.line }) + t(320, 53, '=IF(A1>85; "5"; IF(A1>65; "4"; "3"))', { s: 18, w: 800, f: mono, c: C.teal })
+  + r(40, 150, 100, 56, C.sky, { st: C.blue, sw: 2.5 }) + t(90, 184, 'A1', { s: 20, w: 900 })
+  + `<polygon points="230,120 300,178 230,236 160,178" fill="${C.sun}" stroke="${C.amber}" stroke-width="2.5"/>` + t(230, 184, '> 85 ?', { s: 16, w: 900 })
+  + `<polygon points="400,196 470,254 400,312 330,254" fill="${C.sun}" stroke="${C.amber}" stroke-width="2.5"/>` + t(400, 260, '> 65 ?', { s: 16, w: 900 })
+  + line(140, 178, 158, 178, C.mute, 3, true) + line(300, 178, 520, 128, C.green, 3, true) + line(230, 236, 230, 254) + line(230, 254, 328, 254, C.red, 3, true) + line(470, 254, 520, 232, C.green, 3, true) + line(400, 312, 520, 330, C.red, 3, true)
+  + r(522, 104, 80, 48, C.mint, { st: C.green, sw: 2.5 }) + t(562, 136, '5', { s: 24, w: 900 }) + r(522, 208, 80, 48, C.mint, { st: C.green, sw: 2.5 }) + t(562, 240, '4', { s: 24, w: 900 }) + r(522, 306, 80, 48, '#FFE4E6', { st: C.red, sw: 2.5 }) + t(562, 338, '3', { s: 24, w: 900 })
+  + t(410, 146, 'TRUE', { s: 13, w: 900, c: C.green }) + t(278, 274, 'FALSE', { s: 13, w: 900, c: C.red }) + t(500, 226, 'TRUE', { s: 13, w: 900, c: C.green, a: 'end' }) + t(470, 342, 'FALSE', { s: 13, w: 900, c: C.red })
+  + t(40, 110, 'one IF inside another', { s: 15, w: 800, c: C.violet, a: 'start' }));
 for (const [k, v] of Object.entries(files)) writeFileSync(OUT + `inf8-${k}.svg`, v);
 console.log('written', Object.keys(files).length, 'pictures');
