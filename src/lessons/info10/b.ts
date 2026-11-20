@@ -59,9 +59,10 @@ export const L2: LabLesson = {
     ], { kind: 'circuit', circuit: CIRCUITS.mixed }, { code: 'Q = (A AND B) OR NOT C' }), 'together'),
 
     tag(lab('example', ['Мысал: күзет дабылы', 'Пример: охранная сигнализация', 'Example: a burglar alarm'], [
-      ['Дабыл (Q) күзет қосулы (S = 1) және есік (D) НЕМЕСЕ терезе (W) ашық болғанда шырылдайды.', 'Сигнализация (Q) звенит, если охрана включена (S = 1) и открыта дверь (D) ИЛИ окно (W).', 'The alarm (Q) rings when it is armed (S = 1) and the door (D) OR the window (W) is open.'],
-      ['Q = (D OR W) AND S. Кестеден: 8 жолдың тек 3-інде Q = 1.', 'Q = (D OR W) AND S. По таблице: только в 3 строках из 8 Q = 1.', 'Q = (D OR W) AND S. The table shows Q = 1 in only 3 of the 8 rows.'],
-    ], { kind: 'circuit', circuit: CIRCUITS.alarm }, {
+      ['Кірістер: D — есік (1 = ашық), W — терезе (1 = ашық), S — күзет қосқышы (1 = қосулы; ағылш. security). Шығыс: Q — дабыл (1 = шырылдайды).', 'Входы: D — дверь (1 = открыта), W — окно (1 = открыто), S — выключатель охраны (1 = включён; англ. security). Выход: Q — сирена (1 = звенит).', 'Inputs: D — door (1 = open), W — window (1 = open), S — the arming switch (1 = on; S for security). Output: Q — the siren (1 = ringing).'],
+      ['Ереже: күзет қосулы ЖӘНЕ (есік НЕМЕСЕ терезе ашық) → дабыл. Сондықтан Q = (D OR W) AND S.', 'Правило: охрана включена И (дверь ИЛИ окно открыты) → сирена. Поэтому Q = (D OR W) AND S.', 'Rule: armed AND (door OR window open) → siren. So Q = (D OR W) AND S.'],
+      ['Тексер: үйде адам бар, күзет өшік (S = 0) — есікті ашса да дабыл үндемейді. 8 жолдың тек 3-інде Q = 1.', 'Проверь: дома люди, охрана выключена (S = 0) — дверь открывают, а сирена молчит. Q = 1 только в 3 строках из 8.', 'Check: people are home, the alarm is off (S = 0) — the door opens and the siren stays quiet. Q = 1 in only 3 of the 8 rows.'],
+    ], { kind: 'circuit', circuit: CIRCUITS.alarm, scene: 'alarm' }, {
       notes: ['8 минут (мысал). Алдымен сыныптан ауызша формуланы құрастыруды сұраңыз, сосын схемада тексеріңіз. Екінші мысалда XOR-ды AND/OR/NOT-пен жинаймыз.', '8 минут (пример). Сначала пусть класс сам составит формулу словами, затем проверьте на схеме. Во втором примере собираем XOR из AND/OR/NOT.', '8 minutes (example). Let the class build the formula in words first, then check it on the circuit. The second example builds XOR from AND/OR/NOT.'],
     }), 'example'),
     tag(lab('example', ['XOR-ды AND, OR, NOT-пен жинаймыз', 'Собираем XOR из AND, OR, NOT', 'Building XOR from AND, OR, NOT'], [

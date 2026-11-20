@@ -223,11 +223,13 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
     <div className="space-y-3">
       {w.pick && <div className="flex flex-wrap gap-1.5">{(['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR'] as const).map(x =>
         <button key={x} type="button" aria-pressed={g1 === x} onClick={() => { setG1(x); setIns({}); }} className={`${BTN} ${g1 === x ? 'bg-blue-600 text-white' : 'bg-slate-700 hover:bg-slate-600'}`}>{x} <span className="text-xs opacity-75">{NAME[x][lang === 'ru' ? 1 : lang === 'en' ? 2 : 0]}</span></button>)}</div>}
+      {w.scene === 'alarm' && <AlarmScene d={cur.D} win={cur.W} s={cur.S} q={v[c.out]} flip={n => setIns(x => ({ ...x, [n]: cur[n] ? 0 : 1 }))} lang={lang} />}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className={`${box} overflow-x-auto`}>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[22rem]" role="img" aria-label={t('Схема', 'Схема', 'Circuit') + `: ${c.out} = ${v[c.out]}`}>
             {c.gates.map(g => g.in.map((src, j) => {
-              const [gx, gy] = pos[g.id], k = g.in.length, ty = k === 1 ? gy : gy - 12 + (24 * j) / (k - 1), sx = outX(src), sy = pos[src][1], mx = (sx + gx) / 2;
+              const [gx, gy] = pos[g.id], k = g.in.length, ty = k === 1 ? gy : gy - 12 + (24 * j) / (k - 1), sx = outX(src), sy = pos[src][1],
+                mx = depth[src] + 1 < depth[g.id] ? gx - 36 - 10 * j : (sx + gx) / 2; // a wire that skips a column turns next to its own gate, not through the gates between
               return <path key={g.id + j} d={`M${sx},${sy} H${mx} V${ty} H${gx + (g.type === 'XOR' || g.type === 'OR' || g.type === 'NOR' ? 6 : 0)}`} fill="none" stroke={v[src] ? on : off} strokeWidth={v[src] ? 4 : 3} />;
             }))}
             {c.inputs.map(n => (
@@ -262,6 +264,60 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
             ); })}</tbody></table>
           <p className="mt-1 text-xs text-slate-400">{2 ** c.inputs.length} {t('жол', 'строк', 'rows')} = 2{sup(c.inputs.length)}</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** The burglar-alarm example as a picture: the door (D), the window (W) and the arming switch (S) are the circuit's inputs, the siren is Q. */
+function AlarmScene({ d, win, s, q, flip, lang }: { d: number; win: number; s: number; q: number; flip: (n: string) => void; lang: Lang }) {
+  const t = (kk: string, ru: string, en: string) => pick(lang, kk, ru, en);
+  const hot = '#facc15', dim = '#64748b';
+  const key = (n: string) => ({ role: 'button', tabIndex: 0, className: 'cursor-pointer', onClick: () => flip(n), onKeyDown: (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && flip(n) });
+  const row = (n: string, val: number, name: string, st: [string, string]) => (
+    <li key={n} className="flex items-center gap-2"><b className={`grid h-8 w-8 place-items-center rounded-lg font-mono ${val ? 'bg-amber-400 text-slate-900' : 'bg-slate-700'}`}>{n}</b>
+      <span>{name}: <b className={val ? 'text-amber-300' : 'text-slate-300'}>{val} — {val ? st[1] : st[0]}</b></span></li>);
+  return (
+    <div className={`${box} grid gap-3 md:grid-cols-[minmax(0,1fr)_17rem] md:items-center`}>
+      <svg viewBox="0 0 520 300" className="w-full" role="img" aria-label={t('Үй: есік, терезе, күзет қосқышы және дабыл', 'Дом: дверь, окно, выключатель охраны и сирена', 'A house: door, window, arming switch and siren')}>
+        <rect x="0" y="262" width="520" height="38" fill="#14532d" />
+        <path d="M60,130 L230,30 L400,130 Z" fill="#7f1d1d" stroke="#fca5a5" strokeWidth="3" />
+        <rect x="80" y="130" width="300" height="132" fill="#334155" stroke="#94a3b8" strokeWidth="3" />
+        {/* door D */}
+        <g {...key('D')} aria-label={`D: ${t('есік', 'дверь', 'door')} = ${d}`}>
+          <rect x="110" y="170" width="62" height="92" fill="#0f172a" stroke={d ? hot : '#94a3b8'} strokeWidth="3" />
+          {d ? <path d="M110,170 L140,180 L140,272 L110,262 Z" fill="#a16207" stroke={hot} strokeWidth="2" /> : <><rect x="110" y="170" width="62" height="92" fill="#a16207" /><circle cx="162" cy="218" r="4" fill="#fde68a" /></>}
+          <text x="141" y="162" textAnchor="middle" fontSize="15" fontWeight="800" fill={d ? hot : '#e2e8f0'}>D</text>
+        </g>
+        {/* window W */}
+        <g {...key('W')} aria-label={`W: ${t('терезе', 'окно', 'window')} = ${win}`}>
+          <rect x="250" y="160" width="90" height="62" fill={win ? '#0f172a' : '#7dd3fc'} stroke={win ? hot : '#94a3b8'} strokeWidth="3" />
+          {win ? <path d="M250,160 L232,150 L232,232 L250,222 Z" fill="#7dd3fc" stroke={hot} strokeWidth="2" /> : <path d="M295,160 V222 M250,191 H340" stroke="#94a3b8" strokeWidth="3" />}
+          <text x="295" y="152" textAnchor="middle" fontSize="15" fontWeight="800" fill={win ? hot : '#e2e8f0'}>W</text>
+        </g>
+        {/* arming switch S */}
+        <g {...key('S')} aria-label={`S: ${t('күзет қосқышы', 'выключатель охраны', 'arming switch')} = ${s}`}>
+          <rect x="420" y="170" width="70" height="92" rx="10" fill="#1e293b" stroke={s ? '#22c55e' : '#94a3b8'} strokeWidth="3" />
+          <rect x="440" y={s ? 182 : 214} width="30" height="36" rx="6" fill={s ? '#22c55e' : '#475569'} />
+          <text x="455" y="256" textAnchor="middle" fontSize="13" fontWeight="800" fill={s ? '#86efac' : '#cbd5e1'}>{s ? t('ҚОСУЛЫ', 'ВКЛ', 'ON') : t('ӨШІК', 'ВЫКЛ', 'OFF')}</text>
+          <text x="455" y="160" textAnchor="middle" fontSize="15" fontWeight="800" fill={s ? '#86efac' : '#e2e8f0'}>S</text>
+        </g>
+        {/* siren Q */}
+        <g aria-label={`Q: ${t('дабыл', 'сирена', 'siren')} = ${q}`}>
+          <rect x="212" y="78" width="36" height="16" fill="#475569" />
+          <path d="M214,78 a16,16 0 0 1 32,0 Z" fill={q ? '#ef4444' : '#334155'} stroke={q ? '#fecaca' : dim} strokeWidth="2" />
+          {q ? <path d="M196,52 l-14,-8 M190,70 h-16 M264,52 l14,-8 M270,70 h16 M230,40 v-14" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" /> : null}
+          <text x="230" y="118" textAnchor="middle" fontSize="15" fontWeight="900" fill={q ? '#fca5a5' : '#e2e8f0'}>Q = {q}</text>
+        </g>
+      </svg>
+      <div className="space-y-2 text-sm">
+        <ul className="space-y-1.5">
+          {row('D', d, t('есік', 'дверь', 'door'), [t('жабық', 'закрыта', 'closed'), t('ашық', 'открыта', 'open')])}
+          {row('W', win, t('терезе', 'окно', 'window'), [t('жабық', 'закрыто', 'closed'), t('ашық', 'открыто', 'open')])}
+          {row('S', s, t('күзет қосқышы', 'выключатель охраны', 'arming switch'), [t('өшік', 'выключен', 'off'), t('қосулы', 'включён', 'on')])}
+        </ul>
+        <p className={`rounded-lg px-3 py-2 font-bold ${q ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-200'}`}>Q — {t('дабыл', 'сирена', 'siren')}: {q ? t('1 — шырылдап тұр!', '1 — звенит!', '1 — ringing!') : t('0 — тыныш', '0 — тихо', '0 — quiet')}</p>
+        <p className="text-xs text-slate-400">{t('Суреттегі есікті, терезені, қосқышты басуға болады. Схема мен кесте бірге өзгереді.', 'Можно нажимать на дверь, окно и выключатель — схема и таблица меняются вместе.', 'Click the door, window and switch — the circuit and table change with them.')}</p>
       </div>
     </div>
   );
