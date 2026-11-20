@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BookOpen, ClipboardCheck, Minus, Target, Trash2, TrendingUp, Users, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BookOpen, ChevronDown, ClipboardCheck, Clock, DoorOpen, HelpCircle, Minus, Target, Trash2, TrendingUp, Users, X } from 'lucide-react';
 import { sb } from '../config';
 import { addCol, setMark } from '../journal/store';
 import { quarterOf, schoolYear } from '../lessons/model';
@@ -253,11 +253,11 @@ function Compare({ rows, classes, titleOf }: { rows: Row[]; classes: [string, st
   );
 }
 
-const Overlay = ({ label, onClose, children, wide = false }: { label: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) => {
+const Overlay = ({ label, onClose, children, wide = false }: { label: string; onClose: () => void; children: React.ReactNode; wide?: boolean | 'xl' }) => {
   useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()} className={`max-h-[90vh] w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} overflow-auto rounded-2xl bg-surface p-5 text-text shadow-pop`}>
+      <div role="dialog" aria-modal="true" aria-label={label} onClick={e => e.stopPropagation()} className={`max-h-[90vh] w-full ${wide === 'xl' ? 'max-w-5xl' : wide ? 'max-w-3xl' : 'max-w-lg'} overflow-auto rounded-2xl bg-surface p-5 text-text shadow-pop`}>
         <div className="mb-3 flex items-start gap-2"><h3 className="flex-1 text-lg font-black">{label}</h3>
           <button type="button" onClick={onClose} aria-label="Жабу" className="grid h-10 w-10 place-items-center rounded-lg hover:bg-surface-2 cursor-pointer"><X size={18} aria-hidden="true" /></button></div>
         {children}
@@ -267,7 +267,7 @@ const Overlay = ({ label, onClose, children, wide = false }: { label: string; on
 };
 
 /** End-of-lesson grading: points → percent → percentile → a 1-10 formative mark by the chosen method; marks can be edited, then go to the journal as one ҚБ column. */
-function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDeleted }: {
+export function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDeleted }: {
   me: Me; courseId: string; col: Col; classId: string; title: string; rows: Row[]; onClose: () => void; onDeleted: () => void;
 }) {
   const key = 'cf_grading_' + courseId;
@@ -280,6 +280,13 @@ function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDelet
   const final = list.map((r, i) => { const e = edit[r.student_id]; return e === undefined ? auto[i] : e === '' ? null : Math.min(10, Math.max(1, Math.round(+e))) || null; });
   const dist = Array.from({ length: 10 }, (_, k) => final.filter(x => x === 10 - k).length);
   const choose = (k: Method) => { setM(k); setEdit({}); try { localStorage.setItem(key, k); } catch { /* not remembered */ } };
+  const info = useLessonInfo(col);
+  const [sortBy, setSortBy] = useState<'name' | 'points' | 'attention'>('name');
+  const [open, setOpen] = useState<string | null>(null);
+  const flags = (id: string) => { const p = info?.parts.get(id); return (p?.att === 'late' ? 1 : 0) + (p?.away_count ? 1 : 0) + (info?.qs.get(id)?.length ? 1 : 0) + (p ? 0 : 2); };
+  const order = list.map((r, i) => i).sort((a, b) => sortBy === 'points' ? list[b].points - list[a].points || byName(list[a].full_name, list[b].full_name)
+    : sortBy === 'attention' ? flags(list[b].student_id) - flags(list[a].student_id) || list[a].points - list[b].points : 0);
+  const nextInput = (i: number) => { const k = order.indexOf(i); const el = document.querySelector<HTMLInputElement>(`[data-mark="${order[k + 1]}"]`); el?.focus(); el?.select(); };
 
   const send = async () => {
     if (classId === '-') { setMsg('Сабақ сыныпқа байланбаған — журналға жіберу мүмкін емес.'); return; }
@@ -301,7 +308,7 @@ function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDelet
   };
 
   return (
-    <Overlay label={`Бағалау: ${title} · ${day(col.started_at)}`} onClose={onClose} wide>
+    <Overlay label={`Бағалау: ${title} · ${day(col.started_at)}`} onClose={onClose} wide="xl">
       <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Бағалау әдісі">
         {METHODS.map(x => (
           <button key={x.k} type="button" role="radio" aria-checked={m === x.k} onClick={() => choose(x.k)}
@@ -315,26 +322,80 @@ function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDelet
           {dist.map((n, k) => <div key={k} className="flex flex-1 flex-col items-center gap-0.5 text-[10px] text-text-muted"><span>{n || ''}</span><div className="w-full rounded-t bg-accent" style={{ height: `${4 + n * 10}px`, opacity: n ? 1 : 0.15 }} /><span className="font-bold text-text-secondary">{10 - k}</span></div>)}
         </div>
       )}
-      <table className="mt-3 w-full text-sm">
-        <thead><tr className="border-b border-border text-xs text-text-secondary"><th className="py-1.5 text-left font-semibold">Оқушы</th><th className="text-right font-semibold">Ұпай</th><th className="text-right font-semibold">%</th><th className="text-right font-semibold" title="Сыныптағы орны: неше пайызынан жоғары">PR</th><th className="w-20 text-right font-semibold">Балл</th></tr></thead>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-text-secondary">Сұрыптау:</span>
+        {([['name', 'Аты-жөні'], ['points', 'Ұпайы'], ['attention', 'Назар керек']] as const).map(([k, n]) => (
+          <button key={k} type="button" aria-pressed={sortBy === k} onClick={() => setSortBy(k)} className={`min-h-[32px] rounded-full border px-3 font-semibold cursor-pointer ${sortBy === k ? 'border-accent bg-accent-soft text-accent' : 'border-border hover:bg-surface-2'}`}>{n}</button>))}
+        <span className="ml-auto flex flex-wrap items-center gap-3 text-text-muted">
+          <span className="inline-flex items-center gap-1"><i style={{ width: 12, height: 12 }} className="inline-block rounded-sm bg-success" />дұрыс</span>
+          <span className="inline-flex items-center gap-1"><i style={{ width: 12, height: 12 }} className="inline-block rounded-sm bg-amber-400" />жартылай</span>
+          <span className="inline-flex items-center gap-1"><i style={{ width: 12, height: 12 }} className="inline-block rounded-sm bg-danger" />қате</span>
+          <span className="inline-flex items-center gap-1"><i style={{ width: 12, height: 12 }} className="inline-block rounded-sm border border-border bg-surface-2" />жауап жоқ</span>
+        </span>
+      </div>
+      <div className="mt-2 overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead><tr className="border-b border-border text-xs text-text-secondary">
+          <th className="py-1.5 text-left font-semibold">Оқушы</th><th className="px-2 text-left font-semibold">Тапсырмалар</th><th className="px-2 text-left font-semibold">Қатысуы</th>
+          <th className="text-right font-semibold">Ұпай</th><th className="text-right font-semibold">%</th><th className="text-right font-semibold" title="Персентиль: сыныптың неше пайызынан жоғары">PR</th><th className="text-right font-semibold">Балл</th></tr></thead>
         <tbody className="divide-y divide-border/60">
-          {list.map((r, i) => (
-            <tr key={r.student_id}>
-              <td className="py-1.5 pr-2">{r.full_name}</td>
+          {order.map(i => { const r = list[i], p = info?.parts.get(r.student_id), q = info?.qs.get(r.student_id) || [], cells = info?.units.map(u => info.cell(u, r.student_id)) || [], isOpen = open === r.student_id; return (
+            <React.Fragment key={r.student_id}>
+            <tr className={isOpen ? 'bg-surface-2/60' : ''}>
+              <td className="py-1.5 pr-2">
+                <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.student_id)} className="inline-flex min-h-[36px] items-center gap-1 text-left font-medium hover:text-accent cursor-pointer">
+                  <ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />{r.full_name}</button>
+              </td>
+              <td className="px-2"><div className="flex flex-wrap gap-0.5" aria-label="Тапсырмалар">{cells.map((c, k) => (
+                <i key={k} title={`${k + 1}. ${info!.units[k].prompt} — ${c.label}`} style={{ width: 12, height: 16 }} className={`inline-block rounded-sm ${c.tone}`} />))}</div></td>
+              <td className="px-2 whitespace-nowrap text-xs">
+                {!info ? '…' : !p ? <span className="font-semibold text-danger">кірмеген</span> : (
+                  <span className="inline-flex items-center gap-2">
+                    {p.att === 'late' && <span title="Кешікті" className="inline-flex items-center gap-0.5 text-danger"><Clock size={14} aria-hidden="true" />кешікті</span>}
+                    {!!p.away_count && <span title={`Беттен ${p.away_count} рет шықты, ${p.away_seconds || 0} сек`} className="inline-flex items-center gap-0.5 text-amber-700"><DoorOpen size={14} aria-hidden="true" />{p.away_count}</span>}
+                    {q.length > 0 && <span title={`${q.length} сұрақ қойды`} className="inline-flex items-center gap-0.5 text-accent"><HelpCircle size={14} aria-hidden="true" />{q.length}</span>}
+                    {p.att !== 'late' && !p.away_count && !q.length && <span className="text-success">✓</span>}
+                  </span>)}
+              </td>
               <td className="text-right tabular-nums">{r.points} / {r.max_points}</td>
               <td className="text-right tabular-nums">{Math.round(pc[i])}</td>
               <td className="text-right tabular-nums text-text-secondary">{Math.round(pr[i])}</td>
               <td className="text-right">
                 {m === 'points' ? <span className="text-text-muted">—</span> : (
-                  <input type="number" min={1} max={10} inputMode="numeric" aria-label={`${r.full_name}: балл`} value={edit[r.student_id] ?? String(auto[i] ?? '')}
-                    onChange={e => setEdit(x => ({ ...x, [r.student_id]: e.target.value }))}
+                  <input type="number" min={1} max={10} inputMode="numeric" data-mark={i} aria-label={`${r.full_name}: балл`} value={edit[r.student_id] ?? String(auto[i] ?? '')}
+                    onChange={e => setEdit(x => ({ ...x, [r.student_id]: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextInput(i); } }}
                     className={`h-9 w-16 rounded-lg border px-2 text-right font-bold ${edit[r.student_id] !== undefined ? 'border-accent' : 'border-border-input'} bg-surface`} />
                 )}
               </td>
             </tr>
-          ))}
+            {isOpen && info && (
+              <tr className="bg-surface-2/60"><td colSpan={7} className="px-2 pb-3">
+                <div className="grid gap-3 md:grid-cols-[1fr_16rem]">
+                  <ul className="space-y-1">{info.units.map((u, k) => { const c = cells[k]; return (
+                    <li key={k} className="flex gap-2 rounded-lg bg-surface px-2 py-1.5 text-xs">
+                      <i style={{ width: 12, height: 12 }} className={`mt-0.5 inline-block shrink-0 rounded-sm ${c.tone}`} />
+                      <span className="min-w-0 flex-1"><b className="font-semibold">{k + 1}. {u.prompt}</b>{c.answer && <span className="block break-words font-mono text-text-secondary">{c.answer}</span>}</span>
+                      <span className="shrink-0 tabular-nums">{c.points ?? 0} / {u.points}{c.retry && <span className="ml-1 text-amber-700" title="Қайта жіберген">↻</span>}</span>
+                    </li>); })}</ul>
+                  <div className="space-y-2 text-xs">
+                    <div className="rounded-lg bg-surface p-2">
+                      <b>Қатысуы</b>
+                      {!p ? <p className="text-danger">Сабаққа кірмеген</p> : <>
+                        <p>Кірді: {p.joined_at ? new Date(p.joined_at).toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}{p.att === 'late' && <b className="text-danger"> · кешікті</b>}</p>
+                        <p>Беттен шықты: {p.away_count ? `${p.away_count} рет, ${p.away_seconds || 0} сек` : 'жоқ'}</p></>}
+                    </div>
+                    <div className="rounded-lg bg-surface p-2">
+                      <b>Сұрақтары ({q.length})</b>
+                      {q.length ? <ul className="mt-1 space-y-1">{q.map(x => <li key={x.id}><span className="text-text-muted">{x.slide_index + 1}-слайд:</span> {x.body}{x.resolved && <span className="text-success"> ✓</span>}</li>)}</ul> : <p className="text-text-muted">Сұрақ қоймаған</p>}
+                    </div>
+                  </div>
+                </div>
+              </td></tr>)}
+            </React.Fragment>); })}
         </tbody>
       </table>
+      </div>
+      <p className="mt-2 text-xs text-text-muted">Аты-жөнін бассаңыз, жауаптары мен сұрақтары ашылады. Балл өрісінде Enter — келесі оқушы.</p>
       {msg && <p role="status" className="mt-3 text-sm text-text-secondary">{msg}</p>}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button type="button" onClick={del} disabled={!!busy} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-sm font-semibold text-danger hover:bg-danger-soft cursor-pointer disabled:opacity-50"><Trash2 size={16} aria-hidden="true" />Сабақты өшіру</button>
@@ -342,6 +403,45 @@ function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDelet
       </div>
     </Overlay>
   );
+}
+
+type Unit = { prompt: string; points: number; ids: string[]; kind: string; options: string[] | null };
+type Sub = { task_id: string; student_id: string; answer: string; meta: any; is_correct: boolean | null; points: number | null };
+/** Everything about a lesson of a session for grading: its tasks (one unit per slide and level, however often sent), every answer, attendance, questions. */
+function useLessonInfo(col: Col) {
+  const [v, setV] = useState<null | {
+    units: Unit[]; parts: Map<string, { att: string | null; joined_at: string | null; away_count: number | null; away_seconds: number | null }>;
+    qs: Map<string, { id: string; slide_index: number; body: string; resolved: boolean }[]>;
+    cell: (u: Unit, student: string) => { tone: string; label: string; answer: string; points: number | null; retry: boolean };
+  }>(null);
+  useEffect(() => { void (async () => {
+    const t = await sb.from('cf_tasks').select('id,prompt,kind,options,points,slide_index,level').eq('session_id', col.session_id).eq('lesson_id', col.lesson_id).order('slide_index').order('level');
+    const tasks = (t.data || []) as any[];
+    const units: Unit[] = [], byKey = new Map<string, Unit>();
+    for (const x of tasks) { const k = `${x.slide_index}:${x.level ?? ''}`; let u = byKey.get(k);
+      if (!u) { u = { prompt: (x.level ? `L${x.level} · ` : '') + (x.prompt || 'Тапсырма'), points: x.points || 0, ids: [], kind: x.kind, options: x.options }; byKey.set(k, u); units.push(u); }
+      u.ids.push(x.id); u.points = Math.max(u.points, x.points || 0); }
+    const ids = tasks.map(x => x.id);
+    const [s, pa, q] = await Promise.all([
+      ids.length ? sb.from('cf_submissions').select('task_id,student_id,answer,meta,is_correct,points').in('task_id', ids) : Promise.resolve({ data: [] }),
+      sb.from('cf_participants').select('student_id,att,joined_at,away_count,away_seconds').eq('session_id', col.session_id),
+      sb.from('cf_questions').select('id,student_id,slide_index,body,resolved').eq('session_id', col.session_id).order('created_at'),
+    ]);
+    const subs = (s.data || []) as Sub[];
+    const parts = new Map(((pa.data || []) as any[]).map(x => [x.student_id, x]));
+    const qs = new Map<string, any[]>(); for (const x of (q.data || []) as any[]) qs.set(x.student_id, [...(qs.get(x.student_id) || []), x]);
+    const cell = (u: Unit, st: string) => {
+      const mine = subs.filter(b => b.student_id === st && u.ids.includes(b.task_id));
+      if (!mine.length) return { tone: 'border border-border bg-surface-2', label: 'жауап жоқ', answer: '', points: null, retry: false };
+      const b = mine.reduce((a, c) => ((c.points ?? 0) > (a.points ?? 0) ? c : a));
+      const full = b.is_correct === true || (b.points ?? 0) >= u.points && u.points > 0, some = (b.points ?? 0) > 0;
+      const answer = b.meta?.sql || (u.kind === 'quiz' && u.options ? u.options[+b.answer] ?? b.answer : u.kind === 'sheet' ? 'кесте' : b.answer);
+      return { tone: full ? 'bg-success' : some ? 'bg-amber-400' : b.is_correct === null ? 'bg-text-muted' : 'bg-danger', label: full ? 'дұрыс' : some ? 'жартылай' : b.is_correct === null ? 'тексерілмеген' : 'қате',
+        answer, points: b.points, retry: mine.length > 1 || !!b.meta?.retry };
+    };
+    setV({ units, parts, qs, cell });
+  })(); }, [col.key]);
+  return v;
 }
 
 /** One student's answers in one lesson of a session. */
@@ -372,7 +472,7 @@ function Answers({ col, student, name, title, onClose }: { col: Col; student: st
           <h3 className="mb-1 font-bold">Қатысуы</h3>
           {!part ? <p className="text-danger">Сабаққа кірмеген</p> : (
             <ul className="space-y-0.5 text-text-secondary">
-              <li>Кірген уақыты: <b className="text-text">{part.joined_at ? new Date(part.joined_at).toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' }) : '—'}</b>{part.att === 'late' && <b className="ml-1 text-danger">· кешікті</b>}</li>
+              <li>Кірген уақыты: <b className="text-text">{part.joined_at ? new Date(part.joined_at).toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}</b>{part.att === 'late' && <b className="ml-1 text-danger">· кешікті</b>}</li>
               <li>Беттен шыққаны: <b className={part.away_count ? 'text-danger' : 'text-text'}>{part.away_count ? `${part.away_count} рет, барлығы ${Math.round((part.away_seconds || 0) / 60) ? `${Math.round((part.away_seconds || 0) / 60)} мин` : `${part.away_seconds || 0} сек`}` : 'шықпаған'}</b></li>
             </ul>)}
         </section>)}
