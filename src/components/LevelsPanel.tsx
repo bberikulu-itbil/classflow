@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BTN_P, INP } from './Widgets';
 import type { Lang } from '../lessons/lang';
 
@@ -52,6 +52,15 @@ export function LevelsPanel({ slide, tasks, subs, pair, uid, lang, onSubmit, rea
   };
   const lvNo = (l: any, i: number) => l.lv || i + 1;
   const done = (l: any, i: number) => variantsOf(l, i).every(v => subOf(taskOf(lvNo(l, i), v)?.id)?.is_correct === true);
+  // A widget on the slide (the circuit builder) can fill the answer of the first open, unsolved level.
+  const firstOpen = useRef<string | undefined>(undefined);
+  firstOpen.current = levels.map((l, i) => ({ l, i })).filter(({ l, i }) => !(i > 0 && !done(levels[i - 1], i - 1)) && !done(l, i))
+    .flatMap(({ l, i }) => variantsOf(l, i).map(v => taskOf(lvNo(l, i), v)).filter(x => x?.status === 'open' && subOf(x.id)?.is_correct !== true))[0]?.id;
+  useEffect(() => {
+    const f = (e: Event) => { const id = firstOpen.current; if (id) setDraft(d => ({ ...d, [id]: String((e as CustomEvent).detail) })); };
+    window.addEventListener('cf-levels-fill', f);
+    return () => window.removeEventListener('cf-levels-fill', f);
+  }, []);
 
   return (
     <section data-testid="levels-panel" className="w-full space-y-3">

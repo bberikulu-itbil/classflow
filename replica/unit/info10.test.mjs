@@ -23,9 +23,9 @@ const c = lvs[one + 1].widget.circuit;
 assert.equal(acc(one + 1), String(evalCircuit(c, { A: 1, B: 0, C: 0 }).Q));
 assert.equal(acc(one + 3), truthColumn(c));
 assert.equal(acc(one + 2), String([...truthColumn(c)].filter(x => x === '1').length));
-assert.equal(acc('Truth tables: L1–L3 / L1'), gate((a, b) => a & (1 - b), 2));
-assert.equal(acc('Truth tables: L1–L3 / L2'), gate((a, b, c) => (a ^ b) & c, 3));
-assert.equal(acc('Truth tables: L1–L3 / L3'), gate((a, b, c) => +(a + b + c >= 2), 3));
+assert.equal(acc('Build the circuit yourself: L1–L3 / L1'), gate((a, b) => a & (1 - b), 2));
+assert.equal(acc('Build the circuit yourself: L1–L3 / L2'), gate((a, b, c) => a | (b & c), 3));
+assert.equal(acc('Build the circuit yourself: L1–L3 / L3'), gate((a, b, c) => +(a + b + c >= 2), 3));
 // 2.3
 assert.equal(acc('Coding numbers: L1–L3 / L1'), tc(-20));
 assert.equal(+acc('Coding numbers: L1–L3 / L2'), signed('11111110'));

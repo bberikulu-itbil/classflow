@@ -18,7 +18,7 @@ const inp = 'h-11 rounded-xl border border-slate-500 bg-slate-950 px-3 font-mono
 export function LabWidget({ w, lang = 'kk', big = false }: { w: any; lang?: Lang; big?: boolean }) {
   if (!w) return null;
   const inner = w.kind === 'base' ? (w.mode === 'arith' ? <BaseArith w={w} lang={lang} /> : <BaseConvert w={w} lang={lang} />)
-    : w.kind === 'circuit' ? <Circuit w={w} lang={lang} /> : w.kind === 'adder' ? <Adder w={w} lang={lang} /> : w.kind === 'code' ? (w.mode === 'text' ? <TextCode w={w} lang={lang} /> : <IntCode w={w} lang={lang} />) : null;
+    : w.kind === 'circuit' ? <Circuit w={w} lang={lang} /> : w.kind === 'build' ? <Builder w={w} lang={lang} /> : w.kind === 'adder' ? <Adder w={w} lang={lang} /> : w.kind === 'code' ? (w.mode === 'text' ? <TextCode w={w} lang={lang} /> : <IntCode w={w} lang={lang} />) : null;
   return <div data-testid={`widget-${w.kind}`} className={`mx-auto w-full max-w-5xl px-4 pb-4 text-slate-100 ${big ? 'text-lg' : ''}`}>{inner}</div>;
 }
 
@@ -201,7 +201,7 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
   const c: CircuitDef = w.pick ? (g1 === 'NOT' ? { inputs: ['A'], gates: [{ id: 'Q', type: 'NOT', in: ['A'] }], out: 'Q' } : { inputs: ['A', 'B'], gates: [{ id: 'Q', type: g1, in: ['A', 'B'] }], out: 'Q' }) : w.circuit;
   const [ins, setIns] = useState<Record<string, number>>({});
   const cur = Object.fromEntries(c.inputs.map(n => [n, ins[n] ?? 0]));
-  const v = evalCircuit(c, cur);
+  const v = w.static ? Object.fromEntries([...c.inputs, ...c.gates.map(g => g.id)].map(k => [k, 0])) : evalCircuit(c, cur); // static: a plain picture, nothing lights up
   // layout: column = depth (inputs 0), rows spread evenly
   const depth: Record<string, number> = Object.fromEntries(c.inputs.map(n => [n, 0]));
   const d = (id: string): number => depth[id] ?? (depth[id] = 1 + Math.max(...c.gates.find(g => g.id === id)!.in.map(d)));
@@ -224,7 +224,7 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
       {w.pick && <div className="flex flex-wrap gap-1.5">{(['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR'] as const).map(x =>
         <button key={x} type="button" aria-pressed={g1 === x} onClick={() => { setG1(x); setIns({}); }} className={`${BTN} ${g1 === x ? 'bg-blue-600 text-white' : 'bg-slate-700 hover:bg-slate-600'}`}>{x} <span className="text-xs opacity-75">{NAME[x][lang === 'ru' ? 1 : lang === 'en' ? 2 : 0]}</span></button>)}</div>}
       {w.scene === 'alarm' && <AlarmScene d={cur.D} win={cur.W} s={cur.S} q={v[c.out]} flip={n => setIns(x => ({ ...x, [n]: cur[n] ? 0 : 1 }))} lang={lang} />}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className={`grid gap-3 ${w.static ? '' : 'lg:grid-cols-[minmax(0,1fr)_auto]'}`}>
         <div className={`${box} overflow-x-auto`}>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[22rem]" role="img" aria-label={t('Схема', 'Схема', 'Circuit') + `: ${c.out} = ${v[c.out]}`}>
             {c.gates.map(g => g.in.map((src, j) => {
@@ -232,7 +232,10 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
                 mx = depth[src] + 1 < depth[g.id] ? gx - 36 - 10 * j : (sx + gx) / 2; // a wire that skips a column turns next to its own gate, not through the gates between
               return <path key={g.id + j} d={`M${sx},${sy} H${mx} V${ty} H${gx + (g.type === 'XOR' || g.type === 'OR' || g.type === 'NOR' ? 6 : 0)}`} fill="none" stroke={v[src] ? on : off} strokeWidth={v[src] ? 4 : 3} />;
             }))}
-            {c.inputs.map(n => (
+            {w.static ? c.inputs.map(n => (
+              <g key={n}><rect x={pos[n][0] - 26} y={pos[n][1] - 18} width={52} height={36} rx={10} fill="#1e293b" stroke={off} strokeWidth={2} />
+                <text x={pos[n][0]} y={pos[n][1] + 6} textAnchor="middle" fontSize="18" fontWeight="800" fill="#e2e8f0">{n}</text></g>
+            )) : c.inputs.map(n => (
               <g key={n} role="button" tabIndex={0} aria-label={`${n} = ${cur[n]}`} className="cursor-pointer" onClick={() => setIns(x => ({ ...x, [n]: cur[n] ? 0 : 1 }))}
                 onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setIns(x => ({ ...x, [n]: cur[n] ? 0 : 1 }))}>
                 <rect x={pos[n][0] - 26} y={pos[n][1] - 18} width={52} height={36} rx={10} fill={cur[n] ? on : '#1e293b'} stroke={cur[n] ? on : off} strokeWidth={2} />
@@ -247,14 +250,14 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
                 {g.id === c.out ? <>
                   <path d={`M${outX(g.id)},${y} H${outX(g.id) + 34}`} stroke={live && !w.hideOut ? on : off} strokeWidth={4} />
                   <circle cx={outX(g.id) + 52} cy={y} r={16} fill={live && !w.hideOut ? on : '#334155'} stroke={live && !w.hideOut ? '#fde68a' : off} strokeWidth={3} />
-                  <text x={outX(g.id) + 52} y={y + 6} textAnchor="middle" fontSize="16" fontWeight="900" fill={live && !w.hideOut ? '#0f172a' : '#e2e8f0'}>{w.hideOut ? '?' : live}</text>
+                  <text x={outX(g.id) + 52} y={y + 6} textAnchor="middle" fontSize="16" fontWeight="900" fill={live && !w.hideOut ? '#0f172a' : '#e2e8f0'}>{w.hideOut || w.static ? c.out : live}</text>
                 </> : <text x={outX(g.id) + 4} y={y - 8} fontSize="12" fill="#94a3b8">{g.id}</text>}
               </g>
             ); })}
           </svg>
-          <p className="mt-1 text-xs text-slate-400">{t('Кірісті басып 0/1 ауыстыр: 1 сигнал сары сызықпен жүреді', 'Нажимай на входы (0/1): сигнал 1 идёт по жёлтому проводу', 'Click the inputs (0/1): a 1 flows along the yellow wires')}</p>
+          {!w.static && <p className="mt-1 text-xs text-slate-400">{t('Кірісті басып 0/1 ауыстыр: 1 сигнал сары сызықпен жүреді', 'Нажимай на входы (0/1): сигнал 1 идёт по жёлтому проводу', 'Click the inputs (0/1): a 1 flows along the yellow wires')}</p>}
         </div>
-        <div className={`${box} overflow-x-auto`}>
+        {!w.static && <div className={`${box} overflow-x-auto`}>
           <p className="mb-1 text-sm font-semibold text-sky-300">{t('Ақиқаттық кестесі', 'Таблица истинности', 'Truth table')}</p>
           <table className="font-mono text-base"><thead><tr className="text-slate-400">{c.inputs.map(n => <th key={n} className="px-2">{n}</th>)}{!w.hideMid && mids.map(g => <th key={g.id} className="px-2 text-xs">{g.id}</th>)}<th className="px-2 text-amber-300">{c.out}</th></tr></thead>
             <tbody>{rows.map((r, i) => { const vv = evalCircuit(c, Object.fromEntries(c.inputs.map((n, j) => [n, r[j]]))); return (
@@ -263,7 +266,7 @@ function Circuit({ w, lang }: { w: any; lang: Lang }) {
                 <td className="px-2 text-center font-black text-amber-300">{w.hideOut ? '?' : vv[c.out]}</td></tr>
             ); })}</tbody></table>
           <p className="mt-1 text-xs text-slate-400">{2 ** c.inputs.length} {t('жол', 'строк', 'rows')} = 2{sup(c.inputs.length)}</p>
-        </div>
+        </div>}
       </div>
     </div>
   );
@@ -318,6 +321,55 @@ function AlarmScene({ d, win, s, q, flip, lang }: { d: number; win: number; s: n
         </ul>
         <p className={`rounded-lg px-3 py-2 font-bold ${q ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-200'}`}>Q — {t('дабыл', 'сирена', 'siren')}: {q ? t('1 — шырылдап тұр!', '1 — звенит!', '1 — ringing!') : t('0 — тыныш', '0 — тихо', '0 — quiet')}</p>
         <p className="text-xs text-slate-400">{t('Суреттегі есікті, терезені, қосқышты басуға болады. Схема мен кесте бірге өзгереді.', 'Можно нажимать на дверь, окно и выключатель — схема и таблица меняются вместе.', 'Click the door, window and switch — the circuit and table change with them.')}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Circuit builder: the student adds gates and picks their inputs; the last gate is Q. "To the answer" puts the Q column
+ *  into the open level's answer box (LevelsPanel listens to the cf-levels-fill event); the server checks the column. */
+function Builder({ w, lang }: { w: any; lang: Lang }) {
+  const t = (kk: string, ru: string, en: string) => pick(lang, kk, ru, en);
+  const [n, setN] = useState<2 | 3>(w.inputs === 2 ? 2 : 3);
+  const [gs, setGs] = useState<{ type: Gate['type']; a: string; b: string }[]>([{ type: 'AND', a: 'A', b: 'B' }]);
+  const inputs = ['A', 'B', 'C'].slice(0, n), max = w.max || 6;
+  const fix = (x: string, k: number) => (inputs.includes(x) || (/^G\d+$/.test(x) && +x.slice(1) <= k) ? x : 'A'); // a source must exist
+  const gates: Gate[] = gs.map((g, k) => ({ id: k === gs.length - 1 ? 'Q' : `G${k + 1}`, type: g.type, in: g.type === 'NOT' ? [fix(g.a, k)] : [fix(g.a, k), fix(g.b, k)] }));
+  const ids = gates.map(g => g.id);
+  gates.forEach(g => { g.in = g.in.map(x => (/^G\d+$/.test(x) ? ids[+x.slice(1) - 1] : x)); });
+  const c: CircuitDef = { inputs, gates, out: 'Q' };
+  const col = truthColumn(c);
+  const set = (k: number, p: Partial<{ type: Gate['type']; a: string; b: string }>) => setGs(x => x.map((g, j) => (j === k ? { ...g, ...p } : g)));
+  const srcs = (k: number) => [...inputs, ...gs.slice(0, k).map((_, j) => `G${j + 1}`)];
+  const sel = 'min-h-[40px] rounded-lg border border-slate-500 bg-slate-800 px-2 font-mono font-bold';
+  const [sent, setSent] = useState('');
+  return (
+    <div className="space-y-3">
+      <div className={`${box} space-y-2`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-sky-300">{t('Кірістер', 'Входы', 'Inputs')}:</span>
+          {([2, 3] as const).map(k => <button key={k} type="button" aria-pressed={n === k} onClick={() => setN(k)} className={`${BTN} ${n === k ? 'bg-blue-600 text-white' : 'bg-slate-700 hover:bg-slate-600'}`}>{['A', 'B', 'C'].slice(0, k).join(', ')}</button>)}
+        </div>
+        <ol className="space-y-1.5">
+          {gs.map((g, k) => (
+            <li key={k} className="flex flex-wrap items-center gap-1.5 font-mono">
+              <b className={`w-10 ${k === gs.length - 1 ? 'text-amber-300' : 'text-slate-300'}`}>{k === gs.length - 1 ? 'Q' : `G${k + 1}`}</b>=
+              <select aria-label={t('Вентиль', 'Вентиль', 'Gate') + ` ${k + 1}`} className={sel} value={g.type} onChange={e => set(k, { type: e.target.value as Gate['type'] })}>
+                {(['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR'] as const).map(x => <option key={x}>{x}</option>)}</select>(
+              {(g.type === 'NOT' ? ['a'] : ['a', 'b']).map((f, j) => (
+                <select key={f} aria-label={`${k + 1}: ${t('кіріс', 'вход', 'input')} ${j + 1}`} className={sel} value={fix((g as any)[f], k)} onChange={e => set(k, { [f]: e.target.value })}>
+                  {srcs(k).map(x => <option key={x}>{x}</option>)}</select>))})
+              {gs.length > 1 && <button type="button" onClick={() => setGs(x => x.filter((_, j) => j !== k))} aria-label={t('Өшіру', 'Удалить', 'Delete') + ` ${k + 1}`} className="ml-1 min-h-[40px] rounded-lg px-2 text-red-300 hover:bg-red-500/20 cursor-pointer">✕</button>}
+            </li>))}
+        </ol>
+        {gs.length < max && <button type="button" onClick={() => setGs(x => [...x, { type: 'OR', a: gs.length ? `G${gs.length}` : 'A', b: 'A' }])} className={`${BTN} bg-slate-700 hover:bg-slate-600`}>+ {t('вентиль қосу', 'добавить вентиль', 'add a gate')}</button>}
+        <p className="text-xs text-slate-400">{t('Соңғы вентильдің шығысы — Q. Алдыңғы вентильдердің шығысын (G1, G2…) келесісіне кіріс етуге болады.', 'Выход последнего вентиля — Q. Выходы предыдущих (G1, G2…) можно подавать на следующие.', 'The last gate’s output is Q. Earlier outputs (G1, G2…) can feed later gates.')}</p>
+      </div>
+      <Circuit key={JSON.stringify(c)} w={{ circuit: c }} lang={lang} />
+      <div className={`${box} flex flex-wrap items-center gap-3`}>
+        <span>{t('Q бағаны', 'Столбец Q', 'Q column')}: <b className="font-mono text-xl tracking-widest text-amber-300">{col}</b></span>
+        <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent('cf-levels-fill', { detail: col })); setSent(col); }} className={`${BTN} bg-amber-500 text-slate-900 hover:bg-amber-400`}>↓ {t('Жауапқа қою', 'Вставить в ответ', 'Put into the answer')}</button>
+        {sent === col && <span className="text-sm text-emerald-300">✓ {t('жауап өрісіне қойылды — «Жіберу» бас', 'вставлено в поле ответа — нажми «Отправить»', 'put into the answer box — press “Send”')}</span>}
       </div>
     </div>
   );
