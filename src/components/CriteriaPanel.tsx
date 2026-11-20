@@ -32,11 +32,11 @@ export function CriteriaPanel({ criteria, lang, open, notOpen, closed, sub, maxP
     cell: pick(lang, 'ұяшық', 'ячейка', 'cell'),
     now: pick(lang, 'қазір', 'сейчас', 'now'),
     empty: pick(lang, 'бос', 'пусто', 'empty'),
-    send: sent ? pick(lang, '🔄 Түзетіп қайта жіберу', '🔄 Исправить и отправить снова', '🔄 Fix and send again') : pick(lang, '📤 Жіберу және тексеру', '📤 Отправить на проверку', '📤 Submit for checking'),
+    send: sent ? pick(lang, '🔄 Түзетіп қайта жіберу (ең көбі 80%)', '🔄 Исправить и отправить снова (максимум 80%)', '🔄 Fix and send again (80% at most)') : pick(lang, '📤 Жіберу және тексеру', '📤 Отправить на проверку', '📤 Submit for checking'),
     wait: pick(lang, 'Мұғалім тапсырманы ашқанда жіберуге болады. Әзірге кестені дайындай бер.', 'Отправить можно, когда учитель откроет задание. Пока готовь таблицу.', 'You can submit when the teacher opens the task. Meanwhile prepare the sheet.'),
     closed: pick(lang, '⏹ Уақыт бітті', '⏹ Время вышло', '⏹ Time is up'),
     score: pick(lang, 'Нәтиже', 'Результат', 'Result'),
-    fix: pick(lang, 'Қызыл белгілі критерийді түзетіп, қайта жібер.', 'Исправь критерии с красной меткой и отправь снова.', 'Fix the criteria marked red and send again.'),
+    fix: pick(lang, 'Қызыл белгілі критерийді түзетіп, қайта жібер. Қайта жібергенде ең көбі 80% алуға болады.', 'Исправь критерии с красной меткой и отправь снова. При повторной отправке — максимум 80%.', 'Fix the criteria marked red and send again. A resend earns 80% at most.'),
     pts: pick(lang, 'ұпай', 'балл', 'pts'),
     lv: [pick(lang, 'Негізгі', 'Базовый', 'Basic'), pick(lang, 'Орта', 'Средний', 'Medium'), pick(lang, 'Қиын', 'Сложный', 'Hard')],
   };

@@ -58,7 +58,7 @@ export const SOLUTIONS: { task: string; data: Record<string, string>; solve: Rec
 
 /** One line of the marking scheme. `ref` is the formula (or value) a correct sheet has in `cell`; the engine turns it into the accepted value.
  *  `fn` demands that the cell uses that function, `formula` that it is a formula at all (a typed-in number does not count). */
-export interface Crit { id: string; text: T; cell: string; points?: number; fn?: string; formula?: boolean; accept?: string[]; /** check how the cell looks: '1' when it is so (see Look in MiniSheet) */ look?: 'rule' | 'hidden' | 'merged' | 'wrap' | 'bold' | 'fill' }
+export interface Crit { id: string; text: T; cell: string; points?: number; fn?: string; formula?: boolean; accept?: string[]; /** check how the cell looks: '1' when it is so (see Look in MiniSheet) */ look?: import('../../sheet/MiniSheet').Look }
 
 const shown = (v: string) => { const n = Number(v.replace(',', '.')); return v.trim() !== '' && !Number.isNaN(n) ? String(+n.toFixed(2)) : v.trim(); };
 export const r2 = (x: number) => Math.round(x * 100) / 100;

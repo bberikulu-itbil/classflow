@@ -1,9 +1,18 @@
 // Informatics 7, textbook chapter 3, lessons 3.3-3.4 (kk / ru / en), 45 minutes each. Numbers of every table are checked by replica/unit/sheetslab7.test.mjs.
-import { demoSheet, info, labTask, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
+import { demoSheet, info, labTask, prefill, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
 import { SUBTITLE, plan, reflect, shortTask } from './lib';
 
 const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
 const NOTE: T = ['сары «?» ұяшықтарды формуламен есепте', 'жёлтые «?» посчитай формулой', 'work out the yellow “?” cells with a formula'];
+
+const EXAM_T: Record<string, string | [string, string, string]> = {
+  A1: ['Пән', 'Предмет', 'Subject'], B1: ['Балл (50)', 'Балл (50)', 'Score (50)'], C1: ['Пайыз', 'Процент', 'Percent'], D1: ['Күні', 'Дата', 'Date'],
+  A2: ['Информатика', 'Информатика', 'Informatics'], B2: '48', C2: '0.96', D2: '14.12.2026',
+  A3: ['Математика', 'Математика', 'Mathematics'], B3: '45', C3: '0.9', D3: '16.12.2026',
+  A4: ['Ағылшын тілі', 'Английский язык', 'English'], B4: '50', C4: '1', D4: '18.12.2026',
+  A5: ['Тарих', 'История', 'History'], B5: '39', C5: '0.78', D5: '20.12.2026',
+  A6: ['Орташа', 'Среднее', 'Average'],
+};
 
 export const L3: LabLesson = {
   id: 'inf7lab-3',
@@ -62,8 +71,29 @@ export const L3: LabLesson = {
     tag(info('practice', ['Практика 1 және 2: пішімдеу', 'Практика 1 и 2: форматирование', 'Practice 1 and 2: formatting'], [
       ['Google Sheets-те «Істер тізімі» кестесін оқулықтағы үлгі бойынша түрлендір: туралау, қаріп, түс, шекара.', 'В Google Sheets измени таблицу «Список дел» по образцу: выравнивание, шрифт, цвет, границы.', 'In Google Sheets modify your “To-do list” by the sample: alignment, font, colour, borders.'],
       ['Өз емтихан нәтижелерің кестесін жаса. Әр ұяшыққа дұрыс деректер түрін таңда да, әдемі пішімде.', 'Сделай таблицу своих результатов экзаменов. Выбери для каждой ячейки правильный тип данных и оформи.', 'Make a table of your own exam results. Choose the right data type for each cell and format it nicely.'],
-      ['Мұғалім кестені экраннан тексереді. Төмендегі валюта есебі автоматты тексеріледі.', 'Учитель проверяет таблицу на экране. Задача про валюту ниже проверяется автоматически.', 'The teacher checks the table on screen. The currency problem below is marked automatically.'],
+      ['1-практиканы мұғалім экраннан тексереді. 2 және 3-практика платформада автоматты тексеріледі: деректер түрі де тексеріледі.', 'Практику 1 учитель проверяет на экране. Практики 2 и 3 проверяются на платформе автоматически, в том числе тип данных.', 'The teacher checks Practice 1 on screen. Practices 2 and 3 are checked automatically on the platform, data types included.'],
     ]), 'practice', ['15 минут. Пішімдеуді сызбадан тексеру: тақырып ерекшеленген бе, сан, пайыз және күн дұрыс түрде ме. Автоматты тексерілетін бөлік — төмендегі валюта калькуляторы.', '15 минут. Форматирование проверяйте глазами: выделены ли заголовки, числа, проценты и даты в верном типе. Автоматически проверяется калькулятор валют ниже.', '15 minutes. Check the formatting by eye: are the headers marked, are numbers, percents and dates in the right type. The currency calculator below is the auto-marked part.']),
+    tag(prefill(labTask(['Практика 2: деректер түрлері', 'Практика 2: типы данных', 'Practice 2: data types'],
+      ['Емтихан нәтижелері кестесіне дұрыс деректер түрін қой: пайыз бағанына — Percent, күн бағанына — Date. Тақырыпты қалың ет, орташа балды есепте. Сосын «Жіберу» бас.', 'Задай таблице результатов экзаменов правильные типы данных: столбцу процентов — Percent, столбцу дат — Date. Сделай заголовок жирным, посчитай средний балл. Затем нажми «Отправить».', 'Give the exam results table the right data types: Percent for the percent column, Date for the date column. Make the header bold and work out the average score. Then press “Send”.'],
+      {
+        pic: pic('g7-examtypes', ['Емтихан нәтижелері: дұрыс түрлер', 'Результаты экзаменов: верные типы', 'Exam results: the right types'],
+          { ...EXAM_T, C2: '96%', C3: '90%', C4: '100%', C5: '78%', B6: '?' }, ['B6'], 4, 6, [140, 70, 90, 120], NOTE),
+        alt: ['Төрт пәннің балы, пайызы және емтихан күні; пайыз пен күн дұрыс түрде, орташа бал бос', 'Баллы, проценты и даты экзаменов по четырём предметам; проценты и даты в верном формате, средний балл пуст', 'Scores, percents and exam dates for four subjects; percents and dates in the right format, the average is empty'],
+        solve: { B6: '=AVERAGE(B2:B5)' },
+        criteria: [
+          { id: 'c1', text: ['A1 — тақырып қалың', 'A1 — заголовок жирный', 'A1 — the header is bold'], cell: 'A1', look: 'bold' },
+          { id: 'c2', text: ['C2 — Percent түрі (96%)', 'C2 — тип Percent (96%)', 'C2 — Percent type (96%)'], cell: 'C2', look: 'nf:pct', points: 2 },
+          { id: 'c3', text: ['C5 — Percent түрі (бүкіл баған)', 'C5 — тип Percent (весь столбец)', 'C5 — Percent type (the whole column)'], cell: 'C5', look: 'nf:pct' },
+          { id: 'c4', text: ['D2 — Date түрі', 'D2 — тип Date', 'D2 — Date type'], cell: 'D2', look: 'nf:date', points: 2 },
+          { id: 'c5', text: ['B6 — орташа бал (AVERAGE)', 'B6 — средний балл (AVERAGE)', 'B6 — the average score (AVERAGE)'], cell: 'B6', fn: 'AVERAGE', points: 2 },
+        ],
+        steps: [
+          ['C2:C5 белгіле → «%» батырмасы (Percent). 0.96 енді 96% болып көрінеді: мәні өзгермейді, тек көрінісі.', 'Выдели C2:C5 → кнопка «%» (Percent). 0.96 теперь показывается как 96%: значение то же, меняется вид.', 'Select C2:C5 → the “%” button (Percent). 0.96 now shows as 96%: the value stays, only the look changes.'],
+          ['D2:D5 белгіле → күнтізбе батырмасы (Date).', 'Выдели D2:D5 → кнопка с календарём (Date).', 'Select D2:D5 → the calendar button (Date).'],
+          ['A1:D1 → қалың (Ctrl+B). B6-ға =AVERAGE(B2:B5) жаз.', 'A1:D1 → жирный (Ctrl+B). В B6 запиши =AVERAGE(B2:B5).', 'A1:D1 → bold (Ctrl+B). In B6 type =AVERAGE(B2:B5).'],
+        ],
+        notes: ['10 минут. Күтілетін нәтиже: C бағаны 96%, 90%, 100%, 78%; D бағаны Date; B6 = 45.5. Түр тексеріледі: «96%» деп мәтінмен жазса, Percent түрі болмайды.', '10 минут. Ожидается: столбец C 96%, 90%, 100%, 78%; столбец D — Date; B6 = 45.5. Проверяется тип: если написать «96%» текстом, типа Percent не будет.', '10 minutes. Expected: column C 96%, 90%, 100%, 78%; column D is Date; B6 = 45.5. The type is checked: typing “96%” as text does not make it Percent.'],
+      }), EXAM_T, ['B6']), 'practice'),
     tag(labTask(['Практика 3: валюта калькуляторы', 'Практика 3: калькулятор валют', 'Practice 3: currency calculator'],
       ['Кестедегі бағаларды теңгеге ауыстыр: баға × бағам. Қосындыны және ең қымбат тауарды тап.', 'Переведи цены из таблицы в тенге: цена × курс. Найди сумму и самый дорогой товар.', 'Convert the prices in the table into tenge: price × rate. Find the total and the most expensive item.'],
       {
@@ -78,15 +108,16 @@ export const L3: LabLesson = {
         criteria: [
           { id: 'c1', text: ['Деректер енгізілген: B2 = 12 және C5 = 520', 'Данные введены: B2 = 12 и C5 = 520', 'Data entered: B2 = 12 and C5 = 520'], cell: 'C5' },
           { id: 'c2', text: ['D2 — кітаптың теңгедегі бағасы (формула)', 'D2 — цена книги в тенге (формула)', 'D2 — the book price in tenge (formula)'], cell: 'D2', formula: true, points: 2 },
-          { id: 'c3', text: ['D3 — сағаттың теңгедегі бағасы', 'D3 — цена часов в тенге', 'D3 — the watch price in tenge'], cell: 'D3', formula: true, points: 2 },
+          { id: 'c3', text: ['D3 — сағаттың теңгедегі бағасы', 'D3 — цена часов в тенге', 'D3 — the watch price in tenge'], cell: 'D3', formula: true },
           { id: 'c4', text: ['D4 және D5 — қалған екі тауар', 'D4 и D5 — остальные два товара', 'D4 and D5 — the other two items'], cell: 'D5', formula: true },
           { id: 'c5', text: ['D6 — барлық тауардың қосындысы (SUM)', 'D6 — сумма всех товаров (SUM)', 'D6 — total of all items (SUM)'], cell: 'D6', fn: 'SUM', points: 2 },
           { id: 'c6', text: ['★ D7 — ең қымбат тауардың бағасы (MAX)', '★ D7 — цена самого дорогого товара (MAX)', '★ D7 — the price of the most expensive item (MAX)'], cell: 'D7', fn: 'MAX', points: 2 },
+          { id: 'c7', text: ['D6 — қосынды Currency пішімінде', 'D6 — сумма в формате Currency', 'D6 — the total is in Currency format'], cell: 'D6', look: 'nf:cur' },
         ],
         steps: [
           ['Көмек: D2 ұяшығына =B2*C2 жаз да, D5-ке дейін төмен тарт.', 'Подсказка: в D2 запиши =B2*C2 и протяни вниз до D5.', 'Hint: in D2 type =B2*C2 and drag down to D5.'],
           ['D6-ға =SUM(D2:D5) жаз.', 'В D6 запиши =SUM(D2:D5).', 'In D6 type =SUM(D2:D5).'],
-          ['★ Күрделі: D7-ге =MAX(D2:D5) жаз. Бағаны Currency түрімен көрсетіп көр.', '★ Сложнее: в D7 запиши =MAX(D2:D5). Попробуй показать цену в формате Currency.', '★ Challenge: in D7 type =MAX(D2:D5). Try showing the price as Currency.'],
+          ['D6 ұяшығын Currency пішіміне ауыстыр ($ белгісі бар батырма). ★ Күрделі: D7-ге =MAX(D2:D5) жаз.', 'Переведи D6 в формат Currency (кнопка со знаком $). ★ Сложнее: в D7 запиши =MAX(D2:D5).', 'Switch D6 to Currency format (the $ button). ★ Challenge: in D7 type =MAX(D2:D5).'],
         ],
         notes: ['Күтілетін нәтиже: D2 = 5760, D3 = 15600, D4 = 1440, D5 = 1040; D6 = 23840; D7 = 15600. Бағамдар — оқуға арналған ойдан шығарылған сандар, нақты бағам емес. Жиі қате: бағамды формулаға санмен жазу (=B2*480) — кесте жұмыс істейді, бірақ бағам өзгерсе, формуланы қайта жазу керек болады.', 'Ожидаемый результат: D2 = 5760, D3 = 15600, D4 = 1440, D5 = 1040; D6 = 23840; D7 = 15600. Курсы — учебные придуманные числа, не реальные. Частая ошибка: вписать курс числом в формулу (=B2*480): работает, но при смене курса формулы придётся переписывать.', 'Expected: D2 = 5760, D3 = 15600, D4 = 1440, D5 = 1040; D6 = 23840; D7 = 15600. The rates are made-up classroom numbers, not real ones. Common slip: typing the rate into the formula (=B2*480): it works but must be rewritten when the rate changes.'],
       }), 'practice'),

@@ -61,8 +61,8 @@ for (const m of M) {
     }
   }
 }
-assert.equal(tasks, 10, '10 picture tasks');
-assert.equal(PICS.length, 10);
+assert.equal(tasks, 11, '11 picture tasks');
+assert.equal(PICS.length, 11);
 assert.ok(shorts >= 6, 'short-answer tasks');
 assert.equal(new Set(M.map(m => m.id)).size, 8);
 
@@ -100,7 +100,7 @@ for (const [i, sol] of SOLUTIONS.entries()) {
   for (const c of t.criteria.filter(c => c.cell in sol.solve)) assert.ok(!grade([c], { ...solved, [c.cell]: '=999999' }).res[c.id], `${at}: ${c.id} rejects a wrong value`);
 }
 // spot checks of the numbers the teacher's notes promise
-const old = lessonTasks.filter(t => !t.criteria.some(c => c.look) || t.criteria.some(c => c.id === 'c9')); // the final task keeps its place: only its ★ c9 is a look // the sheet-look tasks (3.2 merge, 3.5 rules) are checked in the browser
+const old = lessonTasks.filter(t => t.criteria.filter(c => c.look).length === (t.criteria.some(c => c.id === 'c9' || c.look === 'nf:cur') ? 1 : 0)); // the sheet-look tasks are checked in the browser; the currency and final tasks have one look each
 const acc = (n, id) => old[n].criteria.find(c => c.id === id).accept;
 assert.deepEqual([acc(0, 'c2'), acc(0, 'c3'), acc(0, 'c4'), acc(0, 'c5'), acc(0, 'c6')], [['5760'], ['15600'], ['1040'], ['23840'], ['15600']], '3.3 currency calculator');
 assert.deepEqual([acc(1, 'c2'), acc(1, 'c3')], [['30'], ['55']], '3.4 copying a formula');

@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { addr, cellsOf, colIndex, colName, evaluator, fill, literal, matches, parseAddr, shiftFormula, type Cells } from './engine';
 import { formatValue, looksDate, NF_LABEL, scaleColor, type ChartCfg, type CondOp, type CondRule, type Doc, type Fmt, type NF } from './format';
 import { ChartView } from './Chart';
-import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowRightToLine, BarChart3, Baseline, Bold, Columns3, Grid3x3, Italic, LineChart, Maximize2, Minimize2, PaintBucket, PieChart, Plus, RotateCcw, Rows3, Undo2, TableCellsMerge, TextWrap, ArrowUpNarrowWide, ArrowDownWideNarrow, Funnel, FunnelX, Highlighter, X } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowRightToLine, BarChart3, Baseline, Bold, Columns3, Grid3x3, Italic, LineChart, Maximize2, Minimize2, PaintBucket, PieChart, Plus, RotateCcw, Rows3, Undo2, TableCellsMerge, TextWrap, ArrowUpNarrowWide, ArrowDownWideNarrow, Funnel, FunnelX, Highlighter, X, Hash, Percent, DollarSign, CalendarDays, Type } from 'lucide-react';
 
 export interface SheetCfg { rows?: number; cols?: number; cells?: Cells; fmt?: Record<string, Fmt>; charts?: ChartCfg[]; rules?: CondRule[]; merges?: string[] }
 /** What a criterion may check besides the value: painted by a conditional rule, row hidden by the filter, merged, wrapped, bold, any fill. */
-export type Look = 'rule' | 'hidden' | 'merged' | 'wrap' | 'bold' | 'fill';
+/** `nf:pct` etc.: the cell has that number format */
+export type Look = 'rule' | 'hidden' | 'merged' | 'wrap' | 'bold' | 'fill' | `nf:${NF}`;
 /** What the lesson page can ask of the sheet: the value a cell shows (formatted, like on screen) and a text copy of the whole work. */
 export interface SheetApi { get: (cells: string) => string; raw: (cell: string) => string; snapshot: () => string; /** '1' or '0' */ look: (cell: string, kind: Look) => string }
 type Pos = [number, number];
@@ -105,7 +106,7 @@ export default function MiniSheet({ cfg, storageKey, lang = 'kk', readOnly = fal
       get: list => list.split(',').map(x => (x.trim() ? show(x.trim().toUpperCase()) : '')).join(','),
       look: (c, kind) => {
         const id = c.trim().toUpperCase(), f = fmt[id] || {}, p = parseAddr(id);
-        const on = kind === 'rule' ? ruleBg.has(id) : kind === 'hidden' ? !!p && hiddenRows.has(p[0]) : kind === 'merged' ? owner.has(id)
+        const on = kind.startsWith('nf:') ? f.nf === kind.slice(3) : kind === 'rule' ? ruleBg.has(id) : kind === 'hidden' ? !!p && hiddenRows.has(p[0]) : kind === 'merged' ? owner.has(id)
           : kind === 'wrap' ? !!f.w : kind === 'bold' ? !!f.b : !!f.bg || ruleBg.has(id);
         return on ? '1' : '0';
       },
@@ -243,6 +244,8 @@ export default function MiniSheet({ cfg, storageKey, lang = 'kk', readOnly = fal
             <Btn t={t.cond} on={() => setPanel(panel === 'cond' ? null : 'cond')} active={panel === 'cond' || rules.length > 0}><Highlighter size={IC} aria-hidden="true" /></Btn>
           </Group>
           <Group>
+            {([['num', Hash], ['pct', Percent], ['cur', DollarSign], ['date', CalendarDays], ['txt', Type]] as const).map(([k, I]) => (
+              <Btn key={k} t={NF_LABEL[k]} on={() => style(f => ({ nf: f.nf === k ? undefined : k }))} active={af.nf === k}><I size={IC} aria-hidden="true" /></Btn>))}
             <select aria-label={t.nf} title={t.nf} className="h-8 cursor-pointer rounded-lg bg-transparent px-1.5 text-xs font-semibold text-slate-100 outline-none hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-emerald-400" value={af.nf || 'gen'} onChange={ev => style({ nf: ev.target.value === 'gen' ? undefined : (ev.target.value as NF) })}>
               {Object.entries(NF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
