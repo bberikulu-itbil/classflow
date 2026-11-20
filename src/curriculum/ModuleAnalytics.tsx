@@ -347,6 +347,15 @@ function GradeDialog({ me, courseId, col, classId, title, rows, onClose, onDelet
 /** One student's answers in one lesson of a session. */
 function Answers({ col, student, name, title, onClose }: { col: Col; student: string; name: string; title: string; onClose: () => void }) {
   const [list, setList] = useState<{ id: string; prompt: string; kind: string; options: string[] | null; answer: string; meta: any; is_correct: boolean | null; points: number | null; max: number }[] | null>(null);
+  const [part, setPart] = useState<{ att: string | null; joined_at: string | null; away_count: number | null; away_seconds: number | null } | null | undefined>(undefined);
+  const [qs, setQs] = useState<{ id: string; slide_index: number; body: string; resolved: boolean }[]>([]);
+  useEffect(() => { void (async () => {
+    const [pa, q] = await Promise.all([
+      sb.from('cf_participants').select('att,joined_at,away_count,away_seconds').eq('session_id', col.session_id).eq('student_id', student).maybeSingle(),
+      sb.from('cf_questions').select('id,slide_index,body,resolved').eq('session_id', col.session_id).eq('student_id', student).order('created_at'),
+    ]);
+    setPart(pa.data ?? null); setQs((q.data || []) as any);
+  })(); }, [col.key, student]);
   useEffect(() => { void (async () => {
     const t = await sb.from('cf_tasks').select('id,prompt,kind,options,points,slide_index').eq('session_id', col.session_id).eq('lesson_id', col.lesson_id).order('slide_index');
     const ids = (t.data || []).map((x: any) => x.id);
@@ -358,6 +367,21 @@ function Answers({ col, student, name, title, onClose }: { col: Col; student: st
     a.meta?.sql || (a.kind === 'quiz' && a.options ? a.options[+a.answer] ?? a.answer : a.kind === 'sheet' ? 'кесте' : a.answer);
   return (
     <Overlay label={`${name} · ${title}`} onClose={onClose}>
+      {part !== undefined && (
+        <section aria-label="Қатысуы" className="mb-3 rounded-lg border border-border p-2.5 text-sm">
+          <h3 className="mb-1 font-bold">Қатысуы</h3>
+          {!part ? <p className="text-danger">Сабаққа кірмеген</p> : (
+            <ul className="space-y-0.5 text-text-secondary">
+              <li>Кірген уақыты: <b className="text-text">{part.joined_at ? new Date(part.joined_at).toLocaleTimeString('kk-KZ', { hour: '2-digit', minute: '2-digit' }) : '—'}</b>{part.att === 'late' && <b className="ml-1 text-danger">· кешікті</b>}</li>
+              <li>Беттен шыққаны: <b className={part.away_count ? 'text-danger' : 'text-text'}>{part.away_count ? `${part.away_count} рет, барлығы ${Math.round((part.away_seconds || 0) / 60) ? `${Math.round((part.away_seconds || 0) / 60)} мин` : `${part.away_seconds || 0} сек`}` : 'шықпаған'}</b></li>
+            </ul>)}
+        </section>)}
+      {qs.length > 0 && (
+        <section aria-label="Қойған сұрақтары" className="mb-3 rounded-lg border border-border p-2.5 text-sm">
+          <h3 className="mb-1 font-bold">Қойған сұрақтары ({qs.length})</h3>
+          <ul className="space-y-1">{qs.map(q => (
+            <li key={q.id} className="flex gap-2"><span className="shrink-0 tabular-nums text-text-muted">{q.slide_index + 1}-слайд</span><span className="min-w-0 flex-1 break-words">{q.body}</span>{q.resolved && <span className="shrink-0 text-success">✓ жауап берілді</span>}</li>))}</ul>
+        </section>)}
       {!list ? <p className="text-sm text-text-muted">Жүктелуде…</p> : !list.length ? <p className="text-sm text-text-muted">Бұл сабақта тапсырма болмаған.</p> : (
         <ul className="space-y-2">{list.map(a => (
           <li key={a.id} className={`rounded-lg border p-2.5 text-sm ${a.is_correct === null ? 'border-border' : a.is_correct ? 'border-success/40 bg-success-soft' : 'border-danger/40 bg-danger-soft'}`}>
