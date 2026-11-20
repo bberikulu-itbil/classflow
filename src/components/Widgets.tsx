@@ -499,13 +499,13 @@ const visualBullets = (items: any[], big: boolean, inner: (t: string) => React.R
 };
 
 /** A YouTube video in a 16:9 frame (privacy-friendly domain) with a plain link next to it for networks that block embeds. */
-export function VideoBlock({ id, start, title, lang = 'kk' }: { id: string; start?: number; title?: string; lang?: Lang }) {
+export function VideoBlock({ id, start, end, title, lang = 'kk' }: { id: string; start?: number; end?: number; title?: string; lang?: Lang }) {
   id = /^[\w-]{11}$/.test(id.trim()) ? id.trim() : /(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/.exec(id)?.[1] ?? id; // a pasted link works as well as the bare code
   const q = start ? `&start=${start}` : '';
   return (
     <figure data-testid="video-block" className="mb-4">
       <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-black shadow-sm">
-        <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?rel=0${q}`} title={title || 'YouTube'} loading="lazy" referrerPolicy="strict-origin-when-cross-origin"
+        <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?rel=0${q}${end ? `&end=${end}` : ''}`} title={title || 'YouTube'} loading="lazy" referrerPolicy="strict-origin-when-cross-origin"
           allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen />
       </div>
       <figcaption className="mt-2 text-sm"><a className="font-semibold text-accent underline" href={`https://www.youtube.com/watch?v=${id}${q}`} target="_blank" rel="noopener noreferrer">▶ {pick(lang, 'Көрінбесе, YouTube-та ашу', 'Не открывается — смотреть на YouTube', 'Not playing? Open on YouTube')} ↗</a></figcaption>
@@ -601,7 +601,7 @@ function renderSlideBody(s: any, ctx: any = {}) {
     case 'content':
       return wrap(
         s.title && <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600/25 text-2xl">📚</span><h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black text-text`}>{s.title}</h2></div>,
-        s.video && <VideoBlock id={s.video} start={s.videoStart} title={s.title} lang={ctx.lang} />,
+        s.video && <VideoBlock id={s.video} start={s.videoStart} end={s.videoEnd} title={s.title} lang={ctx.lang} />,
         visualBullets(s.bullets || [], big, R),
         codeBlock(s, big),
         imgBlock(s, big)
