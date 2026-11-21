@@ -822,9 +822,12 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                           {(() => { const r = courseClasses.map(k => pg.progressIn(its, m, k, pgc)); const all = r.length > 0 && r.every(x => x.total && x.done === x.total);
                             const part = r.reduce((a, x) => a + (x.total ? x.done / x.total : 0), 0) / Math.max(1, r.length);
                             return (
-                              <span aria-hidden="true" className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-xl font-black ${all ? 'bg-success-soft text-success' : 'bg-accent-soft text-on-accent-soft'}`}>
-                                {moduleTitle(m, lang).match(/^\s*(\d+)/)?.[1] || mi + 1}
-                                {r.length > 0 && <span className="absolute inset-x-2 bottom-1.5 h-1 overflow-hidden rounded-full bg-white/70"><span className={`block h-full rounded-full ${all ? 'bg-success' : 'bg-accent'}`} style={{ width: `${Math.round(part * 100)}%` }} /></span>}
+                              <span aria-hidden="true" className={`relative grid h-12 w-12 shrink-0 place-items-center text-lg font-black ${all ? 'text-success' : 'text-on-accent-soft'}`}>
+                                <svg viewBox="0 0 48 48" className="absolute inset-0 h-12 w-12 -rotate-90">
+                                  <circle cx="24" cy="24" r="21" fill="var(--color-accent-soft)" stroke="var(--color-border)" strokeWidth="4" />
+                                  {r.length > 0 && part > 0 && <circle cx="24" cy="24" r="21" fill="none" stroke={all ? 'var(--color-success)' : 'var(--color-accent)'} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${(part * 131.95).toFixed(1)} 131.95`} />}
+                                </svg>
+                                <span className="relative">{moduleTitle(m, lang).match(/^\s*(\d+)/)?.[1] || mi + 1}</span>
                               </span>); })()}
                           <span className="min-w-0 flex-1">
                             <span className="block break-words font-semibold text-text text-base">{moduleTitle(m, lang)}</span>
