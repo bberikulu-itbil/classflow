@@ -899,7 +899,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                             <Button
                               variant="secondary"
                               className="!min-h-[38px] gap-1.5 border !border-violet-300 !bg-violet-50 text-xs font-semibold !text-violet-800 sm:text-sm"
-                              onClick={() => { window.location.hash = 'edit/new?module=' + encodeURIComponent(m.id) + '&exam=1'; }}
+                              onClick={() => { window.location.hash = 'exam/new?module=' + encodeURIComponent(m.id); }}
                             >
                               <ClipboardCheck size={16} aria-hidden="true" />
                               <span>Емтихан / БЖБ қосу</span>
@@ -921,7 +921,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xs font-bold text-text-secondary group-hover:bg-accent group-hover:text-on-accent transition-colors">
                                       {p.exam ? <ClipboardCheck size={14} aria-hidden="true" /> : labelOf.get(l.id) || i + 1}
                                     </span>
-                                    <a href={'#edit/' + l.id} className="min-w-0 font-medium text-text hover:text-accent transition-colors break-words text-sm sm:text-base leading-snug">
+                                    <a href={(p.exam ? '#exam/' : '#edit/') + l.id} className="min-w-0 font-medium text-text hover:text-accent transition-colors break-words text-sm sm:text-base leading-snug">
                                       {labelOf.get(l.id) && pg.splitNum(lessonTitle(l, lang))[0] === labelOf.get(l.id) ? pg.splitNum(lessonTitle(l, lang))[1] : lessonTitle(l, lang)}
                                     </a>
                                     {p.exam && <span className="shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">Емтихан</span>}
@@ -950,7 +950,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                       </Button>}
 
                                       <LinkButton
-                                        href={'#edit/' + l.id}
+                                        href={(p.exam ? '#exam/' : '#edit/') + l.id}
                                         variant="secondary"
                                         className="!min-h-[38px] px-3 gap-1.5 text-xs sm:text-sm font-medium"
                                         aria-label={`${lessonTitle(l, lang)}: өңдеу`}

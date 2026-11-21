@@ -18,6 +18,8 @@ export function ExamDialog({ lessonId, title, onClose }: { lessonId: string; tit
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   const name = (id: string | null) => (id ? classes.find(c => c.id === id)?.name || 'сынып' : 'Барлығы');
 
+  // the builder's time (cf_lessons.plan.exam.minutes) is the default
+  useEffect(() => { sb.from('cf_lessons').select('plan').eq('id', lessonId).maybeSingle().then(({ data }: any) => { const m = data?.plan?.exam?.minutes; if (m > 0) setMins(m); }); }, [lessonId]);
   const load = async () => {
     const e = await sb.from('cf_exams').select('id,class_id,opens_at,closes_at').eq('lesson_id', lessonId).order('opens_at', { ascending: false });
     if (e.error) { setErr(/cf_exams/.test(e.error.message) ? 'Емтихан базада әлі қосылмаған (071 миграциясы керек).' : e.error.message); return; }
@@ -51,7 +53,7 @@ export function ExamDialog({ lessonId, title, onClose }: { lessonId: string; tit
             </select></label>
           <label className="flex flex-col text-xs text-text-muted">Уақыты
             <select value={mins} onChange={e => setMins(+e.target.value)} className="mt-0.5 h-10 rounded-lg border border-border-input bg-surface px-2 text-sm text-text">
-              {[15, 20, 30, 40, 45, 60, 90].map(m => <option key={m} value={m}>{m} минут</option>)}<option value={0}>Мен жапқанша</option>
+              {[...new Set([15, 20, 30, 40, 45, 60, 90, mins || 45])].sort((a, b) => a - b).map(m => <option key={m} value={m}>{m} минут</option>)}<option value={0}>Мен жапқанша</option>
             </select></label>
           <Button onClick={() => act(() => sb.rpc('cf_exam_open', { p_lesson: lessonId, p_class: cls || null, p_minutes: mins }))} loading={busy} className="gap-1.5"><Play size={14} aria-hidden="true" />Ашу</Button>
         </div>
