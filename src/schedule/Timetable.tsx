@@ -28,10 +28,29 @@ async function loadCtx(me: Me, filter: { owner?: string; room?: string }): Promi
 const gradeOf = (name: string) => +(name.match(/\d+/)?.[0] || 0);
 const nameOf = (list: { id: string; name: string }[], id: string | null) => (id ? list.find(x => x.id === id)?.name ?? '' : '');
 
+/** A room booking (cf_room_requests via rooms/store) as the timetable shows it. */
+export interface Booking { id: string; on_date: string; start_time: string; end_time: string; purpose: string; status: string; who: string }
+const hm = (t: string) => t.slice(0, 5);
+/** The bells a time range touches: [first, count] or null when it falls outside every bell. */
+function bellSpan(bells: Bell[], start: string, end: string): [number, number] | null {
+  const hit = bells.filter(b => b.starts < hm(end) && b.ends > hm(start));
+  return hit.length ? [hit[0].n, hit[hit.length - 1].n - hit[0].n + 1] : null;
+}
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const mondayOf = (d: Date) => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+/** Bookings of the room in [from, to] from cf_room_busy (078: everyone's, for all staff), merged with the ones the page already has. */
+function useBusy(roomId: string, from: string, to: string, have: Booking[]): Booking[] {
+  const r = useLoad(async () => { if (DEMO) return [] as Booking[]; const x = await sb.rpc('cf_room_busy', { p_room: roomId, p_from: from, p_to: to }); return x.error ? [] : ((x.data || []) as any[]).map(b => ({ ...b, who: b.who || '—', purpose: b.purpose || '' })) as Booking[]; }, [roomId, from, to]);
+  const mine = new Map(have.map(b => [b.id, b]));
+  return [...(r.data || []).map(b => mine.get(b.id) || b), ...have.filter(b => !(r.data || []).some(x => x.id === b.id))];
+}
+const BOOK_BG = 'repeating-linear-gradient(135deg, #fff7ed 0 8px, #ffedd5 8px 16px)';
+
 /** The week as a grid: days down, bells across. An entry spans its bells; two entries on one bell stack. */
-function Grid({ c, onCell, onEntry, showOwner }: { c: Ctx; onCell?: (day: number, n: number) => void; onEntry?: (e: TT) => void; showOwner?: boolean }) {
+function Grid({ c, onCell, onEntry, showOwner, week, bookings = [] }: { c: Ctx; onCell?: (day: number, n: number) => void; onEntry?: (e: TT) => void; showOwner?: boolean; week?: Date; bookings?: Booking[] }) {
   const now = tt.nowIn(c.bells);
-  const days = [1, 2, 3, 4, 5, ...(c.entries.some(e => e.weekday === 6) ? [6] : [])];
+  const dateOf = (d: number) => { if (!week) return ''; const x = new Date(week); x.setDate(x.getDate() + d - 1); return iso(x); };
+  const days = [1, 2, 3, 4, 5, ...(c.entries.some(e => e.weekday === 6) || bookings.some(b => new Date(b.on_date + 'T00:00').getDay() === 6) ? [6] : [])];
   const cols = `5.5rem repeat(${c.bells.length}, minmax(5.5rem, 1fr))`;
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -44,23 +63,33 @@ function Grid({ c, onCell, onEntry, showOwner }: { c: Ctx; onCell?: (day: number
             </div>))}
         </div>
         {days.map(d => {
-          const list = c.entries.filter(e => e.weekday === d).sort((a, b) => a.period - b.period);
+          const bk = bookings.filter(b => b.on_date === dateOf(d)).map(b => ({ b, at: bellSpan(c.bells, b.start_time, b.end_time) })).filter((x): x is { b: Booking; at: [number, number] } => !!x.at);
+          const list = [...c.entries.filter(e => e.weekday === d), ...bk.map(x => ({ id: 'bk' + x.b.id, period: x.at[0], span: x.at[1] }) as TT)].sort((a, b) => a.period - b.period);
           // Overlapping lessons (e.g. a span over two single ones) go to separate lanes, so the row is only as tall as it must be.
           const ends: number[] = [], lane = new Map<string, number>();
           for (const e of list) { let i = ends.findIndex(x => x <= e.period); if (i < 0) i = ends.push(0) - 1; ends[i] = e.period + e.span; lane.set(e.id, i + 1); }
           const rows = Math.max(1, ends.length);
           return (
             <div key={d} className={`relative grid border-b border-border last:border-b-0 ${now.weekday === d ? 'bg-accent-soft/30' : ''}`} style={{ gridTemplateColumns: cols, gridAutoRows: 'minmax(4.5rem, auto)' }}>
-              <div className="flex items-center px-2 font-bold" style={{ gridColumn: 1, gridRow: `1 / span ${rows}` }}>{DAY[d - 1]}</div>
+              <div className="flex flex-col justify-center px-2 font-bold" style={{ gridColumn: 1, gridRow: `1 / span ${rows}` }}>{DAY[d - 1]}{week && <span className="text-xs font-semibold text-text-muted">{dateOf(d).slice(8)}.{dateOf(d).slice(5, 7)}</span>}</div>
               {onCell && c.bells.map(b => (
                 <button key={'c' + b.n} type="button" onClick={() => onCell(d, b.n)} aria-label={`${DAY[d - 1]}, ${b.label}: сабақ қосу`} style={{ gridColumn: b.n + 1, gridRow: `1 / span ${rows}` }}
                   className="group m-0.5 grid place-items-center rounded-lg text-text-muted opacity-0 hover:bg-surface-2 hover:opacity-100 focus:opacity-100 cursor-pointer"><Plus size={18} aria-hidden="true" /></button>))}
-              {list.map(e => {
+              {bk.map(({ b, at }) => (
+                <div key={'bk' + b.id} className="relative m-0.5 flex min-h-[4.25rem] flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-orange-400 px-1 py-3 text-center text-orange-950"
+                  style={{ gridColumn: `${at[0] + 1} / span ${at[1]}`, gridRow: lane.get('bk' + b.id), background: BOOK_BG }} title={b.purpose}>
+                  <span className="absolute left-1.5 top-1 text-[10px] font-black uppercase tracking-wide">Бронь</span>
+                  {b.status === 'pending' && <span className="absolute right-1.5 top-1 rounded bg-orange-200 px-1 text-[10px] font-bold">күтуде</span>}
+                  <span className="mt-2 text-sm font-black tabular-nums">{hm(b.start_time)}–{hm(b.end_time)}</span>
+                  <span className="line-clamp-1 text-[11px] font-semibold">{b.who}</span>
+                  {b.purpose && <span className="line-clamp-1 text-[10px] opacity-80">{b.purpose}</span>}
+                </div>))}
+              {list.filter(e => !e.id.startsWith('bk')).map(e => {
                 const cls = nameOf(c.classes, e.class_id), room = nameOf(c.rooms, e.room_id), next = tt.nextLecture(c.curr, e.course_id, e.class_id ? c.taught.get(e.class_id) : undefined);
                 const live = now.weekday === d && now.bell !== null && now.bell >= e.period && now.bell < e.period + e.span;
                 const body = (
                   <>
-                    <span className="absolute right-1.5 top-1 text-[11px] font-semibold opacity-80">{room}</span>
+                    {!showOwner && <span className="absolute right-1.5 top-1 text-[11px] font-semibold opacity-80">{room}</span>}
                     <span className="text-xl font-black leading-none">{e.label || (cls ? 'Сабақ' : '—')}</span>
                     {next && !showOwner && <span className="line-clamp-2 px-1 text-center text-[10px] leading-tight opacity-80" title={next.title}>{next.title}</span>}
                     {showOwner && <span className="px-1 text-center text-[10px] leading-tight opacity-80">{c.people[e.owner_id] || ''}</span>}
@@ -207,14 +236,52 @@ export function TodayCard({ me }: { me: Me }) {
 }
 
 /** A room's week: every teacher's lessons there (read-only). */
-export function RoomWeek({ me, roomId }: { me: Me; roomId: string }) {
+export function RoomWeek({ me, roomId, bookings = [] }: { me: Me; roomId: string; bookings?: Booking[] }) {
   const d = useLoad(() => loadCtx(me, { room: roomId }), [roomId]);
+  const [shift, setShift] = useState(0);
+  const week = mondayOf(new Date()); week.setDate(week.getDate() + shift * 7);
+  const end = new Date(week); end.setDate(end.getDate() + 6);
+  const all = useBusy(roomId, iso(week), iso(end), bookings);
   if (d.error) return <ErrorBox message={d.error} onRetry={d.reload} />;
   if (!d.data) return <Skeleton rows={2} />;
+  const inWeek = all.filter(b => b.on_date >= iso(week) && b.on_date <= iso(end) && (b.status === 'approved' || b.status === 'pending'));
+  const outside = inWeek.filter(b => !bellSpan(d.data!.bells, b.start_time, b.end_time));
+  const nav = 'grid h-10 w-10 place-items-center rounded-lg border border-border hover:bg-surface-2';
   return (
     <section aria-label="Кабинет кестесі" className="space-y-2">
-      <h3 className="font-semibold">Кабинет кестесі</h3>
-      {d.data.entries.length ? <Grid c={d.data} showOwner /> : <p className="text-sm text-text-secondary">Бұл кабинетте кестеге қойылған сабақ жоқ.</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="flex-1 font-semibold">Кабинет кестесі</h3>
+        <span className="flex items-center gap-1.5 text-xs text-text-secondary"><span className="h-3 w-5 rounded border-2 border-dashed border-orange-400" style={{ background: BOOK_BG }} aria-hidden="true" />бронь</span>
+        <button type="button" className={nav} aria-label="Алдыңғы апта" onClick={() => setShift(x => x - 1)}>‹</button>
+        <button type="button" onClick={() => setShift(0)} className="min-h-[40px] rounded-lg border border-border px-3 text-sm font-semibold hover:bg-surface-2" aria-label="Осы апта">
+          {week.getDate()}.{String(week.getMonth() + 1).padStart(2, '0')}–{end.getDate()}.{String(end.getMonth() + 1).padStart(2, '0')}{shift === 0 ? ' · осы апта' : ''}</button>
+        <button type="button" className={nav} aria-label="Келесі апта" onClick={() => setShift(x => x + 1)}>›</button>
+      </div>
+      {d.data.entries.length || inWeek.length ? <Grid c={d.data} showOwner week={week} bookings={inWeek} /> : <p className="text-sm text-text-secondary">Бұл аптада кабинетте сабақ та, бронь да жоқ.</p>}
+      {outside.length > 0 && <ul className="space-y-1 text-sm">{outside.map(b => <li key={b.id} className="rounded-lg border border-dashed border-orange-400 px-3 py-1.5"><b>Бронь</b> · {b.on_date.slice(8)}.{b.on_date.slice(5, 7)} {hm(b.start_time)}–{hm(b.end_time)} · {b.who}{b.status === 'pending' ? ' · күтуде' : ''} <span className="text-text-secondary">(қоңырау уақытынан тыс)</span></li>)}</ul>}
     </section>
+  );
+}
+
+/** For the booking form: what already happens in the room that day (lessons by the bells, other bookings) and whether the asked time clashes. */
+export function RoomDay({ me, roomId, date, start, end, bookings }: { me: Me; roomId: string; date: string; start: string; end: string; bookings: Booking[] }) {
+  const d = useLoad(() => loadCtx(me, { room: roomId }), [roomId]);
+  const all = useBusy(roomId, date, date, bookings);
+  if (!d.data || !date) return null;
+  const wd = ((new Date(date + 'T00:00').getDay() + 6) % 7) + 1;
+  const busy = [
+    ...d.data.entries.filter(e => e.weekday === wd).map(e => { const a = d.data!.bells.find(b => b.n === e.period), z = d.data!.bells.find(b => b.n === e.period + e.span - 1);
+      return { k: 'e' + e.id, s: a?.starts || '', t: z?.ends || '', text: `${e.label || 'Сабақ'} ${nameOf(d.data!.classes, e.class_id)} · ${d.data!.people[e.owner_id] || ''}` }; }),
+    ...all.filter(b => b.on_date === date && (b.status === 'approved' || b.status === 'pending')).map(b => ({ k: 'b' + b.id, s: hm(b.start_time), t: hm(b.end_time), text: `Бронь · ${b.who}${b.status === 'pending' ? ' (күтуде)' : ''}` })),
+  ].filter(x => x.s).sort((a, b) => a.s.localeCompare(b.s));
+  const clash = busy.filter(x => x.s < end && x.t > start);
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-surface-2 p-3">
+      <p className="text-sm font-semibold">Осы күні кабинетте ({DAY[wd - 1]}):</p>
+      {busy.length ? <ul className="space-y-1">{busy.map(x => (
+        <li key={x.k} className={`flex gap-3 rounded-lg px-2 py-1 text-sm ${clash.includes(x) ? 'bg-danger-soft text-danger' : 'bg-surface'}`}><span className="w-24 shrink-0 font-bold tabular-nums">{x.s}–{x.t}</span><span>{x.text}</span></li>))}</ul>
+        : <p className="text-sm text-text-secondary">Бос: сабақ та, бронь да жоқ.</p>}
+      {clash.length > 0 && <p role="alert" className="text-sm font-semibold text-danger">Таңдаған уақыт {clash.length === 1 ? 'осымен' : 'булармен'} қабаттасады. Басқа уақыт таңдаңыз.</p>}
+    </div>
   );
 }

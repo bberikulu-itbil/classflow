@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RoomWeek } from '../schedule/Timetable';
+import { RoomDay, RoomWeek, type Booking } from '../schedule/Timetable';
 import { ArrowLeft, Check, DoorOpen, Laptop, Plus, Trash2, TriangleAlert, Wrench } from 'lucide-react';
 import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad } from '../ui';
 import { Chip } from '../contests/ui';
@@ -65,6 +65,8 @@ function RoomEdit({ me, d, id, done }: { me: Me; d: Data; id: string | null; don
   );
 }
 
+const bookingsOf = (d: Data, roomId: string): Booking[] => d.reqs.filter(r => r.room_id === roomId).map(r => ({ ...r, who: d.people[r.requester_id] ?? '—' }));
+
 function Book({ me, d, room, done }: { me: Me; d: Data; room: Room; done: (note?: string) => void }) {
   const its = itemsOf(d, room.id).filter(i => i.qty - i.broken > 0);
   const [date, setDate] = useState(st.todayIso()), [start, setStart] = useState('14:00'), [end, setEnd] = useState('15:00'), [purpose, setPurpose] = useState('');
@@ -84,6 +86,7 @@ function Book({ me, d, room, done }: { me: Me; d: Data; room: Room; done: (note?
         <Field label="Басталуы">{x => <input id={x} type="time" className={inputCls} value={start} onChange={e => setStart(e.target.value)} />}</Field>
         <Field label="Аяқталуы">{x => <input id={x} type="time" className={inputCls} value={end} onChange={e => setEnd(e.target.value)} />}</Field>
       </div>
+      {me.school_id && <RoomDay me={me as any} roomId={room.id} date={date} start={start} end={end} bookings={bookingsOf(d, room.id)} />}
       <Field label="Мақсаты">{x => <input id={x} className={inputCls} maxLength={300} value={purpose} onChange={e => setPurpose(e.target.value)} />}</Field>
       {its.length > 0 && (
         <fieldset className="space-y-2">
@@ -220,7 +223,7 @@ export function RoomsView({ me }: { me: Me }) {
           <h2 className="text-xl font-semibold">{room.name}</h2>
           {room.description && <p className="text-text-secondary">{room.description}</p>}
           <p className="text-sm text-text-secondary">Жауапты: {room.responsible_id ? d.people[room.responsible_id] ?? '—' : '—'}</p>
-          {me.school_id && me.role !== 'student' && <RoomWeek me={me as any} roomId={room.id} />}
+          {me.school_id && me.role !== 'student' && <RoomWeek me={me as any} roomId={room.id} bookings={bookingsOf(d, room.id)} />}
           {room.layout && room.layout.els.length > 0 && <PlanView layout={room.layout} items={its} onItem={id => setMode({ k: 'item', id })} />}
           {st.manages(me, room) && !(room.layout && room.layout.els.length) && <p className="text-sm text-text-secondary">Кабинет схемасы әлі сызылмаған: «Өзгерту» арқылы сызыңыз.</p>}
           {its.length === 0 ? <p className="text-sm text-text-secondary">Жабдық тізімі бос.</p> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{its.map(i => <ItemCard key={i.id} d={d} i={i} open={() => setMode({ k: 'item', id: i.id })} />)}</div>}
