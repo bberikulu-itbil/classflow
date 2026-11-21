@@ -190,6 +190,41 @@ export function CourseCardPreview({
   );
 }
 
+function LessonMenu({ title, exam, kmj, copied, onKmj, onShare, onExam, onRemove }: {
+  title: string; exam: boolean; kmj: boolean | undefined; copied: boolean;
+  onKmj: () => void; onShare: () => void; onExam: () => void; onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const out = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', out); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', out); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  const item = 'flex min-h-[42px] w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-text hover:bg-surface-2';
+  const go = (f: () => void) => () => { setOpen(false); f(); };
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" aria-label={`${title}: тағы әрекеттер`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}
+        className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border text-text-secondary hover:bg-surface-2 hover:text-text ${open ? 'border-border bg-surface-2' : 'border-transparent'}`}>
+        {copied ? <Check size={18} className="text-success" aria-hidden="true" /> : <MoreVertical size={18} aria-hidden="true" />}
+      </button>
+      {open && (
+        <ul role="menu" className="absolute right-0 z-30 mt-1 w-60 rounded-xl border border-border bg-surface p-1.5 shadow-2xl">
+          {!exam && <li role="none"><button type="button" role="menuitem" className={item} onClick={go(onKmj)}>
+            <FileText size={16} className="text-text-secondary" aria-hidden="true" /><span className="flex-1">ҚМЖ</span>
+            <span className={`rounded-md px-1.5 py-0.5 text-xs font-bold ${kmj ? 'bg-success-soft text-success' : kmj === false ? 'bg-surface-2 text-text-secondary' : 'bg-warning-soft text-warning'}`}>{kmj ? 'дайын' : kmj === false ? 'жоба' : 'жоқ'}</span></button></li>}
+          <li role="none"><button type="button" role="menuitem" className={item} onClick={go(onShare)}><Share2 size={16} className="text-text-secondary" aria-hidden="true" />Сілтемені бөлісу</button></li>
+          <li role="none"><button type="button" role="menuitem" className={item} onClick={go(onExam)}><ClipboardCheck size={16} className="text-text-secondary" aria-hidden="true" />{exam ? 'Емтихан емес, дәріс' : 'Емтихан деп белгілеу'}</button></li>
+          <li role="separator" className="my-1 border-t border-border" />
+          <li role="none"><button type="button" role="menuitem" className={item + ' text-danger hover:!bg-danger-soft'} onClick={go(onRemove)}><Trash2 size={16} aria-hidden="true" />Модульден алып тастау</button></li>
+        </ul>)}
+    </div>
+  );
+}
+
 function ModuleMenu({
   mod,
   index,
@@ -690,20 +725,22 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {classes.data && classes.data.length > 0 && (
-                <select
-                  aria-label="Сынып (бастау үшін)"
-                  className="min-h-[38px] rounded-lg border border-border-input bg-surface px-3 text-xs font-medium text-text"
-                  value={cls}
-                  onChange={(e) => {
-                    setCls(e.target.value);
-                    st.selectClass(e.target.value);
-                  }}
-                >
-                  <option value="">Сынып таңдалмаған</option>
-                  {[...classes.data, ...MODES].map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              )}
+              {classes.data && classes.data.length > 0 && (() => {
+                const pick = (v: string) => { setCls(v); st.selectClass(v); };
+                const other = [...classes.data, ...MODES].filter(c => !courseClasses.includes(c.id));
+                return (
+                  <div role="group" aria-label="Қай сыныппен бастаймыз" className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-surface p-1">
+                    <span className="flex items-center gap-1.5 px-2 text-xs font-semibold text-text-muted"><Users size={14} aria-hidden="true" />Сынып</span>
+                    {courseClasses.map(k => (
+                      <button key={k} type="button" aria-pressed={cls === k} onClick={() => pick(cls === k ? '' : k)}
+                        className={`min-h-[36px] min-w-[3rem] rounded-lg px-3 text-sm font-bold ${cls === k ? 'bg-accent text-on-accent' : 'text-text hover:bg-surface-2'}`}>{pgc.className.get(k)}</button>))}
+                    <select aria-label="Басқа сынып немесе режим" value={courseClasses.includes(cls) ? '' : cls} onChange={e => pick(e.target.value)}
+                      className={`min-h-[36px] w-auto max-w-[11rem] rounded-lg border-0 px-2 text-sm font-semibold ${cls && !courseClasses.includes(cls) ? 'bg-accent text-on-accent' : 'bg-surface-2 text-text-secondary'}`}>
+                      <option value="">{courseClasses.length ? 'Басқа…' : 'Сынып таңдалмаған'}</option>
+                      {other.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>);
+              })()}
 
               <Button
                 variant="primary"
@@ -773,7 +810,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                 const info1 = [KIND_LABEL[m.kind], m.kind === 'lesson' ? qLabel(m.quarter) : null, m.grade && `${m.grade}-сынып`, `${ps.length} дәріс`].filter(Boolean).join(' · ');
 
                 return (
-                  <section key={m.id} aria-label={moduleTitle(m, lang)} className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm transition-all hover:border-slate-400/40">
+                  <section key={m.id} aria-label={moduleTitle(m, lang)} className="rounded-xl border border-border bg-surface shadow-sm transition-all hover:border-slate-400/40">
                     <div className="flex items-center gap-1 pr-2">
                       <h3 className="min-w-0 flex-1">
                         <button
@@ -782,13 +819,13 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                           onClick={() => setOpenId(openId === m.id ? '' : m.id)}
                           className="flex min-h-[58px] w-full items-center gap-3.5 rounded-lg p-2.5 text-left hover:bg-surface-2/60 transition-colors"
                         >
-                          <span
-                            aria-hidden="true"
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-                            style={{ background: coverOf(m.kind === 'course' ? 3 : mi) }}
-                          >
-                            <Layers size={20} />
-                          </span>
+                          {(() => { const r = courseClasses.map(k => pg.progressIn(its, m, k, pgc)); const all = r.length > 0 && r.every(x => x.total && x.done === x.total);
+                            const part = r.reduce((a, x) => a + (x.total ? x.done / x.total : 0), 0) / Math.max(1, r.length);
+                            return (
+                              <span aria-hidden="true" className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-xl font-black ${all ? 'bg-success-soft text-success' : 'bg-accent-soft text-on-accent-soft'}`}>
+                                {moduleTitle(m, lang).match(/^\s*(\d+)/)?.[1] || mi + 1}
+                                {r.length > 0 && <span className="absolute inset-x-2 bottom-1.5 h-1 overflow-hidden rounded-full bg-white/70"><span className={`block h-full rounded-full ${all ? 'bg-success' : 'bg-accent'}`} style={{ width: `${Math.round(part * 100)}%` }} /></span>}
+                              </span>); })()}
                           <span className="min-w-0 flex-1">
                             <span className="block break-words font-semibold text-text text-base">{moduleTitle(m, lang)}</span>
                             <span className="block text-xs font-normal text-text-secondary mt-0.5">{info1}</span>
@@ -858,7 +895,15 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                               <Plus size={16} aria-hidden="true" />
                               <span>Дәріс жасау</span>
                             </Button>
-                            {free.length > 0 && <span className="text-xs text-text-muted">немесе дайын дәрісті қосыңыз</span>}
+                            <span className="flex-1" />
+                            <Button
+                              variant="secondary"
+                              className="!min-h-[38px] gap-1.5 border !border-violet-300 !bg-violet-50 text-xs font-semibold !text-violet-800 sm:text-sm"
+                              onClick={() => { window.location.hash = 'edit/new?module=' + encodeURIComponent(m.id) + '&exam=1'; }}
+                            >
+                              <ClipboardCheck size={16} aria-hidden="true" />
+                              <span>Емтихан / БЖБ қосу</span>
+                            </Button>
                           </div>
                         )}
 
@@ -877,7 +922,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                       {p.exam ? <ClipboardCheck size={14} aria-hidden="true" /> : labelOf.get(l.id) || i + 1}
                                     </span>
                                     <a href={'#edit/' + l.id} className="min-w-0 font-medium text-text hover:text-accent transition-colors break-words text-sm sm:text-base leading-snug">
-                                      {lessonTitle(l, lang)}
+                                      {labelOf.get(l.id) && pg.splitNum(lessonTitle(l, lang))[0] === labelOf.get(l.id) ? pg.splitNum(lessonTitle(l, lang))[1] : lessonTitle(l, lang)}
                                     </a>
                                     {p.exam && <span className="shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">Емтихан</span>}
                                     {!p.exam && courseClasses.length > 0 && (
@@ -891,10 +936,6 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
 
                                   {!editing && (
                                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                      {!p.exam && (() => { const k = pgc.kmj.get(l.id); return (
-                                        <a href={'#kmj/' + l.id} className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-md px-2.5 text-xs font-bold ${k ? 'bg-success-soft text-success' : k === false ? 'bg-surface-2 text-text-secondary' : 'bg-warning-soft text-warning'}`}
-                                          aria-label={`${lessonTitle(l, lang)}: ҚМЖ ${k ? 'дайын' : k === false ? 'жоба' : 'құру'}`}>
-                                          <FileText size={14} aria-hidden="true" />ҚМЖ{k ? ' ✓' : k === false ? ' · жоба' : ' +'}</a>); })()}
                                       {!p.exam && <Button
                                         variant="success"
                                         className="!min-h-[38px] px-3.5 gap-1.5 text-xs sm:text-sm font-semibold shadow-sm"
@@ -918,37 +959,15 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                                         <span>Өңдеу</span>
                                       </LinkButton>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => shareLesson(l.id, lessonTitle(l, lang))}
-                                        title={copiedId === l.id ? 'Сілтеме көшірілді!' : 'Сілтемені бөлісу'}
-                                        aria-label={`${lessonTitle(l, lang)}: бөлісу`}
-                                        className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-md border px-3 text-xs sm:text-sm font-medium transition-colors ${
-                                          copiedId === l.id
-                                            ? 'border-success/40 bg-success-soft text-success'
-                                            : 'border-border bg-surface text-text hover:bg-surface-2'
-                                        }`}
-                                      >
-                                        {copiedId === l.id ? (
-                                          <>
-                                            <Check size={14} className="text-success" aria-hidden="true" />
-                                            <span className="font-semibold text-success">Көшірілді!</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Share2 size={14} className="text-text-secondary" aria-hidden="true" />
-                                            <span>Бөлісу</span>
-                                          </>
-                                        )}
-                                      </button>
                                       {p.exam ? (
                                         <Button onClick={() => setExamOf({ id: l.id, title: lessonTitle(l, lang) })} className="!min-h-[38px] px-3.5 gap-1.5 text-xs sm:text-sm font-semibold !bg-violet-600 hover:!bg-violet-700 !text-white" title="Оқушылар тапсырмаларды өздері жылжып орындайды; сабақ өткізу керек емес">
                                           <ClipboardCheck size={14} aria-hidden="true" /><span>Емтихан: ашу, нәтиже</span>
                                         </Button>
                                       ) : null}
-                                      <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-text-secondary" title="Оқушылар емтиханды курста көреді, тек сіз ашқанда тапсырады">
-                                        <input type="checkbox" className="h-4 w-4" checked={!!p.exam} onChange={async e => { await st.setExam(me, l.id, e.target.checked); reload(); }} aria-label={`${lessonTitle(l, lang)}: емтихан`} />Емтихан
-                                      </label>
+                                      <LessonMenu title={lessonTitle(l, lang)} exam={!!p.exam} kmj={pgc.kmj.get(l.id)} copied={copiedId === l.id}
+                                        onKmj={() => { window.location.hash = 'kmj/' + l.id; }} onShare={() => shareLesson(l.id, lessonTitle(l, lang))}
+                                        onExam={async () => { await st.setExam(me, l.id, !p.exam); reload(); }}
+                                        onRemove={async () => { if (!window.confirm(`«${lessonTitle(l, lang)}» модульден алынады. Дәрістің өзі «Менің дәрістерім» ішінде сақталады.`)) return; await st.unplaceLesson(me, l.id); reload(); }} />
                                     </div>
                                   )}
 

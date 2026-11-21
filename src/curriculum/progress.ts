@@ -38,15 +38,18 @@ export async function loadCtx(me: { id: string }, year: number): Promise<Ctx> {
   return c;
 }
 
+/** "2.1 Сандар жүйелері" → ["2.1", "Сандар жүйелері"]; a title without its own number → ["", title]. */
+export const splitNum = (t: string): [string, string] => { const m = t.match(/^\s*(\d+(?:\.\d+)+)\.?\s+(.*)$/s); return m ? [m[1], m[2]] : ['', t]; };
+
 export interface Item { id: string; module: Mod; label: string; exam: boolean }
 /** The course's lectures in order, numbered "module.lecture" (3.6); exams keep their place but are not numbered. */
 export function items(curr: Curr, courseId: string): Item[] {
   const mods = curr.modules.filter(m => m.course_id === courseId).sort((a, b) => a.position - b.position);
-  const have = new Set(curr.lessons.map(l => l.id));
+  const title = new Map(curr.lessons.map(l => [l.id, l.title_kk || l.title]));
   return mods.flatMap((m, mi) => {
     let n = 0;
-    return curr.places.filter(p => p.module_id === m.id && have.has(p.lesson_id)).sort((a, b) => a.position - b.position)
-      .map(p => ({ id: p.lesson_id, module: m, exam: !!p.exam, label: p.exam ? 'БЖБ' : `${mi + 1}.${++n}` }));
+    return curr.places.filter(p => p.module_id === m.id && title.has(p.lesson_id)).sort((a, b) => a.position - b.position)
+      .map(p => ({ id: p.lesson_id, module: m, exam: !!p.exam, label: p.exam ? 'БЖБ' : splitNum(title.get(p.lesson_id) || '')[0] || `${mi + 1}.${++n}` }));
   });
 }
 

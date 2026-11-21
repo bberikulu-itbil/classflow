@@ -95,7 +95,7 @@ function pageFromTemplate(pageType: PageType, templateId: string): Slide {
 function decodeRouteId(id: string) {
   const [lessonId, query] = id.split('?');
   const params = new URLSearchParams(query || '');
-  return { lessonId, moduleId: params.get('module') || '' };
+  return { lessonId, moduleId: params.get('module') || '', exam: params.get('exam') === '1' };
 }
 
 function parseSlides(value: unknown): Slide[] {
@@ -233,7 +233,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
 
   useEffect(() => {
     if (isNew) {
-      setTitle('');
+      setTitle(route.exam ? 'БЖБ: ' : '');
       setSubject('Информатика олимпиадасы');
       setGrade('7');
       setDuration('90 минут');
@@ -503,8 +503,9 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       if (route.moduleId && lessonId && isNew) {
         const current = await curriculum.loadCurr(me);
         await curriculum.placeLesson(me, lessonId, route.moduleId, curriculum.nextPosition(current.places.filter(p => p.module_id === route.moduleId)));
+        if (route.exam) await curriculum.setExam(me, lessonId, true);
       }
-      setMessage('Дәріс сақталды.');
+      setMessage(route.exam ? 'Емтихан сақталды.' : 'Дәріс сақталды.');
       setTimeout(() => { window.location.hash = route.moduleId ? 'lessons/modules' : 'lessons/mine'; }, 500);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Дәрісті сақтау мүмкін болмады.');
@@ -528,7 +529,7 @@ export function LessonEditorView({ id, me, onLogout }: { id: string; me: any; on
       plan={{ subject, grade, duration, summary, objectives, prior, env, source, stages }}
       onPlan={patchPlan}
       onDropStage={dropStage}
-      status={saving ? 'Сақталуда…' : 'Нобай'}
+      status={saving ? 'Сақталуда…' : route.exam ? 'Емтихан · нобай' : 'Нобай'}
       saved={message}
       importBusy={importBusy}
       importVariant={importVariant}
