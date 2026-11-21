@@ -16,9 +16,7 @@ import { StageClock } from './StageClock';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', sim: 'Симулятор', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
-const TABS = [{ key: 'class', label: 'Сынып', icon: LayoutGrid }, { key: 'subs', label: 'Жауаптар', icon: ClipboardList }];
-// opened from the «Қосымша» menu; the open one shows as a third tab
-const EXTRA = [{ key: 'att', label: 'Қатысу', icon: CalendarCheck }, { key: 'score', label: 'Ұпай', icon: Trophy }, { key: 'ask', label: 'Сұрақтар', icon: MessageCircleQuestion }, { key: 'pairs', label: 'Жұптар', icon: Users }, { key: 'slides', label: 'Слайдтар', icon: Presentation }];
+const TABS = [{ key: 'class', label: 'Сынып', icon: LayoutGrid }, { key: 'subs', label: 'Жауаптар', icon: ClipboardList }, { key: 'rules', label: 'Ережелер', icon: SlidersHorizontal }];
 const RULES = [
   { key: 'ask', icon: MessageCircleQuestion, name: 'Сұрақ қою', hint: '«Түсінбедім»: оқушы слайдқа сұрақ жазады' },
   { key: 'hand', icon: Hand, name: 'Қол көтеру', hint: 'Өшірсеңіз, оқушыда батырма жасырылады' },
@@ -72,7 +70,6 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const [groupScores, setGroupScores] = useState<any[]>([]);
   const [tab, setTab] = useState('class');
   const [pickId, setPickId] = useState(''); // the student whose actions are open in the class grid
-  const [rulesOpen, setRulesOpen] = useState(false);
   const [planStages, setPlanStages] = useState<{ k: string; min: number }[]>([]);
   const [asks, setAsks] = useState<any[]>([]); // «Түсінбедім» questions of this session
   const loadAsks = () => sb.from('cf_questions').select('*').eq('session_id', sid).order('created_at', { ascending: false }).then(r => { if (r.data) setAsks(r.data); }, () => {});
@@ -153,9 +150,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     const iv = setInterval(refresh, 8000);
     return () => { sb.removeChannel(ch); clearInterval(iv); clearTimeout(autoTRef.current); };
   }, [sid]);
-  useEffect(() => { if (tab === 'att') refresh(); }, [tab]);
   // the class roster (also students who did not log in) for choosing a pair partner
-  useEffect(() => { if (tab === 'pairs' && !roster.length) sb.rpc('cf_attendance', { p_session: sid }).then(r => { if (r.data) setRoster(r.data); }, () => {}); }, [tab]);
+  const loadRoster = () => { if (!roster.length) sb.rpc('cf_attendance', { p_session: sid }).then(r => { if (r.data) setRoster(r.data); }, () => {}); };
 
   useEffect(() => {
     let alive = true;
@@ -291,24 +287,9 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
           <a href={`#board/${sid}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Monitor size={16} aria-hidden="true" />Тақта<span className="sr-only"> (жаңа терезеде)</span></a>
           <button type="button" onClick={() => setShare(true)} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Share2 size={16} aria-hidden="true" />Бөлісу</button>
           <div className="relative">
-            <button type="button" data-testid="rules-open" onClick={() => setRulesOpen(v => !v)} aria-expanded={rulesOpen} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold cursor-pointer hover:bg-border">
+            <button type="button" data-testid="rules-open" onClick={() => { setTab('rules'); document.getElementById('remote-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold cursor-pointer hover:bg-border">
               <SlidersHorizontal size={16} aria-hidden="true" />Ережелер<span className="rounded-full bg-accent px-1.5 text-xs text-on-accent">{RULES.filter(r => ruleOn(r.key)).length}</span>
             </button>
-            {rulesOpen && (
-              <div role="dialog" aria-label="Сабақ ережелері" data-testid="rules" className="absolute right-0 z-30 mt-1 w-80 max-w-[90vw] space-y-1 rounded-xl border border-border bg-surface p-2 shadow-pop">
-                {RULES.map(r => {
-                  const on = ruleOn(r.key);
-                  return (
-                    <button key={r.key} type="button" role="switch" aria-checked={on} onClick={() => setRule(r.key, !on)} className={`flex min-h-[52px] w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left cursor-pointer ${on ? 'bg-success-soft' : 'hover:bg-surface-2'}`}>
-                      <span aria-hidden="true" className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${on ? 'bg-success text-white' : 'bg-surface-2 text-text-secondary'}`}><r.icon size={18} /></span>
-                      <span className="min-w-0 flex-1"><b className="block text-sm font-semibold">{r.name}</b><span className="text-xs text-text-secondary">{r.hint}</span></span>
-                      <span aria-hidden="true" className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 ${on ? 'justify-end bg-success' : 'justify-start bg-text-muted'}`}><span className="h-5 w-5 rounded-full bg-white" /></span>
-                    </button>
-                  );
-                })}
-                <p className="px-2 pt-1 text-xs text-text-muted">Бірден әсер етеді.</p>
-              </div>
-            )}
           </div>
           <Button variant="danger" onClick={() => setEnding(true)} aria-expanded={ending}><Square size={14} aria-hidden="true" />Аяқтау</Button>
         </div>
@@ -397,18 +378,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
 
         <section aria-label="Сынып" className="min-w-0 space-y-3">
           <div className="flex items-end gap-2">
-            <div className="min-w-0 flex-1"><Tabs id="remote" label="Сынып бөлімдері" tabs={EXTRA.some(t => t.key === tab) ? [...TABS, EXTRA.find(t => t.key === tab)!] : TABS} value={tab} onChange={setTab} /></div>
+            <div className="min-w-0 flex-1"><Tabs id="remote" label="Сынып бөлімдері" tabs={TABS.map(t => t.key === 'subs' && openAsks ? { ...t, label: `Жауаптар · ${openAsks} сұрақ` } : t)} value={tab} onChange={setTab} /></div>
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap pb-3 text-sm font-semibold" title="Онлайн оқушылар"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />{onlineCount}/{parts.length}</span>
-            <details className="relative">
-              <summary className="inline-flex min-h-[44px] list-none items-center gap-1.5 rounded-md px-3 text-sm font-semibold cursor-pointer hover:bg-surface-2"><MoreHorizontal size={16} aria-hidden="true" />Қосымша{openAsks ? <span className="rounded-full bg-warning px-1.5 text-xs font-bold text-bg">{openAsks}</span> : null}</summary>
-              <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-border bg-surface p-1.5 shadow-pop">
-                {EXTRA.map(t => (
-                  <button key={t.key} type="button" onClick={e => { setTab(t.key); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }} className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-3 text-left text-sm cursor-pointer hover:bg-surface-2 ${tab === t.key ? 'bg-accent-soft font-semibold' : ''}`}>
-                    <t.icon size={16} className="text-text-secondary" aria-hidden="true" /><span className="flex-1">{t.label}</span>{t.key === 'ask' && openAsks ? <b className="text-warning">{openAsks}</b> : null}
-                  </button>
-                ))}
-              </div>
-            </details>
           </div>
           <div id="remote-panel" role="tabpanel" aria-labelledby={`remote-tab-${tab}`} tabIndex={0} className="space-y-2">
             {tab === 'class' && (
@@ -461,9 +432,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
               </>
             )}
 
-            {tab === 'pairs' && (
-                <div data-testid="pairs" className="space-y-2 rounded-lg border border-border bg-surface p-2">
-                  <p className="px-1 text-sm font-semibold">👥 Жұптар <span className="font-normal text-text-secondary">— бір компьютер, екі оқушы</span></p>
+            {tab === 'class' && (
+                <details className="rounded-xl border border-border bg-surface" onToggle={e => { if (e.currentTarget.open) loadRoster(); }}>
+                <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold"><Users size={17} className="text-text-secondary" aria-hidden="true" /><span className="flex-1">Жұптар <span className="font-normal text-text-secondary">· бір компьютер, екі оқушы</span></span>{pairs.length > 0 && <span className="rounded-full bg-surface-2 px-2 text-xs">{pairs.length}</span>}</summary>
+                <div data-testid="pairs" className="space-y-2 border-t border-border p-2">
                   {pairs.map(q => (
                     <div key={q.host_id} className="flex items-center justify-between gap-2 px-1 text-sm">
                       <span className="break-words">{q.host_name} + {q.partner_name}</span>
@@ -482,6 +454,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                     <Button variant="secondary" disabled={!pf.host || !pf.partner} onClick={() => { run(() => sb.rpc('cf_pair_set', { p_session: sid, p_host: pf.host, p_partner: pf.partner }), 'Жұп қосылды'); setPf({ host: '', partner: '' }); }}><Plus size={16} aria-hidden="true" />Жұп қосу</Button>
                   </div>
                 </div>
+                </details>
             )}
 
             {tab === 'subs' && (!task ? <EmptyState icon="✅" text="Белсенді тапсырма жоқ. Тест не тапсырма слайдында «Тапсырма жіберу» батырмасын басыңыз." /> : lvTasks.length ? (
@@ -538,7 +511,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
               </>
             ))}
 
-            {tab === 'ask' && (asks.length === 0 ? <p className="text-sm text-text-muted">Әзірге сұрақ жоқ. Оқушы «Түсінбедім» арқылы жазғанда осында шығады.</p> : (
+            {tab === 'subs' && <h3 className="flex items-center gap-2 pt-3 text-sm font-semibold"><MessageCircleQuestion size={17} className="text-text-secondary" aria-hidden="true" />Сұрақтар{openAsks ? <span className="rounded-full bg-warning px-2 text-xs font-bold text-bg">{openAsks}</span> : null}</h3>}
+            {tab === 'subs' && (asks.length === 0 ? <p className="text-sm text-text-muted">Әзірге сұрақ жоқ. Оқушы «Түсінбедім» арқылы жазғанда осында шығады.</p> : (
               <ul data-testid="asks" className="space-y-2">
                 {asks.map(q => (
                   <li key={q.id} className={`flex items-start gap-3 rounded-xl border border-border p-3 ${q.resolved ? 'opacity-60' : 'bg-surface'}`}>
@@ -552,8 +526,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 ))}
               </ul>
             ))}
-            {tab === 'score' && (
-              <>
+            {tab === 'class' && (
+              <details className="rounded-xl border border-border bg-surface">
+                <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold"><Trophy size={17} className="text-text-secondary" aria-hidden="true" /><span className="flex-1">Ұпай</span>{leaderboard.length > 0 && <span className="text-xs font-normal text-text-secondary">1-орын: {leaderboard[0].full_name} · {leaderboard[0].points}</span>}</summary>
+                <div className="space-y-2 border-t border-border p-2">
                 <div className="grid grid-cols-2 gap-2">
                   {Array.from({ length: session.groups_count || 3 }, (_, i) => i + 1).map(g => {
                     const pts = (groupScores.find((x: any) => x.group_no === g) || {}).points || 0;
@@ -576,10 +552,15 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                     ))}</tbody>
                   </table>
                 )}
-              </>
+                </div>
+              </details>
             )}
 
-            {tab === 'att' && (attendanceRows.length === 0 ? <p className="text-sm text-text-muted">Деректер жүктелуде немесе әлі жоқ.</p> : (
+            {tab === 'class' && (
+              <details className="rounded-xl border border-border bg-surface" onToggle={e => { if (e.currentTarget.open) refresh(); }}>
+                <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold"><CalendarCheck size={17} className="text-text-secondary" aria-hidden="true" /><span className="flex-1">Қатысу</span><span className="text-xs font-normal text-text-secondary">{parts.length} оқушы қосылды</span></summary>
+                <div className="border-t border-border p-2">
+            {(attendanceRows.length === 0 ? <p className="text-sm text-text-muted">Деректер жүктелуде немесе әлі жоқ.</p> : (
               <table className="w-full text-sm">
                 <caption className="sr-only">Қатысу</caption>
                 <thead className="sr-only"><tr><th scope="col">Оқушы</th><th scope="col">Күйі</th><th scope="col">Беттен шығу</th></tr></thead>
@@ -592,18 +573,24 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                 ))}</tbody>
               </table>
             ))}
+                </div>
+              </details>
+            )}
 
-            {tab === 'slides' && (
-              <ol className="space-y-1">
-                {priv.map((s: any, i: number) => (
-                  <li key={i}>
-                    <button type="button" aria-current={i === cur ? 'step' : undefined} onClick={() => goSlide(i)}
-                      className={`flex min-h-[44px] w-full items-center gap-3 rounded-md px-3 text-left text-sm cursor-pointer ${i === cur ? 'bg-accent text-on-accent font-semibold' : 'bg-surface border border-border hover:bg-surface-2'}`}>
-                      <span className="w-6 shrink-0 tabular-nums opacity-80">{i + 1}</span><span className="min-w-0 flex-1 truncate">{s.title || TYPE[s.type] || s.type}</span><span className="text-xs opacity-80">{kindLabel(s.kind, lang) || TYPE[s.type] || ''}</span>
+            {tab === 'rules' && (
+              <div data-testid="rules" className="space-y-1.5">
+                {RULES.map(r => {
+                  const on = ruleOn(r.key);
+                  return (
+                    <button key={r.key} type="button" role="switch" aria-checked={on} onClick={() => setRule(r.key, !on)} className={`flex min-h-[56px] w-full items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer ${on ? 'border-success/40 bg-success-soft' : 'border-border bg-surface hover:bg-surface-2'}`}>
+                      <span aria-hidden="true" className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${on ? 'bg-success text-white' : 'bg-surface-2 text-text-secondary'}`}><r.icon size={19} /></span>
+                      <span className="min-w-0 flex-1"><b className="block text-sm font-semibold">{r.name}</b><span className="text-xs text-text-secondary">{r.hint}</span></span>
+                      <span aria-hidden="true" className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 ${on ? 'justify-end bg-success' : 'justify-start bg-text-muted'}`}><span className="h-5 w-5 rounded-full bg-white" /></span>
                     </button>
-                  </li>
-                ))}
-              </ol>
+                  );
+                })}
+                <p className="px-1 pt-1 text-xs text-text-muted">Бірден әсер етеді. Жаңа сабақ «Сұрақ қою», «Қол көтеру», «Алға өту», «Авто-тапсырма» қосулы күйде басталады.</p>
+              </div>
             )}
           </div>
         </section>
