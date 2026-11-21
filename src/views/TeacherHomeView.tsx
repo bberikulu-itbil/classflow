@@ -1,3 +1,4 @@
+import { givenName } from '../ui/names';
 import React, { useState } from 'react';
 import { sb, DEMO } from '../config';
 import { api } from '../hw/types';
@@ -59,7 +60,7 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
     <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
       <header className="space-y-1">
         <p className="text-sm font-medium text-text-muted capitalize">{new Date().toLocaleDateString('kk-KZ', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Сәлеметсіз бе{me.full_name ? `, ${me.full_name.split(' ')[0]}` : ''}!</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Сәлеметсіз бе{givenName(me.full_name) ? `, ${givenName(me.full_name)}` : ''}!</h1>
         <p className="text-sm text-text-secondary">Сабағыңызды жоспарлап, сынып жұмысын бір жерден басқарыңыз.</p>
       </header>
 

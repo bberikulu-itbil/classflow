@@ -19,7 +19,8 @@ const DEMO_COURSES: C[] = [{ id: 'dc', title: 'Информатика 7 [мыс�
 const DEMO_LESSON: Lesson = { title: 'Алгоритм дегеніміз не?', slides: [{ type: 'title', title: 'Алгоритм дегеніміз не?', subtitle: '7-сынып · Информатика' },
   { type: 'content', title: 'Анықтама', bullets: ['Алгоритм — есепті шешу қадамдарының дәйектілігі', 'Әр қадам нақты және орындалатын болуы керек'] }] };
 
-const loadCourses = async (): Promise<C[]> => {
+export type { C as StudentCourse, L as StudentLesson };
+export const loadCourses = async (): Promise<C[]> => {
   if (DEMO) return DEMO_COURSES;
   const r = await sb.rpc('cf_student_courses'); if (r.error) throw new Error(r.error.message); return (r.data ?? []) as C[];
 };
@@ -64,7 +65,10 @@ function Reader({ lesson, back }: { lesson: L; back: () => void }) {
 
 export function StudentCourses() {
   const { data, error, loading, reload } = useLoad(loadCourses, []);
-  const [cid, setCid] = useState(''), [les, setLes] = useState<L | null>(null);
+  // The home page can send the student straight to a course (and an exam in it): sessionStorage cf_open = {course, lesson?}.
+  const [want] = useState<{ course?: string; lesson?: string }>(() => { try { const v = JSON.parse(sessionStorage.getItem('cf_open') || '{}'); sessionStorage.removeItem('cf_open'); return v; } catch { return {}; } });
+  const [cid, setCid] = useState(want.course || ''), [les, setLes] = useState<L | null>(null);
+  useEffect(() => { if (want.lesson && data && !les) { const l = data.find(c => c.id === want.course)?.modules.flatMap(m => m.lessons).find(x => x.id === want.lesson); if (l) setLes(l); } }, [data]);
   if (loading && !data) return <Skeleton rows={3} />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   const course = data?.find(c => c.id === cid);
