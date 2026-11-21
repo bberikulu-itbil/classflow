@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RoomWeek } from '../schedule/Timetable';
 import { ArrowLeft, Check, DoorOpen, Laptop, Plus, Trash2, TriangleAlert, Wrench } from 'lucide-react';
 import { Button, Card, EmptyState, ErrorBox, Field, Skeleton, inputCls, useLoad } from '../ui';
 import { Chip } from '../contests/ui';
@@ -219,6 +220,7 @@ export function RoomsView({ me }: { me: Me }) {
           <h2 className="text-xl font-semibold">{room.name}</h2>
           {room.description && <p className="text-text-secondary">{room.description}</p>}
           <p className="text-sm text-text-secondary">Жауапты: {room.responsible_id ? d.people[room.responsible_id] ?? '—' : '—'}</p>
+          {me.school_id && me.role !== 'student' && <RoomWeek me={me as any} roomId={room.id} />}
           {room.layout && room.layout.els.length > 0 && <PlanView layout={room.layout} items={its} onItem={id => setMode({ k: 'item', id })} />}
           {st.manages(me, room) && !(room.layout && room.layout.els.length) && <p className="text-sm text-text-secondary">Кабинет схемасы әлі сызылмаған: «Өзгерту» арқылы сызыңыз.</p>}
           {its.length === 0 ? <p className="text-sm text-text-secondary">Жабдық тізімі бос.</p> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{its.map(i => <ItemCard key={i.id} d={d} i={i} open={() => setMode({ k: 'item', id: i.id })} />)}</div>}

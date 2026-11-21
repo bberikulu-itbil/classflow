@@ -22,6 +22,7 @@ export const TEACHER: Section[] = [
   { key: 'lessons', label: 'Сабақтар', icon: Presentation, routes: ['lessons', 'lesson', 'edit', 'plans', 'plan'], subs: [
     { key: 'courses', label: 'Курстар', to: 'lessons/courses' },
     { key: 'modules', label: 'Модульдер', to: 'lessons/modules' },
+    { key: 'timetable', label: 'Сабақ кестесі', to: 'lessons/timetable' },
     { key: 'schedule', label: 'КТП', to: 'lessons/schedule' },
     { key: 'gallery', label: 'Ортақ кітапхана', icon: Library, items: ['Дайын дәрістер', 'Әріптестердің материалдары'] },
   ] },

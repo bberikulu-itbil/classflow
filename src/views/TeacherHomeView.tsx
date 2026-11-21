@@ -4,6 +4,7 @@ import { api } from '../hw/types';
 import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, SoonCard, inputCls, useLoad } from '../ui';
 import { getPrefs } from '../prefs';
 import { MODES, startSession } from './session';
+import { TodayCard } from '../schedule/Timetable';
 import { ArrowUpRight, BookOpen, CalendarDays, ClipboardCheck, NotebookText } from 'lucide-react';
 
 interface Lesson { id: string; title: string; class_id: string | null }
@@ -67,7 +68,7 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { href: '#lessons/modules', label: 'Сабақтар', detail: 'Модульдер мен дәрістер', Icon: BookOpen },
-            { href: '#lessons/schedule', label: 'КТП', detail: 'Сабақ кестесі', Icon: CalendarDays },
+            { href: '#lessons/timetable', label: 'Сабақ кестесі', detail: 'Апталық кесте', Icon: CalendarDays },
             { href: '#journal/grid', label: 'Журнал', detail: 'Сынып бағалары', Icon: NotebookText },
             { href: '#tasks/queue', label: 'Тексеру кезегі', detail: 'Оқушы жұмыстары', Icon: ClipboardCheck },
           ].map(({ href, label, detail, Icon }) => (
@@ -130,7 +131,7 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
       <details className="rounded-xl border border-border bg-surface p-4">
         <summary className="cursor-pointer text-sm font-semibold text-text-secondary">Жоспарланған мүмкіндіктер</summary>
         <div className="grid gap-4 md:grid-cols-2 mt-4">
-          <SoonCard title="Бүгінгі кесте" items={['Бүгінгі сабақтар', 'Келесі сабақты бір басумен бастау']} />
+          {(me as any).school_id && <TodayCard me={me as any} />}
           <SoonCard title="Жылдық жоспар бойынша прогресс" items={['Өтілген және қалған тақырыптар']} />
         </div>
       </details>

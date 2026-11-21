@@ -10,6 +10,7 @@ import { LessonsGallery } from '../lessons/LessonsGallery';
 import { Gradebook } from '../journal/Gradebook';
 import { CoursesView, ModulesView } from '../curriculum/Views';
 import { ScheduleView } from '../schedule/View';
+import { TimetableView } from '../schedule/Timetable';
 import { StudentFeedback } from '../views/student';
 import { VocabBase, VocabLink, VocabTest, VocabShare } from '../vocab/Teacher';
 import { StudentVocab, StudentCards, StudentQuiz } from '../vocab/Student';
@@ -62,6 +63,7 @@ const VIEWS: Record<string, (c: Ctx) => React.ReactNode> = {
   'teacher:lessons:courses': c => <CoursesView me={c.me} />,
   'teacher:lessons:modules': c => <ModulesView me={c.me} />,
   'teacher:lessons:schedule': c => <ScheduleView me={c.me} />,
+  'teacher:lessons:timetable': c => <TimetableView me={c.me} name={c.me.full_name} />,
   'teacher:journal:grid': c => <Gradebook me={c.me} />,
   'teacher:journal:classes': () => <ClassesView />,
   'teacher:settings:profile': c => <ProfileCard me={c.me} onLogout={c.onLogout} />,
