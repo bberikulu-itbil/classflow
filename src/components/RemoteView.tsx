@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X, MoreHorizontal, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X, MoreHorizontal, SlidersHorizontal, MessageCircleQuestion, FastForward, History, Zap, Users, Trophy, CalendarCheck, Presentation, ClipboardList, LayoutGrid } from 'lucide-react';
 import { sb } from '../config';
 import { ShareBoard } from './ShareBoard';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
@@ -16,16 +16,16 @@ import { StageClock } from './StageClock';
 
 const TYPE: Record<string, string> = { title: 'Тақырып', content: 'Мазмұн', bullets: 'Тізім', quiz: 'Тест', task: 'Тапсырма', code: 'Код', flashcards: 'Карточка', matching: 'Сәйкестендіру', logic: 'Логика', sim: 'Симулятор', leaderboard: 'Рейтинг', summary: 'Қорытынды' };
 const PRESENCE: Record<string, string> = { online: 'онлайн', away: 'беттен шықты', offline: 'офлайн' };
-const TABS = [{ key: 'class', label: 'Сынып' }, { key: 'subs', label: 'Жауаптар' }, { key: 'score', label: 'Ұпай' }];
-// opened from the «Қосымша» menu; the open one shows as a fourth tab
-const EXTRA = [{ key: 'ask', label: 'Сұрақтар' }, { key: 'pairs', label: 'Жұптар' }, { key: 'att', label: 'Қатысу' }, { key: 'slides', label: 'Слайдтар' }];
+const TABS = [{ key: 'class', label: 'Сынып', icon: LayoutGrid }, { key: 'subs', label: 'Жауаптар', icon: ClipboardList }];
+// opened from the «Қосымша» menu; the open one shows as a third tab
+const EXTRA = [{ key: 'att', label: 'Қатысу', icon: CalendarCheck }, { key: 'score', label: 'Ұпай', icon: Trophy }, { key: 'ask', label: 'Сұрақтар', icon: MessageCircleQuestion }, { key: 'pairs', label: 'Жұптар', icon: Users }, { key: 'slides', label: 'Слайдтар', icon: Presentation }];
 const RULES = [
-  { key: 'nav', name: 'Қайта қарауға рұқсат', hint: 'Оқушы өткен слайдтарды өз экранында ашады' },
-  { key: 'ask', name: '«Түсінбедім» сұрақтары', hint: 'Оқушы слайдқа сұрақ жаза алады' },
-  { key: 'hand', name: 'Қол көтеру', hint: 'Өшірсеңіз, оқушыда батырма жасырылады' },
-  { key: 'lock', name: 'Экрандарды бұғаттау', hint: 'Барлық оқушының экраны жабылады' },
-  { key: 'ahead', name: 'Алға өтуді сұрау', hint: 'Тапсырманы бітірген оқушы келесі слайдқа өтуді сұрайды; рұқсат берсеңіз, сол слайдтың тапсырмасын бұрын орындайды' },
-  { key: 'auto', name: 'Тапсырманы автоматты жіберу', hint: 'Тапсырма слайдына өткенде өзі ашылады; келесі слайдқа өткенде жібермегендерге 5 секунд беріледі' },
+  { key: 'ask', icon: MessageCircleQuestion, name: 'Сұрақ қою', hint: '«Түсінбедім»: оқушы слайдқа сұрақ жазады' },
+  { key: 'hand', icon: Hand, name: 'Қол көтеру', hint: 'Өшірсеңіз, оқушыда батырма жасырылады' },
+  { key: 'ahead', icon: FastForward, name: 'Алға өту', hint: 'Тапсырманы бітірген оқушы келесі слайдқа өтуді сұрайды; рұқсат берсеңіз, сол слайдтың тапсырмасын бұрын орындайды' },
+  { key: 'nav', icon: History, name: 'Өз бетімен жылжу', hint: 'Оқушы өткен слайдтарды өз экранында ашады' },
+  { key: 'auto', icon: Zap, name: 'Авто-тапсырма', hint: 'Тапсырма слайдына өткенде өзі ашылады; келесі слайдқа өткенде жібермегендерге 5 секунд беріледі' },
+  { key: 'lock', icon: Lock, name: 'Экрандарды бұғаттау', hint: 'Барлық оқушының экраны жабылады' },
 ];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
 
@@ -300,6 +300,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                   const on = ruleOn(r.key);
                   return (
                     <button key={r.key} type="button" role="switch" aria-checked={on} onClick={() => setRule(r.key, !on)} className={`flex min-h-[52px] w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left cursor-pointer ${on ? 'bg-success-soft' : 'hover:bg-surface-2'}`}>
+                      <span aria-hidden="true" className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${on ? 'bg-success text-white' : 'bg-surface-2 text-text-secondary'}`}><r.icon size={18} /></span>
                       <span className="min-w-0 flex-1"><b className="block text-sm font-semibold">{r.name}</b><span className="text-xs text-text-secondary">{r.hint}</span></span>
                       <span aria-hidden="true" className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 ${on ? 'justify-end bg-success' : 'justify-start bg-text-muted'}`}><span className="h-5 w-5 rounded-full bg-white" /></span>
                     </button>
@@ -402,8 +403,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
               <summary className="inline-flex min-h-[44px] list-none items-center gap-1.5 rounded-md px-3 text-sm font-semibold cursor-pointer hover:bg-surface-2"><MoreHorizontal size={16} aria-hidden="true" />Қосымша{openAsks ? <span className="rounded-full bg-warning px-1.5 text-xs font-bold text-bg">{openAsks}</span> : null}</summary>
               <div className="absolute right-0 z-20 mt-1 w-56 rounded-xl border border-border bg-surface p-1.5 shadow-pop">
                 {EXTRA.map(t => (
-                  <button key={t.key} type="button" onClick={e => { setTab(t.key); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }} className="flex min-h-[44px] w-full items-center justify-between rounded-md px-3 text-left text-sm cursor-pointer hover:bg-surface-2">
-                    {t.label}{t.key === 'ask' && openAsks ? <b className="text-warning">{openAsks}</b> : null}
+                  <button key={t.key} type="button" onClick={e => { setTab(t.key); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }} className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-3 text-left text-sm cursor-pointer hover:bg-surface-2 ${tab === t.key ? 'bg-accent-soft font-semibold' : ''}`}>
+                    <t.icon size={16} className="text-text-secondary" aria-hidden="true" /><span className="flex-1">{t.label}</span>{t.key === 'ask' && openAsks ? <b className="text-warning">{openAsks}</b> : null}
                   </button>
                 ))}
               </div>
