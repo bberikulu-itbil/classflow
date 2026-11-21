@@ -29,6 +29,8 @@ import {
   User,
   Users,
   X,
+  CalendarDays,
+  FileText,
 } from 'lucide-react';
 import { coverOf } from '../ui/cover';
 import { sb, DEMO } from '../config';
@@ -45,6 +47,8 @@ import { fmtDate } from '../hw/format';
 import { ModuleAnalytics } from './ModuleAnalytics';
 import { CourseAudienceDialog, audienceText } from './CourseAudience';
 import { ExamDialog } from './ExamPanel';
+import * as pg from './progress';
+import { schoolYear } from '../lessons/model';
 
 export const PRESET_COVERS = [
   {
@@ -312,7 +316,7 @@ function ModuleMenu({
   );
 }
 
-export type CourseTab = 'syllabus' | 'info' | 'analysis';
+export type CourseTab = 'syllabus' | 'info' | 'analysis' | 'ktp';
 
 export function CourseDetailView({ courseId, me }: { courseId: string; me: Me }) {
   const [lang, flipLang] = useLang();
@@ -360,6 +364,37 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
   const [audOpen, setAudOpen] = useState(false);
   const [examOf, setExamOf] = useState<{ id: string; title: string } | null>(null); // bumps after a past session is deleted
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const year = schoolYear(new Date());
+  const pgl = useLoad(() => pg.loadCtx(me, year), [me.id, year]);
+  const pgc = pgl.data || pg.EMPTY;
+  const its = data && course ? pg.items(data, course.id) : [];
+  const labelOf = new Map(its.map(i => [i.id, i.label]));
+  const courseClasses = course ? pgc.classesOf.get(course.id) || [] : [];
+  // Course-wide results (cf_module_results, 066): average score and students under 50%.
+  const [kpi, setKpi] = useState<{ avg: number | null; low: { name: string; cls: string }[] }>({ avg: null, low: [] });
+  const modKey = modules.map(m => m.id).join(',');
+  useEffect(() => {
+    if (DEMO || !modKey) return;
+    let off = false;
+    Promise.all(modKey.split(',').map(id => sb.rpc('cf_module_results', { p_module: id }))).then(rs => {
+      const by = new Map<string, { name: string; cls: string; p: number; m: number }>();
+      for (const r of rs) for (const x of ((r as any).data || []) as any[]) {
+        const o = by.get(x.student_id) || { name: x.full_name, cls: x.class_name || '', p: 0, m: 0 };
+        o.p += x.points || 0; o.m += x.max_points || 0; by.set(x.student_id, o);
+      }
+      const all = [...by.values()].filter(o => o.m > 0);
+      const P = all.reduce((a, o) => a + o.p, 0), M = all.reduce((a, o) => a + o.m, 0);
+      if (!off) setKpi({ avg: M ? Math.round((P / M) * 100) : null, low: all.filter(o => o.p / o.m < 0.5).sort((a, b) => a.p / a.m - b.p / b.m).map(o => ({ name: o.name, cls: o.cls })) });
+    });
+    return () => { off = true; };
+  }, [modKey, sessTick]);
+  // КТП of this course: the dated slots of this school year that hold one of its lectures.
+  const [slots, setSlots] = useState<{ id: string; class_id: string; held_on: string; lesson_id: string; quarter: number }[] | null>(null);
+  useEffect(() => {
+    if (tab !== 'ktp' || DEMO || !its.length) return;
+    sb.from('cf_slots').select('id,class_id,held_on,lesson_id,quarter').eq('school_year', year).in('lesson_id', its.map(i => i.id)).order('held_on')
+      .then(({ data: d }: any) => setSlots(d || []));
+  }, [tab, its.length, year]);
 
   useEffect(() => {
     if (course) {
@@ -580,7 +615,18 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             <span className="rounded-xl border border-border bg-surface-2/60 px-3 py-1.5 text-xs font-medium text-text-secondary">
               {modules.length} модуль · {totalLessons} дәріс
             </span>
+            <Button variant={tab === 'info' ? 'primary' : 'secondary'} className="!min-h-[38px] gap-1.5 text-sm" aria-pressed={tab === 'info'} onClick={() => setTab(tab === 'info' ? 'syllabus' : 'info')}>
+              <Pencil size={15} aria-hidden="true" />Мәліметтерді өзгерту
+            </Button>
           </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-surface-2 px-4 py-3"><p className="text-xs font-semibold text-text-muted">Орташа нәтиже</p><p className="mt-1 text-2xl font-extrabold">{kpi.avg === null ? '—' : kpi.avg + '%'}</p></div>
+          <div className="rounded-xl bg-surface-2 px-4 py-3"><p className="text-xs font-semibold text-text-muted">Өткен сабақ · {year}–{year + 1}</p>
+            <p className="mt-1 text-2xl font-extrabold">{courseClasses.reduce((a, k) => a + its.filter(i => !i.exam && pgc.taught.get(k)?.has(i.id)).length, 0)}<span className="text-base font-semibold text-text-muted"> / {its.filter(i => !i.exam).length * Math.max(1, courseClasses.length)}</span></p></div>
+          <button type="button" onClick={() => setTab('analysis')} className={`rounded-xl px-4 py-3 text-left ${kpi.low.length ? 'bg-warning-soft text-warning' : 'bg-surface-2'}`} title={kpi.low.slice(0, 12).map(x => `${x.name} (${x.cls})`).join('\n')}>
+            <p className="text-xs font-bold">Назар керек</p><p className="mt-1 text-2xl font-extrabold">{kpi.low.length} <span className="text-sm font-semibold">оқушы · 50%-дан төмен</span></p></button>
         </div>
 
         {/* 3 Main Tabs */}
@@ -595,23 +641,10 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             }`}
           >
             <BookOpen size={17} aria-hidden="true" />
-            <span>Силлабус (Syllabus)</span>
+            <span>Дәрістер</span>
             <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-text-secondary font-normal">
               {modules.length}
             </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTab('info')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-              tab === 'info'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-text-secondary hover:text-text'
-            }`}
-          >
-            <Info size={17} aria-hidden="true" />
-            <span>Ақпарат (Information)</span>
           </button>
 
           <button
@@ -624,7 +657,20 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
             }`}
           >
             <BarChart3 size={17} aria-hidden="true" />
-            <span>Талдау (Analysis)</span>
+            <span>Сабақ журналы</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTab('ktp')}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+              tab === 'ktp'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-text-secondary hover:text-text'
+            }`}
+          >
+            <CalendarDays size={17} aria-hidden="true" />
+            <span>КТП</span>
           </button>
         </nav>
       </section>
@@ -746,6 +792,7 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                           <span className="min-w-0 flex-1">
                             <span className="block break-words font-semibold text-text text-base">{moduleTitle(m, lang)}</span>
                             <span className="block text-xs font-normal text-text-secondary mt-0.5">{info1}</span>
+                            {courseClasses.length > 0 && <span className="mt-1 flex flex-wrap gap-1.5">{courseClasses.map(k => { const r = pg.progressIn(its, m, k, pgc); return <span key={k} className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold ${r.total && r.done === r.total ? 'bg-success-soft text-success' : 'bg-surface-2 text-text-secondary'}`}>{pgc.className.get(k)} {r.done}/{r.total}</span>; })}</span>}
                           </span>
                           <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                         </button>
@@ -824,19 +871,30 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
                             {ps.map((p, i) => {
                               const l = lesson(p.lesson_id)!;
                               return (
-                                <li key={p.lesson_id} className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface p-2.5 sm:p-3 transition-all hover:border-accent/40 hover:bg-surface-2/60 hover:shadow-sm">
+                                <li key={p.lesson_id} className={`group flex flex-wrap items-center justify-between gap-3 rounded-xl border p-2.5 sm:p-3 ${p.exam ? 'border-violet-300 bg-violet-50' : 'border-border/70 bg-surface'}`}>
                                   <div className="flex min-w-0 flex-1 items-center gap-3">
                                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xs font-bold text-text-secondary group-hover:bg-accent group-hover:text-on-accent transition-colors">
-                                      {i + 1}
+                                      {p.exam ? <ClipboardCheck size={14} aria-hidden="true" /> : labelOf.get(l.id) || i + 1}
                                     </span>
                                     <a href={'#edit/' + l.id} className="min-w-0 font-medium text-text hover:text-accent transition-colors break-words text-sm sm:text-base leading-snug">
                                       {lessonTitle(l, lang)}
                                     </a>
                                     {p.exam && <span className="shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">Емтихан</span>}
+                                    {!p.exam && courseClasses.length > 0 && (
+                                      <span className="flex shrink-0 gap-1.5" aria-label="Сыныптарда өтілуі">
+                                        {courseClasses.map(k => { const ok = pgc.taught.get(k)?.has(l.id); return (
+                                          <span key={k} title={`${pgc.className.get(k)}: ${ok ? 'өтілді' : 'әлі өтілмеді'}`} className="inline-flex items-center gap-1 text-[11px] font-bold text-text-secondary">
+                                            <span aria-hidden="true" className={`grid h-4 w-4 place-items-center rounded-full ${ok ? 'bg-success text-white' : 'border-2 border-border-input'}`}>{ok && <Check size={10} strokeWidth={4} />}</span>
+                                            {pgc.className.get(k)}<span className="sr-only">{ok ? ' өтілді' : ' өтілмеді'}</span></span>); })}
+                                      </span>)}
                                   </div>
 
                                   {!editing && (
                                     <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                      {!p.exam && (() => { const k = pgc.kmj.get(l.id); return (
+                                        <a href={'#kmj/' + l.id} className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-md px-2.5 text-xs font-bold ${k ? 'bg-success-soft text-success' : k === false ? 'bg-surface-2 text-text-secondary' : 'bg-warning-soft text-warning'}`}
+                                          aria-label={`${lessonTitle(l, lang)}: ҚМЖ ${k ? 'дайын' : k === false ? 'жоба' : 'құру'}`}>
+                                          <FileText size={14} aria-hidden="true" />ҚМЖ{k ? ' ✓' : k === false ? ' · жоба' : ' +'}</a>); })()}
                                       {!p.exam && <Button
                                         variant="success"
                                         className="!min-h-[38px] px-3.5 gap-1.5 text-xs sm:text-sm font-semibold shadow-sm"
@@ -1165,6 +1223,39 @@ export function CourseDetailView({ courseId, me }: { courseId: string; me: Me })
               </div>
             </form>
           </div>
+        </section>
+      )}
+
+      {tab === 'ktp' && (
+        <section aria-label="КТП" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold">КТП · {year}–{year + 1}</h2>
+              <p className="text-xs text-text-secondary">Курс дәрістері қойылған күндер. Күндерді сабақ кестесінен «КТП» бөлімі жасайды.</p>
+            </div>
+            <LinkButton href="#lessons/schedule" variant="secondary" className="!min-h-[38px] text-sm">КТП-ны өңдеу</LinkButton>
+          </div>
+          {DEMO ? <EmptyState text="Демо режимде КТП жоқ." /> : !slots ? <Skeleton /> : !slots.length ? (
+            <EmptyState text="Бұл курстың дәрістері әлі КТП-ға қойылмаған." action={<LinkButton href="#lessons/schedule" variant="primary">КТП-ға өту</LinkButton>} />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead className="bg-surface-2 text-left text-xs text-text-secondary"><tr>
+                  <th scope="col" className="px-3 py-2.5">Күні</th><th scope="col" className="px-3 py-2.5">Тоқсан</th><th scope="col" className="px-3 py-2.5">Сынып</th><th scope="col" className="px-3 py-2.5">Дәріс</th><th scope="col" className="px-3 py-2.5">ҚМЖ</th>
+                </tr></thead>
+                <tbody>
+                  {slots.map(x => { const l = lesson(x.lesson_id); const k = pgc.kmj.get(x.lesson_id); return (
+                    <tr key={x.id} className="border-t border-border">
+                      <td className="whitespace-nowrap px-3 py-2">{x.held_on.split('-').reverse().join('.')}</td>
+                      <td className="px-3 py-2">{x.quarter}</td>
+                      <td className="px-3 py-2 font-semibold">{pgc.className.get(x.class_id) || '—'}</td>
+                      <td className="px-3 py-2"><span className="mr-2 font-bold text-text-secondary">{labelOf.get(x.lesson_id)}</span>{l ? lessonTitle(l, lang) : '—'}</td>
+                      <td className="px-3 py-2"><a href={'#kmj/' + x.lesson_id} className={`inline-flex min-h-[32px] items-center rounded-md px-2.5 text-xs font-bold ${k ? 'bg-success-soft text-success' : k === false ? 'bg-surface-2 text-text-secondary' : 'bg-warning-soft text-warning'}`}>{k ? 'дайын' : k === false ? 'жоба' : '+ құру'}</a></td>
+                    </tr>); })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
 

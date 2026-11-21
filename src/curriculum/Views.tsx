@@ -16,6 +16,7 @@ import { CreateMenu } from '../ui/CreateMenu';
 import { useLang, LANG_LABEL, type Lang } from '../lessons/lang';
 import { courseTitle, lessonTitle, moduleTitle } from './display';
 import { CourseAudienceDialog, audienceText } from './CourseAudience';
+import { CourseCards } from './CourseCards';
 
 /** Loads the whole structure and re-reads it after every change, so the screen can never drift from the stored rows. */
 function useCurr(me: Me) {
@@ -201,7 +202,7 @@ export function CoursesView({ me }: { me: Me }) {
   };
 
   return (
-    <main className="mx-auto max-w-4xl space-y-4 p-4">
+    <main className="mx-auto max-w-6xl space-y-4 p-4">
       {/* Header with Title and Add Button */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -268,61 +269,7 @@ export function CoursesView({ me }: { me: Me }) {
           {data.courses.length === 0 ? (
             <EmptyState text="Әзірге курс жоқ. Жоғарыдағы «Курс қосу» батырмасы арқылы алғашқысын қосыңыз." />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {data.courses.map((c, ci) => (
-                <div key={c.id} className="group relative flex flex-col rounded-2xl border border-border bg-surface shadow-sm transition-all hover:border-accent/40 hover:shadow-md">
-                  {/* Cover */}
-                  <a href={'#course/' + c.id} className="relative aspect-[16/10] w-full overflow-hidden rounded-t-2xl bg-slate-900 block" tabIndex={-1} aria-hidden="true">
-                    {c.cover_url ? (
-                      <img src={c.cover_url} alt={courseTitle(c, lang)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                    ) : (
-                      <div className="relative flex h-full w-full flex-col items-center justify-center p-4 text-center text-white" style={{ background: coverOf(ci) }}>
-                        <div className="flex max-w-[88%] flex-col items-center justify-center rounded-2xl bg-black/40 px-4 py-3 backdrop-blur-md border border-white/20 shadow-lg transition-transform duration-200 group-hover:scale-105">
-                          <GraduationCap size={32} className="mb-1.5 text-white/95" />
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-white/80">
-                            {c.subject || 'Курс'}
-                          </span>
-                          <span className="mt-1 text-sm font-bold text-white text-center line-clamp-1">
-                            {courseTitle(c, lang)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
-                      {c.subject && (
-                        <span className="rounded-lg bg-surface px-2.5 py-1 text-xs font-bold text-text shadow-md border border-border/80">
-                          {c.subject}
-                        </span>
-                      )}
-                      {c.grade && (
-                        <span className="rounded-lg bg-surface-2 px-2 py-1 text-xs font-semibold text-text shadow-md border border-border/80">
-                          {c.grade}-сынып
-                        </span>
-                      )}
-                    </div>
-                  </a>
-
-                  {/* Body */}
-                  <div className="flex flex-1 flex-col justify-between p-4 space-y-3">
-                    <div className="space-y-1">
-                      <a href={'#course/' + c.id} className="block font-bold text-lg text-text hover:text-accent transition-colors break-words">
-                        {courseTitle(c, lang)}
-                      </a>
-                      {c.description && <p className="text-xs text-text-secondary line-clamp-2">{c.description}</p>}
-                      <p className="text-xs text-text-muted pt-1">{counts(c)}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-border/60">
-                      <LinkButton href={'#course/' + c.id} variant="primary" className="!min-h-[38px] flex-1 justify-center gap-1.5 text-xs font-semibold" aria-label={`${courseTitle(c, lang)}: ашу`}>
-                        <span>Курсты ашу</span>
-                        <ArrowRight size={14} aria-hidden="true" />
-                      </LinkButton>
-                      <CourseActionMenu course={c} lang={lang} onDelete={() => setAsk(c)} onAudience={() => setAud(c)} audience={audienceText(c, classNames)} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CourseCards me={me} data={data} lang={lang} menu={c => <CourseActionMenu course={c} lang={lang} onDelete={() => setAsk(c)} onAudience={() => setAud(c)} audience={audienceText(c, classNames)} />} />
           )}
           {aud && <CourseAudienceDialog course={aud} onClose={() => setAud(null)} onSaved={reload} />}
           {ask && (
