@@ -4,12 +4,16 @@
 
 export type Kind = 'quiz' | 'short' | 'match';
 export interface Var { q: string; options: string[]; answer: number; accept: string; left: string[]; right: string[]; why: string; /** a picture-widget from a code-built exam (a circuit): kept, not edited */ widget?: object }
-export interface Task { kind: Kind; title: string; points: number; vars: Var[] }
+export interface Task { kind: Kind; title: string; points: number; vars: Var[]; /** the variant template, kept to make new variants later */ gen?: import('./gen').Gen }
 export interface Exam { title: string; minutes: number; tasks: Task[] }
 
 export const KIND: Record<Kind, string> = { quiz: 'Тест (бір жауап)', short: 'Қысқа жауап', match: 'Сәйкестендіру' };
 export const blankVar = (k: Kind): Var => ({ q: '', options: k === 'quiz' ? ['', '', '', ''] : [], answer: 0, accept: '', left: k === 'match' ? ['', '', ''] : [], right: k === 'match' ? ['', '', ''] : [], why: '' });
 export const blankTask = (k: Kind, n: number): Task => ({ kind: k, title: `${n}-тапсырма`, points: k === 'match' ? 3 : k === 'short' ? 2 : 1, vars: [blankVar(k)] });
+/** How many different papers the variants make (product over the tasks). */
+export const papers = (e: Exam) => e.tasks.reduce((a, t) => a * Math.max(1, t.vars.length), 1);
+/** The chance that two of n students get the very same paper. */
+export const clash = (e: Exam, n: number) => { const P = papers(e); let ok = 1; for (let k = 1; k < n; k++) ok *= Math.max(0, 1 - k / P); return 1 - ok; };
 export const total = (e: Exam) => e.tasks.reduce((a, t) => a + (Number(t.points) || 0), 0);
 const L = (i: number) => String.fromCharCode(65 + i);
 

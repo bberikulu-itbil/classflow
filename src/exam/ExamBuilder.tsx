@@ -6,7 +6,8 @@ import { sb, DEMO } from '../config';
 import { Button, ErrorBox, Skeleton } from '../ui';
 import * as st from '../curriculum/store';
 import { Match } from '../curriculum/Match';
-import { KIND, blankTask, blankVar, fromSlides, problems, shuffled, toSlides, total, type Exam, type Kind, type Task, type Var } from './model';
+import { KIND, blankTask, blankVar, clash, fromSlides, papers, problems, shuffled, toSlides, total, type Exam, type Kind, type Task, type Var } from './model';
+import { VariantMaker } from './VariantMaker';
 
 type Me = { id: string; school_id: string };
 const ICON: Record<Kind, typeof ListChecks> = { quiz: ListChecks, short: TextCursorInput, match: Shuffle };
@@ -88,9 +89,13 @@ export function ExamBuilder({ id, me }: { id: string; me: Me }) {
           <label className="text-xs font-bold text-violet-800">Уақыты, мин<input type="number" min={5} max={240} className="mt-1 block w-24 rounded-lg border border-violet-200 bg-white px-3 py-2 text-base font-bold" value={e.minutes} onChange={x => set({ minutes: +x.target.value })} /></label>
           <div className="rounded-xl bg-white px-4 py-2 text-center"><p className="text-xs font-bold text-violet-800">Жалпы балл</p><p className="text-2xl font-black text-violet-900">{total(e)}</p></div>
           <div className="rounded-xl bg-white px-4 py-2 text-center"><p className="text-xs font-bold text-violet-800">Тапсырма</p><p className="text-2xl font-black text-violet-900">{e.tasks.length}</p></div>
+          <div className="rounded-xl bg-white px-4 py-2 text-center" title="Әр тапсырманың нұсқалар санының көбейтіндісі"><p className="text-xs font-bold text-violet-800">Түрлі жиынтық</p><p className="text-2xl font-black text-violet-900">{papers(e) > 99999 ? '99 999+' : papers(e).toLocaleString('ru-RU')}</p></div>
           <Button onClick={save} loading={busy} className="!min-h-[48px] !bg-violet-600 px-6 text-base font-bold !text-white hover:!bg-violet-700">{saved || 'Сақтау'}</Button>
         </div>
-        <p className="mt-3 text-sm text-violet-900">Әр тапсырмаға 2–4 нұсқа жазыңыз: әр оқушыға әр тапсырмадан бір нұсқа түседі, көршісінікі басқа болады. Оқушы тапсырмаларды өзі жылжып орындайды, сабақ өткізу керек емес.</p>
+        <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${clash(e, 30) < 0.05 ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'}`}>
+          {clash(e, 30) < 0.05 ? `30 оқушылық сыныпта әркімге өз жиынтығы түседі (екеуінікі толық сәйкес келу ықтималдығы ${(clash(e, 30) * 100).toFixed(clash(e, 30) < 0.001 ? 2 : 1)}%).`
+            : `30 оқушыда екеуіне бірдей жиынтық түсу ықтималдығы ${Math.round(clash(e, 30) * 100)}%. Әр балаға өз нұсқасы түсуі үшін тапсырмаларға нұсқа көбейтіңіз (шаблон немесе ЖИ арқылы).`}</p>
+        <p className="mt-2 text-sm text-violet-900">Әр тапсырмаға бірнеше нұсқа жасаңыз (26-ға дейін): қолмен, шаблонмен немесе ЖИ арқылы. Әр оқушыға әр тапсырмадан бір нұсқа түседі, көршісінікі басқа болады. Оқушы тапсырмаларды өзі жылжып орындайды, сабақ өткізу керек емес.</p>
       </section>
       {err && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{err}</p>}
       {tried && issues.length > 0 && (
@@ -130,12 +135,14 @@ export function ExamBuilder({ id, me }: { id: string; me: Me }) {
               <button type="button" aria-label="Тапсырманы өшіру" onClick={() => { if (!window.confirm(`${at + 1}-тапсырма өшіріледі.`)) return; set({ tasks: e.tasks.filter((_, i) => i !== at) }); setAt(Math.max(0, at - 1)); setVi(0); }} className="grid h-10 w-10 place-items-center rounded-lg border border-border text-danger"><Trash2 size={16} /></button>
             </div>
 
+            <VariantMaker key={at} task={t} onVars={(vars, gen, append) => { setT({ vars: append ? [...t.vars.filter(x => x.q.trim()), ...vars].slice(0, 26) : vars, ...(gen ? { gen } : {}) }); setVi(0); }} />
+
             <div className="rounded-2xl border border-border bg-surface">
               <div role="tablist" aria-label="Нұсқалар" className="flex flex-wrap items-center gap-1 border-b border-border p-2">
                 {t.vars.map((_, j) => (
                   <button key={j} type="button" role="tab" aria-selected={j === vi} onClick={() => setVi(j)}
-                    className={`min-h-[40px] rounded-lg px-4 text-sm font-bold ${j === vi ? 'bg-violet-600 text-white' : 'bg-surface-2 text-text-secondary hover:bg-violet-50'}`}>{L(j)} нұсқа</button>))}
-                {t.vars.length < 4 && <>
+                    className={`min-h-[40px] rounded-lg px-4 text-sm font-bold ${j === vi ? 'bg-violet-600 text-white' : 'bg-surface-2 text-text-secondary hover:bg-violet-50'}`}>{t.vars.length > 5 ? L(j) : L(j) + " нұсқа"}</button>))}
+                {t.vars.length < 26 && <>
                   <button type="button" onClick={() => { setT({ vars: [...t.vars, blankVar(t.kind)] }); setVi(t.vars.length); }} className="flex min-h-[40px] items-center gap-1 rounded-lg px-3 text-sm font-semibold text-violet-800 hover:bg-violet-50"><Plus size={14} aria-hidden="true" />Бос нұсқа</button>
                   <button type="button" onClick={() => { setT({ vars: [...t.vars, JSON.parse(JSON.stringify(v))] }); setVi(t.vars.length); }} className="flex min-h-[40px] items-center gap-1 rounded-lg px-3 text-sm font-semibold text-violet-800 hover:bg-violet-50" title="Осы нұсқаны көшіріп, сандарын ғана өзгертіңіз"><Copy size={14} aria-hidden="true" />{L(vi)}-ны көшіру</button>
                 </>}
