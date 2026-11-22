@@ -1,3 +1,4 @@
+import { adoptAccountPrefs } from './prefs';
 import React, { useState, useEffect } from 'react';
 import { LessonPreview } from './lessons/Preview';
 import { ModulesView } from './curriculum/Views';
@@ -55,7 +56,8 @@ export default function App() {
       setLoading(false);
       return;
     }
-    const { data } = await sb.from('profiles').select('id,full_name,role,school_id,class_id').eq('id', session.user.id).maybeSingle();
+    const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+    if (data && (data as any).prefs) adoptAccountPrefs((data as any).prefs);
     if (!data) {
       alert('Профиль табылмады');
       await sb.auth.signOut();

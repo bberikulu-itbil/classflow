@@ -110,7 +110,7 @@ function Grid({ c, onCell, onEntry, showOwner, week, bookings = [] }: { c: Ctx; 
 
 /** Add or change one entry: class, label, course (its next lecture is offered at the bell), room, length. */
 function EntryDialog({ me, c, e, onDone }: { me: Me; c: Ctx; e: Partial<TT> & { weekday: number; period: number }; onDone: (changed: boolean) => void }) {
-  const [v, setV] = useState({ class_id: e.class_id ?? '', label: e.label ?? 'ИНФ', course_id: e.course_id ?? '', room_id: e.room_id ?? (c.rooms[0]?.id || ''), span: e.span ?? 1, weekday: e.weekday, period: e.period });
+  const [v, setV] = useState({ class_id: e.class_id ?? '', label: e.label ?? 'ИНФ', course_id: e.course_id ?? '', room_id: e.room_id ?? (c.rooms.some(r => r.id === getPrefs().room) ? getPrefs().room : c.rooms[0]?.id || ''), span: e.span ?? 1, weekday: e.weekday, period: e.period });
   const [busy, setBusy] = useState(false), [err, setErr] = useState('');
   const g = gradeOf(nameOf(c.classes, v.class_id));
   const courses = [...c.curr.courses].sort((a, b) => +(b.grade === g) - +(a.grade === g));

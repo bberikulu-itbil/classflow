@@ -5,6 +5,7 @@ import { ArrowLeft, CheckCircle2, CircleAlert, ClipboardCheck, Copy, Eye, ListCh
 import { sb, DEMO } from '../config';
 import { Button, ErrorBox, Skeleton } from '../ui';
 import * as st from '../curriculum/store';
+import { getPrefs } from '../prefs';
 import { Match } from '../curriculum/Match';
 import { KIND, blankTask, blankVar, clash, fromSlides, papers, problems, shuffled, toSlides, total, type Exam, type Kind, type Task, type Var } from './model';
 import { VariantMaker } from './VariantMaker';
@@ -31,7 +32,7 @@ export function ExamBuilder({ id, me }: { id: string; me: Me }) {
         const mid = route.moduleId || curr.places.find(p => p.lesson_id === route.lessonId)?.module_id;
         const cid = curr.modules.find(m => m.id === mid)?.course_id;
         if (cid) setBack('#course/' + cid);
-        if (isNew) { setE({ title: 'БЖБ: ', minutes: 40, tasks: [blankTask('quiz', 1)] }); return; }
+        if (isNew) { setE({ title: 'БЖБ: ', minutes: getPrefs().examMin, tasks: [blankTask('quiz', 1)] }); return; }
         const { data, error } = await sb.from('cf_lessons').select('title,slides,plan').eq('id', route.lessonId).single();
         if (error) throw new Error(error.message);
         const p = data.plan && typeof data.plan === 'object' ? data.plan : {};
