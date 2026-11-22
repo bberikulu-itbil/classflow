@@ -1,4 +1,5 @@
 import { givenName } from '../ui/names';
+import { FreshLessons } from './FreshLessons';
 import React, { useState } from 'react';
 import { sb, DEMO } from '../config';
 import { api } from '../hw/types';
@@ -128,6 +129,8 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
         </Card>
 
       </div>
+
+      {(me as any).school_id && <FreshLessons me={me as any} />}
 
       <details className="rounded-xl border border-border bg-surface p-4">
         <summary className="cursor-pointer text-sm font-semibold text-text-secondary">Жоспарланған мүмкіндіктер</summary>
