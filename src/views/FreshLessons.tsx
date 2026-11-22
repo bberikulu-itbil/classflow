@@ -1,7 +1,7 @@
 // The bottom of the teacher's home: lessons of my courses changed in the last 30 days that I have not looked through
 // in demo mode since — «Жаңа» (never looked at, made recently) or «Жаңартылған». A demo run clears the mark (cf_lesson_seen, 081).
 import React, { useState } from 'react';
-import { Eye, Sparkles } from 'lucide-react';
+import { CheckCheck, Eye, Sparkles } from 'lucide-react';
 import { sb, DEMO } from '../config';
 import { Button, Card, useLoad } from '../ui';
 import { loadCurr } from '../curriculum/store';
@@ -37,7 +37,15 @@ async function load(me: { id: string; school_id: string }): Promise<Row[]> {
 export function FreshLessons({ me }: { me: { id: string; school_id: string } }) {
   const q = useLoad(() => load(me), [me.id]);
   const [all, setAll] = useState(false), [busy, setBusy] = useState(''), [err, setErr] = useState('');
+  const [done, setDone] = useState(false);
   if (!q.data || !q.data.length) return null;
+  const markAll = async () => {
+    setBusy('all'); setErr('');
+    const { error } = await sb.rpc('cf_mark_seen', { p_lessons: q.data!.map(l => l.id) });
+    setBusy('');
+    if (error) return setErr(error.message);
+    setDone(true); q.reload();
+  };
   const list = all ? q.data : q.data.slice(0, 6);
   const look = async (id: string) => {
     setBusy(id); setErr('');
@@ -47,8 +55,10 @@ export function FreshLessons({ me }: { me: { id: string; school_id: string } }) 
     <Card className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="flex flex-1 items-center gap-2 font-bold"><Sparkles size={18} className="text-accent" aria-hidden="true" />Жаңа және жаңартылған сабақтар<span className="rounded-full bg-accent px-2 text-xs font-bold text-on-accent">{q.data.length}</span></h2>
-        <p className="w-full text-xs text-text-muted sm:w-auto">Демо режимде ашып қарағанша белгісі тұрады</p>
+        <Button variant="secondary" className="!min-h-[40px] gap-1.5 text-sm" loading={busy === 'all'} onClick={markAll}><CheckCheck size={16} aria-hidden="true" />Барлығын қаралды деп белгілеу</Button>
+        <p className="w-full text-xs text-text-muted">Демо режимде ашып қарағанша немесе «қаралды» деп белгілегенше белгісі тұрады</p>
       </div>
+      {done && <p role="status" className="sr-only">Барлығы қаралды деп белгіленді</p>}
       {err && <p role="alert" className="rounded-lg bg-danger-soft p-2 text-sm text-danger">{err}</p>}
       <ul className="divide-y divide-border">
         {list.map(l => (
