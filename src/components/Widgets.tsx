@@ -540,44 +540,63 @@ function DemoSheetSlide({ s, ctx }: { s: any; ctx: any }) {
 /** «Оқулық» under a slide (students and self-paced reading, not the board): paragraphs and captioned figures.
  *  `read` is text with blank lines between paragraphs (**bold**, `code` as in bullets); `figs` = [{ art | src, cap }]. */
 const inline = (t: string) => t.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((x, i) =>
-  x.startsWith('**') && x.endsWith('**') ? <b key={i} className="text-white">{x.slice(2, -2)}</b>
-    : x.startsWith('`') && x.endsWith('`') && x.length > 2 ? <code key={i} className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[0.92em] text-sky-200">{x.slice(1, -1)}</code> : x);
+  x.startsWith('**') && x.endsWith('**') ? <b key={i} className="font-extrabold">{x.slice(2, -2)}</b>
+    : x.startsWith('`') && x.endsWith('`') && x.length > 2 ? <code key={i} className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-[0.92em] text-blue-800">{x.slice(1, -1)}</code> : x);
 
-export function ReadBlock({ s, ctx }: { s: any; ctx: any }) {
+/** An explain slide written as a textbook page (it has `read`): the text with its headings and figures, the key points beside it.
+ *  The same page on the board (large type), on the student's screen and in self-paced reading. */
+export function TextbookSlide({ s, ctx }: { s: any; ctx: any }) {
+  const big = ctx.mode === 'board', pre = ctx.mode === 'preview';
   const paras = String(s.read || '').split(/\n\s*\n/).map((x: string) => x.trim()).filter(Boolean);
-  const figs: any[] = Array.isArray(s.figs) ? s.figs : [];
-  if (!paras.length && !figs.length) return null;
+  const figs: any[] = Array.isArray(s.figs) ? s.figs : s.art ? [{ art: s.art, cap: '' }] : [];
+  const pts: string[] = s.bullets || [];
   const lang = ctx.lang || 'kk';
   return (
-    <details open={ctx.readOpen} className="mx-auto mt-3 w-full max-w-5xl px-4">
-      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-xl bg-emerald-950/50 px-4 text-sm font-bold text-emerald-200">📖 {pick(lang, 'Оқулық: толығырақ оқу', 'Учебник: читать подробнее', 'Textbook: read more')}</summary>
-      <article className="mt-2 space-y-4 rounded-2xl border border-emerald-800/50 bg-slate-900 p-5 text-[17px] leading-relaxed text-slate-100 md:p-7">
-        {paras.map((t: string, i: number) => (/^#{1,3} /.test(t)
-          ? <h3 key={i} className="text-xl font-bold text-white">{t.replace(/^#+ /, '')}</h3>
-          : /^- /m.test(t) ? <ul key={i} className="ml-5 list-disc space-y-1">{t.split('\n').map((l, j) => <li key={j}>{inline(l.replace(/^- /, ''))}</li>)}</ul>
-          : <p key={i} className="whitespace-pre-line">{inline(t)}</p>))}
-        {figs.length > 0 && <div className={`grid gap-4 ${figs.length > 1 ? 'md:grid-cols-2' : ''}`}>{figs.map((f, i) => (
-          <figure key={i} className="overflow-hidden rounded-xl border border-slate-700 bg-white">
-            <img src={f.src || `lec/inf8-${f.art}.svg`} alt={f.cap || ''} loading="lazy" className="h-auto w-full" />
-            {f.cap && <figcaption className="bg-slate-800 px-3 py-2 text-sm text-slate-200"><b>{i + 1}-сурет.</b> {f.cap}</figcaption>}
-          </figure>))}</div>}
+    <div className={`cf-slide mx-auto w-full ${big ? 'max-w-7xl' : 'max-w-5xl'} p-4`}>
+      <article className="overflow-hidden rounded-2xl bg-white text-slate-900 shadow-xl">
+        <header className="flex items-center gap-3 border-b-4 border-blue-600 px-6 py-4 md:px-8">
+          <span aria-hidden="true" className={`grid shrink-0 place-items-center rounded-2xl bg-blue-600 text-white ${big ? 'h-16 w-16 text-3xl' : 'h-12 w-12 text-2xl'}`}>📖</span>
+          <h2 className={`${big ? 'text-5xl' : 'text-3xl'} font-black leading-tight`}>{s.title}</h2>
+        </header>
+        <div className={`grid gap-6 p-6 md:p-8 ${pts.length ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)]' : ''} ${pre ? 'max-h-[60vh] overflow-hidden' : ''}`}>
+          <div className={`space-y-4 ${big ? 'text-2xl leading-relaxed' : 'text-[17px] leading-relaxed'}`}>
+            {paras.map((t: string, i: number) => (/^#{1,3} /.test(t)
+              ? <h3 key={i} className={`${big ? 'text-3xl' : 'text-xl'} pt-1 font-extrabold text-blue-700`}>{t.replace(/^#+ /, '')}</h3>
+              : /^- /m.test(t) ? <ul key={i} className="ml-6 list-disc space-y-1">{t.split('\n').map((l, j) => <li key={j}>{inline(l.replace(/^- /, ''))}</li>)}</ul>
+              : <p key={i} className="whitespace-pre-line">{inline(t)}</p>))}
+            {s.code && <pre className={`overflow-auto rounded-xl bg-slate-900 p-4 font-mono text-slate-100 ${big ? 'text-xl' : 'text-sm'}`}>{s.code}</pre>}
+            {figs.length > 0 && <div className={`grid gap-4 ${figs.length > 1 ? 'md:grid-cols-2' : ''}`}>{figs.map((f, i) => (
+              <figure key={i} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <img src={f.src || `lec/inf8-${f.art}.svg`} alt={f.cap || ''} loading="lazy" className="h-auto w-full" />
+                {f.cap && <figcaption className={`border-t border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 ${big ? 'text-lg' : 'text-sm'}`}><b>{i + 1}-{pick(lang, 'сурет', 'рисунок', 'figure')}.</b> {f.cap}</figcaption>}
+              </figure>))}</div>}
+          </div>
+          {pts.length > 0 && (
+            <aside className="space-y-2 self-start lg:sticky lg:top-4">
+              <p className={`${big ? 'text-xl' : 'text-sm'} font-extrabold uppercase tracking-wide text-blue-700`}>{pick(lang, 'Есте сақта', 'Запомни', 'Remember')}</p>
+              {pts.map((b, i) => (
+                <div key={i} className={`flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 ${big ? 'text-2xl' : 'text-base'}`}>
+                  <span className={`grid shrink-0 place-items-center rounded-full bg-blue-600 font-bold text-white ${big ? 'h-9 w-9 text-lg' : 'h-7 w-7 text-sm'}`}>{i + 1}</span>
+                  <span className="font-semibold">{inline(b)}</span>
+                </div>))}
+            </aside>)}
+        </div>
       </article>
-    </details>
+    </div>
   );
 }
 
 export function renderSlide(raw: any, ctx: any = {}) {
-  const s = designSlide(raw); // slides marked design:'lab' are drawn as canvas pages
+  const s = raw?.read ? raw : designSlide(raw); // slides marked design:'lab' are drawn as canvas pages; a textbook page (with `read`) is not
   const badge = s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {pick(ctx.lang || 'kk', 'Жұппен', 'В паре', 'In a pair')}</span>}</div>;
   // the board lays its child out in a row: the badge and the page must share one column, or the page is squeezed to the right edge
   return <div className="w-full">
     {badge}
-    {s.demoSheet ? <DemoSheetSlide s={s} ctx={ctx} /> : renderSlideBody(s, ctx)}
+    {s.demoSheet ? <DemoSheetSlide s={s} ctx={ctx} /> : s.read ? <TextbookSlide s={s} ctx={ctx} /> : renderSlideBody(s, ctx)}
     {/* an SQL page: the editor works on the board and on every student's device; a thumbnail (preview) shows the page only */}
     {/* an interactive piece (number systems, circuits, codes); a thumbnail shows the page only */}
     {s.widget && ctx.mode !== 'preview' && <Suspense fallback={null}><LabWidget key={s.title} w={s.widget} lang={ctx.lang || 'kk'} big={ctx.mode === 'board'} /></Suspense>}
     {s.sql && ctx.mode !== 'preview' && <div className="mx-auto w-full max-w-5xl px-4 pb-4"><Suspense fallback={null}><SqlBox key={s.title} cfg={s.sql} lang={ctx.lang || 'kk'} storageKey={`cf-sql:${s.title}`} /></Suspense></div>}
-    {ctx.mode === 'student' && <ReadBlock s={raw} ctx={ctx} />}
   </div>;
 }
 
