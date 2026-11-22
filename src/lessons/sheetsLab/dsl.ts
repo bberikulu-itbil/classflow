@@ -15,10 +15,16 @@ export const titleSlide = (t: T, sub: T) => ({
 });
 
 /** Text slide: kind explain | example | video. `code` shows a formula or a small table in a code block; `art` names a picture; `video` is a YouTube id. */
-export const info = (kind: SlideKind, t: T, bullets: T[], o: { code?: string; notes?: T; art?: string; video?: string } = {}) => ({
+/** A picture of the «Оқулық» text: `art` = public/lec/inf8-<art>.svg (or `src` = a full path), with a caption. */
+export interface Fig { art?: string; src?: string; cap: T }
+/** `read` = the textbook text under the slide (students only; paragraphs split by a blank line), `figs` = its pictures. */
+export interface Read { read?: T; figs?: Fig[] }
+const readOf = (o: Read, i: 0 | 1 | 2) => ({ ...(o.read ? { read: o.read[i] } : {}), ...(o.figs ? { figs: o.figs.map(f => ({ art: f.art, src: f.src, cap: f.cap[i] })) } : {}) });
+
+export const info = (kind: SlideKind, t: T, bullets: T[], o: { code?: string; notes?: T; art?: string; video?: string } & Read = {}) => ({
   type: 'content', pageType: 'slide', templateId: 'explanation', kind, title: t[0], bullets: at(bullets, 0),
-  ...(o.code ? { code: o.code, lang: 'text' } : {}), ...(o.notes ? { notes: o.notes[0] } : {}), ...(o.art ? { art: o.art } : {}), ...(o.video ? { video: o.video } : {}),
-  ...langs(i => ({ title: t[i], bullets: at(bullets, i), ...(o.notes ? { notes: o.notes[i] } : {}) })),
+  ...(o.code ? { code: o.code, lang: 'text' } : {}), ...(o.notes ? { notes: o.notes[0] } : {}), ...(o.art ? { art: o.art } : {}), ...(o.video ? { video: o.video } : {}), ...readOf(o, 0),
+  ...langs(i => ({ title: t[i], bullets: at(bullets, i), ...(o.notes ? { notes: o.notes[i] } : {}), ...readOf(o, i) })),
 });
 
 /** Worked example: statement, steps, and the result the teacher reveals with a click. */
@@ -97,6 +103,26 @@ export const tag = (s: any, stage: string, notes?: T) => ({
 });
 
 /** The lesson plan card: what students already know, the software, the source and the timed stages (`do` = what the student does). */
-export interface LabPlan { prior: T; env: T; source: T; stages: { k: string; min: number; do: T }[] }
+export interface LabPlan {
+  prior: T; env: T; source: T;
+  /** `do` = what the student does; `t` = what the teacher does, `ev` = how it is assessed (both go into the ҚМЖ) */
+  stages: { k: string; min: number; do: T; t?: T; ev?: T }[];
+  /** ҚМЖ: «Сабақтың мақсаты» (Барлығы… Көпшілігі… Кейбірі…), learning-objective codes, differentiation, assessment, health and safety */
+  aim?: T; codes?: string[]; diff?: T; assess?: T; health?: T;
+}
+
+/** The `plan` column of cf_lessons for a code-built lesson: the lesson card and everything the ҚМЖ fills itself from. */
+export function planData(l: LabLesson, grade: number) {
+  const p = l.plan, L = (i: 0 | 1 | 2) => ({
+    summary: l.summary[i], objectives: l.objectives.map(o => o[i]),
+    ...(p ? { prior: p.prior[i], env: p.env[i], source: p.source[i], ...(p.aim ? { aim: p.aim[i] } : {}), ...(p.diff ? { diff: p.diff[i] } : {}), ...(p.assess ? { assess: p.assess[i] } : {}), ...(p.health ? { health: p.health[i] } : {}) } : {}),
+  });
+  return {
+    gen: l.id, grade, duration: '45 минут', ...L(0), ...(p?.codes ? { codes: p.codes } : {}),
+    ...(p ? { stages: p.stages.map(x => ({ k: x.k, min: x.min, do: x.do[0], ...(x.t ? { t: x.t[0] } : {}), ...(x.ev ? { ev: x.ev[0] } : {}) })) } : {}),
+    ru: { ...L(1), ...(p ? { stages: p.stages.map(x => x.do[1]) } : {}) },
+    en: { ...L(2), ...(p ? { stages: p.stages.map(x => x.do[2]) } : {}) },
+  };
+}
 
 export interface LabLesson { id: string; title: T; summary: T; objectives: T[]; terms: [string, string, string, string][]; slides: any[]; plan?: LabPlan; /** taken only as an exam (cf_exam_get), not shown in class */ exam?: boolean }

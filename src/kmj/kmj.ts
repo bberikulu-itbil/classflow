@@ -25,14 +25,15 @@ function slidesOf(slides: any[], k: string) {
 
 export function autofill(p: { topic: string; section: string; teacher: string; cls: string; date: string; plan: any; slides: any[] }): Kmj {
   const plan = p.plan && typeof p.plan === 'object' ? p.plan : {};
-  const st: { k: string; min: number; do: string }[] = Array.isArray(plan.stages) && plan.stages.length ? plan.stages : TEMPLATE_45;
-  const goals = Array.isArray(plan.objectives) ? plan.objectives.join('\n') : '';
+  const st: { k: string; min: number; do: string; t?: string; ev?: string }[] = Array.isArray(plan.stages) && plan.stages.length ? plan.stages : TEMPLATE_45;
+  const obj = Array.isArray(plan.objectives) ? plan.objectives : [], codes: string[] = Array.isArray(plan.codes) ? plan.codes : [];
+  const goals = obj.map((o: string, i: number) => (codes[i] ? `${codes[i]} ${o}` : o)).join('\n');
   return {
     section: p.section, teacher: p.teacher, date: p.date, cls: p.cls, topic: p.topic, goals,
-    aim: plan.summary ? String(plan.summary) : '',
-    stages: st.map(s => ({ name: name(s.k), min: Number(s.min) || 0, teacher: TEACHER_DO[s.k] || '', student: String(s.do || ''), assess: ASSESS[s.k] || '', res: slidesOf(p.slides, s.k) || 'ClassFlow' })),
-    diff: 'L1–L3 деңгейлі тапсырмалар: әр оқушы өз деңгейінен бастайды', assess: 'Тапсырмалар критерийлері бойынша, балл журналға түседі',
-    health: 'Сергіту сәті, компьютермен жұмыс қауіпсіздігі ережесі', reflection: '',
+    aim: plan.aim ? String(plan.aim) : plan.summary ? String(plan.summary) : '',
+    stages: st.map(s => ({ name: name(s.k), min: Number(s.min) || 0, teacher: s.t || TEACHER_DO[s.k] || '', student: String(s.do || ''), assess: s.ev || ASSESS[s.k] || '', res: slidesOf(p.slides, s.k) || 'ClassFlow' })),
+    diff: plan.diff || 'L1–L3 деңгейлі тапсырмалар: әр оқушы өз деңгейінен бастайды', assess: plan.assess || 'Тапсырмалар критерийлері бойынша, балл журналға түседі',
+    health: plan.health || 'Сергіту сәті, компьютермен жұмыс қауіпсіздігі ережесі', reflection: '',
   };
 }
 

@@ -537,6 +537,35 @@ function DemoSheetSlide({ s, ctx }: { s: any; ctx: any }) {
   </div>;
 }
 
+/** «Оқулық» under a slide (students and self-paced reading, not the board): paragraphs and captioned figures.
+ *  `read` is text with blank lines between paragraphs (**bold**, `code` as in bullets); `figs` = [{ art | src, cap }]. */
+const inline = (t: string) => t.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((x, i) =>
+  x.startsWith('**') && x.endsWith('**') ? <b key={i} className="text-white">{x.slice(2, -2)}</b>
+    : x.startsWith('`') && x.endsWith('`') && x.length > 2 ? <code key={i} className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[0.92em] text-sky-200">{x.slice(1, -1)}</code> : x);
+
+export function ReadBlock({ s, ctx }: { s: any; ctx: any }) {
+  const paras = String(s.read || '').split(/\n\s*\n/).map((x: string) => x.trim()).filter(Boolean);
+  const figs: any[] = Array.isArray(s.figs) ? s.figs : [];
+  if (!paras.length && !figs.length) return null;
+  const lang = ctx.lang || 'kk';
+  return (
+    <details open={ctx.readOpen} className="mx-auto mt-3 w-full max-w-5xl px-4">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-xl bg-emerald-950/50 px-4 text-sm font-bold text-emerald-200">📖 {pick(lang, 'Оқулық: толығырақ оқу', 'Учебник: читать подробнее', 'Textbook: read more')}</summary>
+      <article className="mt-2 space-y-4 rounded-2xl border border-emerald-800/50 bg-slate-900 p-5 text-[17px] leading-relaxed text-slate-100 md:p-7">
+        {paras.map((t: string, i: number) => (/^#{1,3} /.test(t)
+          ? <h3 key={i} className="text-xl font-bold text-white">{t.replace(/^#+ /, '')}</h3>
+          : /^- /m.test(t) ? <ul key={i} className="ml-5 list-disc space-y-1">{t.split('\n').map((l, j) => <li key={j}>{inline(l.replace(/^- /, ''))}</li>)}</ul>
+          : <p key={i} className="whitespace-pre-line">{inline(t)}</p>))}
+        {figs.length > 0 && <div className={`grid gap-4 ${figs.length > 1 ? 'md:grid-cols-2' : ''}`}>{figs.map((f, i) => (
+          <figure key={i} className="overflow-hidden rounded-xl border border-slate-700 bg-white">
+            <img src={f.src || `lec/inf8-${f.art}.svg`} alt={f.cap || ''} loading="lazy" className="h-auto w-full" />
+            {f.cap && <figcaption className="bg-slate-800 px-3 py-2 text-sm text-slate-200"><b>{i + 1}-сурет.</b> {f.cap}</figcaption>}
+          </figure>))}</div>}
+      </article>
+    </details>
+  );
+}
+
 export function renderSlide(raw: any, ctx: any = {}) {
   const s = designSlide(raw); // slides marked design:'lab' are drawn as canvas pages
   const badge = s.kind && <div className="mx-auto w-full max-w-5xl px-4 pt-3"><KindBadge kind={s.kind} lang={ctx.lang} />{s.pair && <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/50 bg-fuchsia-500/20 px-3 py-1 text-sm font-bold text-fuchsia-200">👥 {pick(ctx.lang || 'kk', 'Жұппен', 'В паре', 'In a pair')}</span>}</div>;
@@ -548,6 +577,7 @@ export function renderSlide(raw: any, ctx: any = {}) {
     {/* an interactive piece (number systems, circuits, codes); a thumbnail shows the page only */}
     {s.widget && ctx.mode !== 'preview' && <Suspense fallback={null}><LabWidget key={s.title} w={s.widget} lang={ctx.lang || 'kk'} big={ctx.mode === 'board'} /></Suspense>}
     {s.sql && ctx.mode !== 'preview' && <div className="mx-auto w-full max-w-5xl px-4 pb-4"><Suspense fallback={null}><SqlBox key={s.title} cfg={s.sql} lang={ctx.lang || 'kk'} storageKey={`cf-sql:${s.title}`} /></Suspense></div>}
+    {ctx.mode === 'student' && <ReadBlock s={raw} ctx={ctx} />}
   </div>;
 }
 

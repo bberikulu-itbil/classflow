@@ -1,13 +1,13 @@
 // Shared builders of the Informatics 10 chapter 2 "Data representation" module (3 lessons + Check yourself).
 // Built on the DSL of the Informatics 8 module (../sheetsLab/dsl): every text is a [kk, ru, en] triple.
-import { info, tag, type LabPlan, type SlideKind, type T } from '../sheetsLab/dsl';
+import { info, tag, type LabPlan, type Read, type SlideKind, type T } from '../sheetsLab/dsl';
 import { shortTask } from '../sheetsLab7/lib';
 
 export const SUBTITLE: T = ['Информатика 10-сынып · 2-тарау «Деректерді көрсету»', 'Информатика 10 класс · глава 2 «Представление данных»', 'Informatics Grade 10 · Chapter 2 “Data representation”'];
 
 /** A slide with an interactive piece (src/components/LabWidgets.tsx) under its text; `helper` adds the helper-sheet tab on the student's screen. */
-export const lab = (kind: SlideKind, t: T, bullets: T[], widget: object, o: { notes?: T; helper?: boolean; code?: string } = {}) =>
-  ({ ...info(kind, t, bullets, { notes: o.notes, code: o.code }), widget, ...(o.helper ? { helper: true } : {}) });
+export const lab = (kind: SlideKind, t: T, bullets: T[], widget: object, o: { notes?: T; helper?: boolean; code?: string } & Read = {}) =>
+  ({ ...info(kind, t, bullets, { notes: o.notes, code: o.code, read: o.read, figs: o.figs }), widget, ...(o.helper ? { helper: true } : {}) });
 
 /** A short-answer practice (server-checked), optionally with a widget (for example a circuit with its output hidden) and the helper sheet. */
 export const task = (t: T, prompt: T, accept: string[], points = 2, o: { notes?: T; widget?: object; helper?: boolean } = {}) =>
