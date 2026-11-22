@@ -2,9 +2,13 @@
 //   { kind: 'base', mode: 'convert' | 'arith', ... }  number systems: conversion with its steps, column addition / subtraction
 //   { kind: 'circuit', circuit | pick }               logic gates and circuits: switch the inputs, the wires light up, the truth table follows
 //   { kind: 'code', mode: 'int' | 'text' }            how numbers (8 bits, two's complement) and characters (ASCII / Unicode / UTF-8) are stored
+//   { kind: 'fill' | 'pct' | 'insert' }               spreadsheet and SQL simulations in ./sims (copying a formula, percent, INSERT INTO)
 // Everything is computed in the browser; nothing is sent. Texts are in kk / ru / en.
 import { useMemo, useState } from 'react';
 import { pick, type Lang } from '../lessons/lang';
+import { SimFill } from './sims/SimFill';
+import { SimPct } from './sims/SimPct';
+import { SimInsert } from './sims/SimInsert';
 
 const DIG = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const SUB = '₀₁₂₃₄₅₆₇₈₉';
@@ -18,7 +22,8 @@ const inp = 'h-11 rounded-xl border border-slate-500 bg-slate-950 px-3 font-mono
 export function LabWidget({ w, lang = 'kk', big = false }: { w: any; lang?: Lang; big?: boolean }) {
   if (!w) return null;
   const inner = w.kind === 'base' ? (w.mode === 'arith' ? <BaseArith w={w} lang={lang} /> : <BaseConvert w={w} lang={lang} />)
-    : w.kind === 'circuit' ? <Circuit w={w} lang={lang} /> : w.kind === 'build' ? <Builder w={w} lang={lang} /> : w.kind === 'adder' ? <Adder w={w} lang={lang} /> : w.kind === 'code' ? (w.mode === 'text' ? <TextCode w={w} lang={lang} /> : <IntCode w={w} lang={lang} />) : null;
+    : w.kind === 'circuit' ? <Circuit w={w} lang={lang} /> : w.kind === 'build' ? <Builder w={w} lang={lang} /> : w.kind === 'adder' ? <Adder w={w} lang={lang} /> : w.kind === 'code' ? (w.mode === 'text' ? <TextCode w={w} lang={lang} /> : <IntCode w={w} lang={lang} />)
+    : w.kind === 'fill' ? <SimFill w={w} lang={lang} /> : w.kind === 'pct' ? <SimPct w={w} lang={lang} /> : w.kind === 'insert' ? <SimInsert w={w} lang={lang} /> : null;
   return <div data-testid={`widget-${w.kind}`} className={`mx-auto w-full max-w-5xl px-4 pb-4 text-slate-100 ${big ? 'text-lg' : ''}`}>{inner}</div>;
 }
 

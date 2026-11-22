@@ -1,6 +1,7 @@
 // Informatics 7, textbook chapter 3, lessons 3.3-3.4 (kk / ru / en), 45 minutes each. Numbers of every table are checked by replica/unit/sheetslab7.test.mjs.
-import { demoSheet, info, labTask, prefill, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
+import { demoSheet, info, kmj, labTask, mins, prefill, quiz, tag, titleSlide, type LabLesson, type Pic, type T } from '../sheetsLab/dsl';
 import { SUBTITLE, plan, reflect, shortTask } from './lib';
+import { kmj34, page1, page2, page3, sim } from './book34';
 
 const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
 const NOTE: T = ['сары «?» ұяшықтарды формуламен есепте', 'жёлтые «?» посчитай формулой', 'work out the yellow “?” cells with a formula'];
@@ -147,13 +148,13 @@ export const L4: LabLesson = {
     ['range', 'Диапазон — ұяшықтар тобы, мысалы A1:C4', 'Диапазон — группа ячеек, например A1:C4', 'Range — a group of cells, e.g. A1:C4'],
     ['relative reference', 'Салыстырмалы сілтеме — формуланы көшіргенде өзгереді', 'Относительная ссылка — меняется при копировании формулы', 'Relative reference — changes when the formula is copied'],
   ],
-  plan: plan(
+  plan: kmj(mins(plan(
     ['Деректер түрлерін біледі (3.3 сабақ), ұяшық адресін оқи алады.', 'Знают типы данных (урок 3.3) и умеют читать адрес ячейки.', 'Know the data types (lesson 3.3) and can read a cell address.'], '32–33',
     [['Адрес пен диапазон туралы екі сұраққа жауап береді', 'Отвечает на два вопроса об адресе и диапазоне', 'Answers two questions about addresses and ranges'],
-     ['Формула, функция, диапазон ұғымдарын үйренеді', 'Узнаёт понятия формула, функция, диапазон', 'Learns formula, function and range'],
+     ['Оқулық беттерінен формула, функция, көшіру және пайыз туралы оқиды; симуляцияда пайызды қадамдап есептейді', 'Читает на страницах учебника о формуле, функции, копировании и процентах; в симуляции по шагам считает проценты', 'Reads the textbook pages on formulas, functions, copying and percent; works out percents step by step in the simulation'],
      ['Мұғаліммен бірге формуланы көшіріп, пайызды есептейді', 'Вместе с учителем копирует формулу и считает проценты', 'Copies a formula and calculates percents with the teacher'],
      ['Формуланы көшіру, пайыз және күн есептерін шығарады', 'Решает задачи на копирование формулы, проценты и даты', 'Solves problems on copying a formula, percents and dates'],
-     ['Қысқа тест тапсырып, не үйренгенін айтады', 'Проходит короткий тест и говорит, что узнал', 'Takes a short test and says what was learned']]),
+     ['Қысқа тест тапсырып, не үйренгенін айтады', 'Проходит короткий тест и говорит, что узнал', 'Takes a short test and says what was learned']]), [5, 12, 6, 15, 7]), kmj34),
   slides: [
     titleSlide(['3.4 Деректер түрлері: формулалар мен пайыз', '3.4 Типы данных: формулы и проценты', '3.4 Data types: formulas and percent'], SUBTITLE('32–33')),
     tag(quiz(['Қайталау: адрес', 'Повторение: адрес', 'Review: address'], ['Баған әріппен, жол санмен белгіленеді. «B» бағаны мен 3-жолдың қиылысы қалай аталады?', 'Столбцы обозначают буквами, строки числами. Как называется ячейка на пересечении столбца B и строки 3?', 'Columns are letters and rows numbers. What is the cell where column B meets row 3?'],
@@ -163,16 +164,10 @@ export const L4: LabLesson = {
     tag(quiz(['Қайталау: диапазон', 'Повторение: диапазон', 'Review: range'], ['A1-ден C4-ке дейінгі ұяшықтар тобы қалай жазылады?', 'Как записывается группа ячеек от A1 до C4?', 'How is the group of cells from A1 to C4 written?'],
       [['A1:C4', 'A1:C4', 'A1:C4'], ['A1-C4', 'A1-C4', 'A1-C4'], ['A1;C4', 'A1;C4', 'A1;C4'], ['C4:A1:', 'C4:A1:', 'C4:A1:']], 0,
       ['Диапазонды екі нүктемен жазамыз: A1:C4 — 3 баған × 4 жол = 12 ұяшық.', 'Диапазон пишут через двоеточие: A1:C4 — 3 столбца × 4 строки = 12 ячеек.', 'A range uses a colon: A1:C4 is 3 columns × 4 rows = 12 cells.']), 'warmup'),
-    tag(info('explain', ['Формула және функция', 'Формула и функция', 'Formula and function'], [
-      ['«=» таңбасын тергенде формула басталады. Мысалы, C1 ұяшығына =A1+B1 жазсақ, кесте A1 мен B1 қосындысын көрсетеді.', 'Знак «=» начинает формулу. Если в C1 записать =A1+B1, таблица покажет сумму A1 и B1.', 'Typing “=” starts a formula. =A1+B1 in C1 shows the sum of A1 and B1.'],
-      ['Ұяшық адресін қолмен жазудың орнына, ұяшықты тінтуірмен басуға болады.', 'Вместо того чтобы вводить адрес вручную, можно щёлкнуть по ячейке мышью.', 'Instead of typing an address you can click the cell.'],
-      ['Формула — оны қолданушы жазады, функция (мысалы, SUM) — кестеде дайын тұрады. Оларды бірге қолдануға болады.', 'Формулу пишет пользователь, а функция (например, SUM) уже готова в таблице. Их можно использовать вместе.', 'A formula is written by the user, a function (e.g. SUM) is built in. They can be used together.'],
-    ], { art: 'formula' }), 'together', ['8 минут. C1 ұяшығына =A1+B1 формуласын тақтада жазып көрсетіңіз, содан кейін A1 мәнін өзгертіңіз: нәтиже өзі жаңарады. «=» таңбасын ұмытқан оқушыға мәтін шығатынын көрсетіңіз.', '8 минут. Запишите на доске в C1 формулу =A1+B1, затем измените A1: результат обновится сам. Покажите, что без знака «=» получается просто текст.', '8 minutes. Type =A1+B1 into C1 on the board, then change A1: the result updates itself. Show that without “=” the cell holds plain text.']),
-    tag(info('explain', ['Формуланы көшіру', 'Копирование формулы', 'Copying a formula'], [
-      ['Формуланы бір ұяшықтан басқасына көшірсек (Ctrl+C, Ctrl+V), кесте оны жаңа орынға қарай өзгертеді.', 'Если скопировать формулу из одной ячейки в другую (Ctrl+C, Ctrl+V), таблица изменит её под новое место.', 'When you copy a formula from one cell to another (Ctrl+C, Ctrl+V), the sheet adjusts it for the new place.'],
-      ['Мысалы, A4-тегі =A1*(A2+A3) формуласын B4-ке көшірсек, ол =B1*(B2+B3) болады.', 'Например, формула =A1*(A2+A3) из A4 при копировании в B4 станет =B1*(B2+B3).', 'For example, =A1*(A2+A3) copied from A4 to B4 becomes =B1*(B2+B3).'],
-      ['Санды енгізгенде тек цифрларды, үтірді және минус (плюс) белгісін қолдан — басқа таңба болмасын.', 'Числа вводи только цифрами, запятой и знаком минус (плюс) — никаких других символов.', 'Type numbers with digits, a decimal comma and a minus (plus) sign only — no other symbols.'],
-    ], { art: 'copy' }), 'together'),
+    tag(page1, 'together', ['12 минут: үш оқулық беті және симуляция. C1-ге =A1+B1 жазып, A1-ді өзгертіңіз: нәтиже өзі жаңарады. «=» белгісі жоқ болса, мәтін шығатынын көрсетіңіз.', '12 минут: три страницы учебника и симуляция. Запишите =A1+B1 в C1 и измените A1: результат обновится сам. Покажите, что без «=» получается текст.', '12 minutes: three textbook pages and the simulation. Type =A1+B1 in C1 and change A1: the result updates itself. Show that without “=” it is plain text.']),
+    tag(page2, 'together'),
+    tag(page3, 'together'),
+    tag(sim, 'together', ['Алдымен «Бөлігі неше пайыз?» (25 және 80), сосын «Санның пайызы» (80 және 30%). Соңында «Жиі қатені көрсет» белгісін қойып, 3125% себебін оқушылардан сұраңыз.', 'Сначала «Сколько процентов часть?» (25 и 80), потом «Процент от числа» (80 и 30%). В конце включите «Показать частую ошибку» и спросите, откуда 3125%.', 'First “What percent is the part?” (25 and 80), then “A percent of a number” (80 and 30%). Finally tick “Show the common slip” and ask where 3125% comes from.']),
     tag(demoSheet(['Мысал: пайыз', 'Пример: проценты', 'Example: percent'], [
       ['25-тің 80-ге қатынасы неше пайыз? B3-ті B2-ге бөл: =B3/B2 — 0.3125. Percent түрін қойсаң, 31.25% көрінеді.', 'Сколько процентов составляет 25 от 80? Раздели B3 на B2: =B3/B2 — 0.3125. В формате Percent будет 31.25%.', 'What percent is 25 of 80? Divide B3 by B2: =B3/B2 gives 0.3125. In Percent format it shows 31.25%.'],
       ['80-нің 30%-ын тап: =B2*30%. Мұнда 100-ге бөлу мен көбейту қажет емес!', 'Найди 30% от 80: =B2*30%. Делить и умножать на 100 не нужно!', 'Find 30% of 80: =B2*30%. No dividing or multiplying by 100!'],
@@ -186,7 +181,7 @@ export const L4: LabLesson = {
         A4: ['Қатынасы, %', 'Доля, %', 'Share, %'], A5: ['80-нің 30%-ы', '30% от 80', '30% of 80'],
       },
       fmt: Object.fromEntries(['A1', 'B1'].map(k => [k, { b: 1, bg: '#dbeafe' }])),
-    }, ['10 минут. B4 = =B3/B2 (0.3125), B5 = =B2*30% (24). Percent түрін қосып-өшіріп, мәні өзгермей, тек көрінісі өзгеретінін көрсетіңіз. Жиі қате: пайызды 100-ге көбейтіп, содан соң Percent түрін қою (3125% шығады).', '10 минут. B4 = =B3/B2 (0.3125), B5 = =B2*30% (24). Включайте и выключайте Percent: значение не меняется, меняется только вид. Частая ошибка: умножить на 100 и ещё поставить Percent (получится 3125%).', '10 minutes. B4 = =B3/B2 (0.3125), B5 = =B2*30% (24). Toggle Percent: the value stays, only the look changes. Common slip: multiplying by 100 and then also applying Percent (gives 3125%).']), 'example'),
+    }, ['6 минут. B4 = =B3/B2 (0.3125), B5 = =B2*30% (24). Percent түрін қосып-өшіріп, мәні өзгермей, тек көрінісі өзгеретінін көрсетіңіз. Жиі қате: пайызды 100-ге көбейтіп, содан соң Percent түрін қою (3125% шығады).', '10 минут. B4 = =B3/B2 (0.3125), B5 = =B2*30% (24). Включайте и выключайте Percent: значение не меняется, меняется только вид. Частая ошибка: умножить на 100 и ещё поставить Percent (получится 3125%).', '6 minutes. B4 = =B3/B2 (0.3125), B5 = =B2*30% (24). Toggle Percent: the value stays, only the look changes. Common slip: multiplying by 100 and then also applying Percent (gives 3125%).']), 'example'),
     tag(labTask(['Практика 1: формуланы көшіру', 'Практика 1: копирование формулы', 'Practice 1: copying a formula'],
       ['Кестедегі сандарды енгіз, A4 ұяшығына формула жаз да, оны B4-ке көшір. Екі нәтижені салыстыр.', 'Введи числа из таблицы, запиши формулу в A4 и скопируй её в B4. Сравни два результата.', 'Enter the numbers from the table, write a formula in A4 and copy it to B4. Compare the two results.'],
       {

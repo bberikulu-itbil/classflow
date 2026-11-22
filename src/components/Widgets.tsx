@@ -568,7 +568,7 @@ export function TextbookSlide({ s, ctx }: { s: any; ctx: any }) {
             {figs.length > 0 && <div className={`grid gap-4 ${figs.length > 1 ? 'md:grid-cols-2' : ''}`}>{figs.map((f, i) => (
               <figure key={i} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <img src={f.src || `lec/inf8-${f.art}.svg`} alt={f.cap || ''} loading="lazy" className="h-auto w-full" />
-                {f.cap && <figcaption className={`border-t border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 ${big ? 'text-lg' : 'text-sm'}`}><b>{i + 1}-{pick(lang, 'сурет', 'рисунок', 'figure')}.</b> {f.cap}</figcaption>}
+                {f.cap && <figcaption className={`border-t border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 ${big ? 'text-lg' : 'text-sm'}`}><b>{pick(lang, `${i + 1}-сурет`, `Рисунок ${i + 1}`, `Figure ${i + 1}`)}.</b> {f.cap}</figcaption>}
               </figure>))}</div>}
           </div>
           {pts.length > 0 && (

@@ -111,6 +111,15 @@ export interface LabPlan {
   aim?: T; codes?: string[]; diff?: T; assess?: T; health?: T;
 }
 
+/** Sets the minutes of the stages (they must add up to 45). */
+export const mins = (p: LabPlan, m: number[]): LabPlan => ({ ...p, stages: p.stages.map((x, i) => ({ ...x, min: m[i] })) });
+
+/** Adds the ҚМЖ fields to a plan: the aim, objective codes, differentiation, assessment, health and safety, and per stage what the teacher does (t) and how it is assessed (ev). */
+export const kmj = (p: LabPlan, x: { aim: T; codes: string[]; diff: T; assess: T; health: T; t: T[]; ev: T[] }): LabPlan => {
+  if (x.t.length !== p.stages.length || x.ev.length !== p.stages.length) throw new Error('kmj: one t and one ev per stage');
+  return { ...p, aim: x.aim, codes: x.codes, diff: x.diff, assess: x.assess, health: x.health, stages: p.stages.map((s, i) => ({ ...s, t: x.t[i], ev: x.ev[i] })) };
+};
+
 /** The `plan` column of cf_lessons for a code-built lesson: the lesson card and everything the ҚМЖ fills itself from. */
 export function planData(l: LabLesson, grade: number) {
   const p = l.plan, L = (i: 0 | 1 | 2) => ({

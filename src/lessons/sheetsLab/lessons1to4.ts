@@ -1,6 +1,7 @@
 // Informatics 8, textbook chapter 3 "Spreadsheets": lessons 3.2-3.4 (3.1 is in lesson1.ts). Texts are [kk, ru, en]; the numbers of every table are checked by replica/unit/sheetslab.test.mjs.
-import { demoSheet, info, labTask, prefill, quiz, tag, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
+import { demoSheet, info, kmj, labTask, prefill, quiz, tag, titleSlide, walk, type LabLesson, type Pic, type T } from './dsl';
 import { reflect, shortTask } from '../sheetsLab7/lib';
+import { kmj33, page1, page2, page3, sim } from './book33';
 
 const sub: T = ['Информатика 8-сынып · 3-тарау «Электрондық кестелер»', 'Информатика 8 класс · глава 3 «Электронные таблицы»', 'Informatics Grade 8 · Chapter 3 “Spreadsheets”'];
 const pic = (name: string, title: T, data: Pic['data'], ask: string[], cols: number, rows: number, widths?: number[], note?: T): Pic => ({ name, title, data, ask, cols, rows, widths, note });
@@ -137,18 +138,18 @@ export const L3: LabLesson = {
     ['absolute reference', 'Абсолютті сілтеме ($A$1) — көшіргенде өзгермейді', 'Абсолютная ссылка ($A$1) не меняется при копировании', 'Absolute reference ($A$1) — stays the same when copied'],
     ['IF', 'IF(шарт; егер рас; егер жалған) — шартқа қарай екі мәннің бірін таңдайды', 'IF(условие; если истина; если ложь) — выбирает одно из двух значений', 'IF(condition; if true; if false) — picks one of two values'],
   ],
-  plan: {
+  plan: kmj({
     prior: ['SUM, AVERAGE, MIN, MAX функцияларын қолдана алады, диапазонды (B2:B6) біледі (3.2 сабақ).', 'Умеют применять SUM, AVERAGE, MIN, MAX и знают диапазон (B2:B6) (урок 3.2).', 'Can use SUM, AVERAGE, MIN, MAX and know a range (B2:B6) (lesson 3.2).'],
     env: ['ClassFlow кестесі (Excel және Google Sheets-ке ұқсас). Функция аргументтерін «;» немесе «,» бөліп жазуға болады. Әр оқушыға бір құрылғы және интернет қажет.', 'Таблица ClassFlow (как Excel и Google Sheets). Аргументы функций можно разделять «;» или «,». Каждому ученику нужны устройство и интернет.', 'The ClassFlow sheet (like Excel and Google Sheets). Function arguments may be separated with “;” or “,”. One device per student and the internet.'],
     source: ['Информатика 8-сынып оқулығы, 3-тарау «Электрондық кестелер». Бет нөмірін мұғалім өзі нақтылайды. Сабақтағы барлық формулалар кестеде орындалып тексерілген, ойдан шығарылған деректер қолданылған.', 'Учебник информатики 8 класса, глава 3 «Электронные таблицы». Номера страниц учитель уточняет сам. Все формулы урока проверены выполнением в таблице, данные вымышленные.', 'Informatics Grade 8 textbook, chapter 3 “Spreadsheets”. The teacher adds the page numbers. Every formula of the lesson was run in a sheet; the data are made up.'],
     stages: [
       { k: 'warmup', min: 5, do: ['SUM және AVERAGE туралы екі қысқа сұраққа жауап береді', 'Отвечает на два коротких вопроса о SUM и AVERAGE', 'Answers two short questions about SUM and AVERAGE'] },
-      { k: 'together', min: 8, do: ['Есепті кестеде шешу қадамдарын, $ сілтемесін және IF функциясын үйренеді', 'Изучает шаги решения задачи в таблице, ссылку с $ и функцию IF', 'Learns the steps of solving a problem in a sheet, the $ reference and IF'] },
-      { k: 'example', min: 10, do: ['Мұғаліммен бірге чек есебін шығарады: құн, сома, жеңілдік', 'Вместе с учителем решает задачу про чек: стоимость, сумма, скидка', 'Solves the receipt problem with the teacher: cost, total, discount'] },
+      { k: 'together', min: 10, do: ['Оқулық беттерінен есеп шешу қадамдарын, $ сілтемесін және IF функциясын оқиды; симуляцияда формуланы $ белгісімен және онсыз көшіреді', 'Читает на страницах учебника шаги решения задачи, ссылку с $ и функцию IF; в симуляции протягивает формулу с $ и без него', 'Reads the textbook pages on the steps, the $ reference and IF; in the simulation fills a formula down with and without $'] },
+      { k: 'example', min: 8, do: ['Мұғаліммен бірге чек есебін шығарады: құн, сома, жеңілдік', 'Вместе с учителем решает задачу про чек: стоимость, сумма, скидка', 'Solves the receipt problem with the teacher: cost, total, discount'] },
       { k: 'practice', min: 15, do: ['Төрт тауарлы чекті өзі есептейді; үлгерген оқушы ★ есепті шығарады', 'Сам считает чек из четырёх товаров; кто успел — задачу ★', 'Works out a four-item receipt alone; fast students take the ★ problem'] },
       { k: 'check', min: 7, do: ['Үш сұрақты тест тапсырып, не үйренгенін айтады', 'Проходит тест из трёх вопросов и говорит, что узнал', 'Takes a three-question test and says what was learned'] },
     ],
-  },
+  }, kmj33),
   slides: [
     titleSlide(['3.3 Есеп шығару: функциялар мен формулалар', '3.3 Решение задач: функции и формулы', '3.3 Problem solving: functions and formulas'], sub),
     tag(quiz(['Қайталау: SUM', 'Повторение: SUM', 'Review: SUM'], ['B2:B4 ұяшықтарында 10, 20, 30 бар. =SUM(B2:B4) нені береді?', 'В ячейках B2:B4 числа 10, 20, 30. Что даст =SUM(B2:B4)?', 'Cells B2:B4 hold 10, 20, 30. What does =SUM(B2:B4) return?'],
@@ -158,27 +159,16 @@ export const L3: LabLesson = {
     tag(quiz(['Қайталау: AVERAGE', 'Повторение: AVERAGE', 'Review: AVERAGE'], ['=AVERAGE(4;6;8) нәтижесі қандай?', 'Каков результат =AVERAGE(4;6;8)?', 'What is the result of =AVERAGE(4;6;8)?'],
       [['18', '18', '18'], ['8', '8', '8'], ['6', '6', '6'], ['4', '4', '4']], 2,
       ['Орташа мән: (4 + 6 + 8) / 3 = 6. 18 — қосындысы, 8 — ең үлкені, 4 — ең кішісі.', 'Среднее: (4 + 6 + 8) / 3 = 6. 18 — сумма, 8 — наибольшее, 4 — наименьшее.', 'The mean: (4 + 6 + 8) / 3 = 6. 18 is the sum, 8 the largest, 4 the smallest.']), 'warmup'),
-    tag(info('explain', ['Есепті кестеде шешу қадамдары', 'Шаги решения задачи в таблице', 'Steps for solving a problem in a sheet'], [
-      ['Шартты оқы: не берілген, нені табу керек?', 'Прочитай условие: что дано и что найти?', 'Read the problem: what is given and what must be found?'],
-      ['Берілген деректерді кестеге жаз, нәтиже үшін орын қалдыр.', 'Запиши данные в таблицу, оставь место для результата.', 'Put the given data in the table and leave room for the result.'],
-      ['Бірінші жолға формула жаз, оны төмен қарай көшір.', 'Запиши формулу в первой строке и протяни её вниз.', 'Write the formula in the first row and fill it down.'],
-      ['Жауапты тексер: бір-екі есепті қолмен есептеп салыстыр.', 'Проверь ответ: пересчитай одну-две строки вручную.', 'Check the answer: recalculate one or two rows by hand.'],
-    ], { art: 'steps' }), 'together', ['8 минут (үш слайд). Төрт қадамды тақтада қалдырыңыз: практикада оқушы соған қарап жұмыс істейді.', '8 минут (три слайда). Оставьте четыре шага на доске: на практике ученик работает по ним.', '8 minutes (three slides). Keep the four steps on the board: students follow them in the practice.']),
-    tag(info('explain', ['Формулалар мен сілтемелер', 'Формулы и ссылки', 'Formulas and references'], [
-      ['Құны = баға × саны: =B2*C2. Формуланы төмен көшіргенде жол нөмірі өздігінен өзгереді.', 'Стоимость = цена × количество: =B2*C2. При копировании вниз номер строки меняется сам.', 'Cost = price × quantity: =B2*C2. When copied down, the row number changes by itself.'],
-      ['Тұрақты ұяшыққа ($) қояды: =B2*$B$8. Доллар белгісі сілтемені «бекітеді».', 'На постоянную ячейку ставят $: =B2*$B$8. Знак доллара «закрепляет» ссылку.', 'Pin a constant cell with $: =B2*$B$8. The dollar sign “locks” the reference.'],
-      ['Пайыз: =B2/$B$9*100 — үлесті бүтінге бөліп, 100-ге көбейтеміз.', 'Процент: =B2/$B$9*100 — делим часть на целое и умножаем на 100.', 'Percentage: =B2/$B$9*100 — divide the part by the whole and multiply by 100.'],
-    ], { art: 'refs', code: '=B2*C2      cost\n=D2*$B$8    fixed cell\n=B2/$B$9*100  percent' }), 'together', ['Жиі қате: $ белгісін ұмыту. Формуланы төмен көшіргенде B8 орнына B9, B10 шығып, нәтиже 0 болады. Мұны әдейі көрсетіңіз.', 'Частая ошибка: забыть $. При копировании вниз вместо B8 получаются B9, B10, и результат равен 0. Покажите это специально.', 'Common slip: forgetting the $. Copied down, B8 turns into B9, B10 and the result is 0. Show it on purpose.']),
-    tag(info('explain', ['Шарт және IF функциясы', 'Условие и функция IF', 'Conditions and the IF function'], [
-      ['IF(шарт; егер рас; егер жалған) шарт орындалса бірінші мәнді, болмаса екіншісін береді.', 'IF(условие; если истина; если ложь) даёт первое значение, если условие выполнено, иначе второе.', 'IF(condition; if true; if false) gives the first value when the condition holds, otherwise the second.'],
-      ['Салыстыру белгілері: > үлкен, < кіші, >= үлкен немесе тең, <= кіші немесе тең, = тең, <> тең емес.', 'Знаки сравнения: > больше, < меньше, >= больше или равно, <= меньше или равно, = равно, <> не равно.', 'Comparison signs: > greater, < less, >= greater or equal, <= less or equal, = equal, <> not equal.'],
-    ], { art: 'ifflow', code: '=IF(B2>=50;1;0)\n=IF(D6>1000;D6*0.9;D6)' }), 'together'),
+    tag(page1, 'together', ['10 минут: үш оқулық беті және симуляция. Төрт қадамды тақтада қалдырыңыз: практикада оқушы соған қарап жұмыс істейді.', '10 минут: три страницы учебника и симуляция. Оставьте четыре шага на доске: на практике ученик работает по ним.', '10 minutes: three textbook pages and the simulation. Keep the four steps on the board: students follow them in the practice.']),
+    tag(page2, 'together', ['Жиі қатені әдейі көрсетіңіз: келесі слайдтағы симуляцияда алдымен $ белгісінсіз формуланы көшіріңіз.', 'Покажите частую ошибку специально: в симуляции на следующем слайде сначала протяните формулу без $.', 'Show the common slip on purpose: in the simulation on the next slide fill the formula down without $ first.']),
+    tag(sim, 'together', ['Сұрақ: «D3-те неге жеңілдік жоқ?» Оқушы B8 бос екенін тапсын. Сосын B7 сілтемесін басып, $B$7 етіңіз.', 'Вопрос: «Почему в D3 нет скидки?» Пусть ученик найдёт, что B8 пуста. Затем нажмите на ссылку B7 и сделайте $B$7.', 'Ask: “Why is there no discount in D3?” Let a student find that B8 is empty. Then tap B7 and make it $B$7.']),
+    tag(page3, 'together'),
     tag(walk(['Мысал: чек және жеңілдік', 'Пример: чек и скидка', 'Example: a receipt and a discount'],
       ['Дәптер 150 × 4, қалам 80 × 3, сызғыш 120 × 2. Барлығы 1000-нан көп болса, 10% жеңілдік беріледі. Төлем сомасын тап.', 'Тетрадь 150 × 4, ручка 80 × 3, линейка 120 × 2. Если всего больше 1000, скидка 10%. Найди сумму к оплате.', 'A notebook 150 × 4, a pen 80 × 3, a ruler 120 × 2. If the total is above 1000, there is a 10% discount. Find the amount to pay.'],
       [['D2 = B2*C2 жаз да, D4-ке дейін төмен көшір.', 'В D2 запиши =B2*C2 и протяни до D4.', 'In D2 type =B2*C2 and fill down to D4.'],
        ['D5 = SUM(D2:D4) — жалпы сома.', 'D5 = SUM(D2:D4) — общая сумма.', 'D5 = SUM(D2:D4) — the total.'],
        ['D6 = IF(D5>1000;D5*0.9;D5) — жеңілдікпен.', 'D6 = IF(D5>1000;D5*0.9;D5) — со скидкой.', 'D6 = IF(D5>1000;D5*0.9;D5) — with the discount.']],
-      ['600 + 240 + 240 = 1080 > 1000, сондықтан төлем 1080 × 0,9 = 972.', '600 + 240 + 240 = 1080 > 1000, поэтому к оплате 1080 × 0,9 = 972.', '600 + 240 + 240 = 1080 > 1000, so you pay 1080 × 0.9 = 972.']), 'example', ['10 минут. Кестені тақтада оқушылармен бірге толтырыңыз, шешімін соңында ғана ашыңыз. Сұрақ: «Қалам саны 2 болса, жеңілдік бола ма?» (600 + 160 + 240 = 1000, 1000-нан көп емес — жеңілдік жоқ).', '10 минут. Заполните таблицу на доске вместе с классом, решение откройте в конце. Вопрос: «Будет ли скидка, если ручек 2?» (600 + 160 + 240 = 1000, не больше 1000 — скидки нет).', '10 minutes. Fill the table on the board with the class and reveal the solution last. Ask: “Is there a discount with 2 pens?” (600 + 160 + 240 = 1000, not above 1000, so no discount).']),
+      ['600 + 240 + 240 = 1080 > 1000, сондықтан төлем 1080 × 0,9 = 972.', '600 + 240 + 240 = 1080 > 1000, поэтому к оплате 1080 × 0,9 = 972.', '600 + 240 + 240 = 1080 > 1000, so you pay 1080 × 0.9 = 972.']), 'example', ['8 минут. Кестені тақтада оқушылармен бірге толтырыңыз, шешімін соңында ғана ашыңыз. Сұрақ: «Қалам саны 2 болса, жеңілдік бола ма?» (600 + 160 + 240 = 1000, 1000-нан көп емес — жеңілдік жоқ).', '10 минут. Заполните таблицу на доске вместе с классом, решение откройте в конце. Вопрос: «Будет ли скидка, если ручек 2?» (600 + 160 + 240 = 1000, не больше 1000 — скидки нет).', '10 minutes. Fill the table on the board with the class and reveal the solution last. Ask: “Is there a discount with 2 pens?” (600 + 160 + 240 = 1000, not above 1000, so no discount).']),
     tag(labTask(['Практика: чек және жеңілдік', 'Практика: чек и скидка', 'Practice: a receipt and a discount'],
       ['Суреттегі чекті енгіз. Әр тауардың құнын, жалпы соманы, жеңілдікті және төленетін соманы формуламен есепте.', 'Введи чек с рисунка. Формулами посчитай стоимость каждого товара, общую сумму, скидку и сумму к оплате.', 'Enter the receipt from the picture. With formulas work out each item’s cost, the total, the discount and the amount to pay.'],
       {
