@@ -281,18 +281,22 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 lg:px-4">
           <a href="#" className="min-h-[44px] inline-flex items-center text-xl font-black" aria-label="ClassFlow: басты бет"><Logo /></a>
           <div className="min-w-0 flex-1 basis-40">
-            <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-secondary">{[className, session.title].filter(Boolean).join(' · ')}</p>
+            <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-secondary">{session.title}</p>
             <p className="truncate font-bold">{slide.title || TYPE[slide.type] || 'Слайд'}</p>
           </div>
           <span className="hidden items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 sm:inline-flex text-xs font-semibold text-success whitespace-nowrap"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />Тікелей</span>
           <span className="rounded-md bg-surface-2 px-3 py-2 text-sm whitespace-nowrap"><span className="text-text-secondary">Код </span><b className="font-mono tracking-wider">{spaced(session.join_code)}</b></span>
           <a href={`#board/${sid}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Monitor size={16} aria-hidden="true" />Тақта<span className="sr-only"> (жаңа терезеде)</span></a>
           <button type="button" onClick={() => setShare(true)} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold hover:bg-border"><Share2 size={16} aria-hidden="true" />Бөлісу</button>
-          <div className="relative">
-            <button type="button" data-testid="rules-open" onClick={() => { setTab('rules'); document.getElementById('remote-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-semibold cursor-pointer hover:bg-border">
-              <SlidersHorizontal size={16} aria-hidden="true" />Ережелер<span className="rounded-full bg-accent px-1.5 text-xs text-on-accent">{RULES.filter(r => ruleOn(r.key)).length}</span>
-            </button>
-          </div>
+          {(() => { // which class is joining: the session's class, or the classes the joined students come from
+            const joined = [...new Set(parts.map(p => p.class_name).filter(Boolean))] as string[];
+            const other = className && joined.some(c => c !== className);
+            const label = className || joined.join(', ') || (session.mode === 'demo' ? 'Демо' : session.mode === 'guest' ? 'Қонақ' : 'Сыныпсыз');
+            return <span data-testid="class-chip" title={other ? `Басқа сыныптан да кірді: ${joined.join(', ')}` : 'Кіріп жатқан сынып'}
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-md px-3 text-sm font-bold whitespace-nowrap ${other ? 'bg-warning-soft text-warning' : 'bg-accent-soft text-accent'}`}>
+              <Users size={16} aria-hidden="true" />{label}{other ? ` + ${joined.filter(c => c !== className).join(', ')}` : ''}
+              <span className="rounded-full bg-surface px-2 text-xs text-text" aria-label={`${onlineCount} оқушы онлайн, барлығы ${parts.length}`}>{onlineCount}/{parts.length}</span></span>;
+          })()}
           <Button variant="danger" onClick={() => setEnding(true)} aria-expanded={ending}><Square size={14} aria-hidden="true" />Аяқтау</Button>
         </div>
         <div className="mx-auto max-w-6xl">
