@@ -216,3 +216,31 @@
   #print-area, #print-area * { visibility: visible; }
   #print-area { position: absolute; left: 0; top: 0; width: 100%; border: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ── Liquid glass (login, home): frosted surfaces over a coloured backdrop. Colours come from the theme. ── */
+:root, [data-theme] {
+  --glass-bg: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  --glass-field: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  --glass-edge: color-mix(in srgb, #FFFFFF 75%, transparent);
+  --glass-blob-a: #93C5FD; --glass-blob-b: #C4B5FD; --glass-blob-c: #67E8F9; --glass-blob-d: #FDBA74;
+  --liquid-shadow: 0 0 6px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08), inset 3px 3px .5px -3px rgba(0,0,0,.9), inset -3px -3px .5px -3px rgba(0,0,0,.85),
+    inset 1px 1px 1px -.5px rgba(0,0,0,.6), inset -1px -1px 1px -.5px rgba(0,0,0,.6), inset 0 0 6px 6px rgba(0,0,0,.12), inset 0 0 2px 2px rgba(0,0,0,.06), 0 0 12px rgba(255,255,255,.15);
+}
+[data-theme="dark"] {
+  --glass-edge: color-mix(in srgb, #FFFFFF 14%, transparent);
+  --glass-blob-a: #1E3A8A; --glass-blob-b: #4C1D95; --glass-blob-c: #155E75; --glass-blob-d: #7C2D12;
+  --liquid-shadow: 0 0 8px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08), inset 3px 3px .5px -3.5px rgba(255,255,255,.09), inset -3px -3px .5px -3.5px rgba(255,255,255,.85),
+    inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6), inset 0 0 6px 6px rgba(255,255,255,.12), inset 0 0 2px 2px rgba(255,255,255,.06), 0 0 12px rgba(0,0,0,.15);
+}
+.glass {
+  background: var(--glass-bg); border: 1px solid var(--glass-edge);
+  backdrop-filter: blur(20px) saturate(170%); -webkit-backdrop-filter: blur(20px) saturate(170%);
+  box-shadow: 0 14px 40px rgba(15,27,51,.12), inset 1px 1px 0 var(--glass-edge);
+}
+.glass-field { background: var(--glass-field); border: 1px solid var(--glass-edge); box-shadow: inset 0 1px 3px rgba(15,27,51,.12); }
+.liquid { box-shadow: var(--liquid-shadow); }
+/* Weak devices and people who ask for less transparency get solid surfaces */
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: var(--color-surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .glass-field { background: var(--color-surface); }
+}

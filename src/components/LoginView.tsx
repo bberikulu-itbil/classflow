@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Logo } from '../ui/Logo';
 import { LangSwitch } from '../i18n/LangSwitch';
 import { sb, CF } from '../config';
-import { BTN_P, INP } from './Widgets';
+import { GlassBackdrop, LiquidButton } from '../ui/Liquid';
+
+/** Inputs on the glass card */
+const INP = 'glass-field w-full min-h-[50px] rounded-2xl px-4 text-base text-text placeholder:text-text-muted focus:outline focus:outline-2 focus:outline-accent';
 
 type School = { id: string; name: string };
 type Klass = { id: string; name: string; school_id: string };
@@ -97,12 +100,19 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
   const myClasses = classes.filter(c => c.school_id === schoolId);
 
   return (
-    <div className="max-w-sm mx-auto pt-16 px-4 space-y-3 text-text pb-10">
-      <div className="flex justify-center"><LangSwitch /></div>
-      <h1 className="text-4xl font-black text-center"><Logo size={44} /></h1>
-      <p className="text-center text-slate-400 text-sm">{mode === 'in' ? 'KeyToLife аккаунтыңмен кір' : 'KeyToLife-та тіркел'}</p>
+    <div className="relative min-h-screen px-4 pb-10 pt-6 text-text">
+      <GlassBackdrop />
+      <div className="mx-auto flex max-w-md justify-between items-center gap-3">
+        <span className="text-2xl font-black"><Logo size={36} /></span>
+        <div className="glass rounded-full p-1"><LangSwitch /></div>
+      </div>
+      <main className="glass mx-auto mt-10 max-w-md space-y-4 rounded-[2rem] p-7 sm:p-9">
+      <div className="space-y-1 text-center">
+        <h1 className="text-3xl font-extrabold tracking-tight">{mode === 'in' ? 'Қош келдіңіз' : 'Тіркелу'}</h1>
+        <p className="text-sm text-text-secondary">{mode === 'in' ? 'KeyToLife аккаунтыңызбен кіріңіз' : 'KeyToLife-та тіркеліңіз'}</p>
+      </div>
       {error && <div data-testid="login-error" className="p-2 bg-danger-soft text-danger text-sm rounded-xl text-center">{error}</div>}
-      {info && <div data-testid="login-info" className="p-2 bg-emerald-900/40 text-emerald-300 text-sm rounded-xl text-center">{info}</div>}
+      {info && <div data-testid="login-info" className="p-2 bg-success-soft text-success text-sm rounded-xl text-center">{info}</div>}
 
       {mode === 'in' ? (
         <>
@@ -121,17 +131,16 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
             onChange={e => setPass(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && go()}
           />
-          <button className={`${BTN_P} w-full`} onClick={go}>Кіру</button>
-          <button data-testid="to-register" className="w-full text-sm text-blue-400 underline" onClick={() => { setMode('up'); setError(''); setInfo(''); }}>
-            Аккаунтың жоқ па? Тіркел
-          </button>
+          <LiquidButton size="xl" className="w-full" onClick={go}>Кіру</LiquidButton>
+          <p className="text-center text-sm text-text-secondary">Аккаунтыңыз жоқ па?{' '}
+            <button data-testid="to-register" className="min-h-[44px] font-bold text-accent hover:underline cursor-pointer" onClick={() => { setMode('up'); setError(''); setInfo(''); }}>Тіркеліңіз</button></p>
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="glass-field grid grid-cols-2 gap-1 rounded-2xl p-1" role="group" aria-label="Кім тіркеледі">
             {(['student', 'teacher'] as const).map(r => (
-              <button key={r} data-testid={`role-${r}`} onClick={() => setRole(r)}
-                className={`px-3 py-2 rounded-xl text-sm font-semibold border ${role === r ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-600 text-slate-300'}`}>
+              <button key={r} data-testid={`role-${r}`} aria-pressed={role === r} onClick={() => setRole(r)}
+                className={`min-h-[44px] rounded-xl text-sm font-semibold cursor-pointer ${role === r ? 'liquid bg-surface text-text' : 'text-text-secondary'}`}>
                 {r === 'student' ? 'Оқушы' : 'Мұғалім'}
               </button>
             ))}
@@ -152,14 +161,15 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
           ) : (
             <input className={INP} placeholder="Қызметі, пәні (мысалы, Информатика)" value={title} onChange={e => setTitle(e.target.value)} />
           )}
-          <button data-testid="register" className={`${BTN_P} w-full`} disabled={busy} onClick={register}>
+          <LiquidButton data-testid="register" size="xl" className="w-full" disabled={busy} onClick={register}>
             {busy ? 'Жіберілуде…' : 'Өтініш жіберу'}
-          </button>
-          <button className="w-full text-sm text-blue-400 underline" onClick={() => { setMode('in'); setError(''); }}>
+          </LiquidButton>
+          <button className="w-full min-h-[44px] text-sm font-bold text-accent hover:underline cursor-pointer" onClick={() => { setMode('in'); setError(''); }}>
             Аккаунтым бар, кіру
           </button>
         </>
       )}
+      </main>
     </div>
   );
 }

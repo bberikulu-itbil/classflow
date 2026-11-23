@@ -3,7 +3,8 @@ import { FreshLessons } from './FreshLessons';
 import React, { useState } from 'react';
 import { sb, DEMO } from '../config';
 import { api } from '../hw/types';
-import { Button, Card, EmptyState, ErrorBox, LinkButton, Skeleton, SoonCard, inputCls, useLoad } from '../ui';
+import { GlassBackdrop, LiquidLink } from '../ui/Liquid';
+import { Button, EmptyState, ErrorBox, LinkButton, Skeleton, SoonCard, inputCls, useLoad } from '../ui';
 import { getPrefs } from '../prefs';
 import { MODES, startSession } from './session';
 import { TodayCard } from '../schedule/Timetable';
@@ -58,10 +59,11 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
   const pendingTotal = (sum.data?.pending || []).reduce((n, p) => n + p.count, 0);
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <main className="relative max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <GlassBackdrop />
       <header className="space-y-1">
         <p className="text-sm font-medium text-text-muted capitalize">{new Date().toLocaleDateString('kk-KZ', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Сәлеметсіз бе{givenName(me.full_name) ? `, ${givenName(me.full_name)}` : ''}!</h1>
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Сәлеметсіз бе{givenName(me.full_name) ? `, ${givenName(me.full_name)}` : ''}!</h1>
         <p className="text-sm text-text-secondary">Сабағыңызды жоспарлап, сынып жұмысын бір жерден басқарыңыз.</p>
       </header>
 
@@ -69,13 +71,13 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
         <h2 id="quick-links-title" className="text-sm font-semibold text-text-secondary">Жылдам өту</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { href: '#lessons/modules', label: 'Сабақтар', detail: 'Модульдер мен дәрістер', Icon: BookOpen },
-            { href: '#lessons/timetable', label: 'Сабақ кестесі', detail: 'Апталық кесте', Icon: CalendarDays },
-            { href: '#journal/grid', label: 'Журнал', detail: 'Сынып бағалары', Icon: NotebookText },
-            { href: '#tasks/queue', label: 'Тексеру кезегі', detail: 'Оқушы жұмыстары', Icon: ClipboardCheck },
-          ].map(({ href, label, detail, Icon }) => (
-            <a key={href} href={href} className="group min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-              <div className="flex items-start justify-between gap-2"><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-soft text-on-accent-soft"><Icon size={20} aria-hidden="true" /></span><ArrowUpRight size={17} aria-hidden="true" className="text-text-muted group-hover:text-accent" /></div>
+            { href: '#lessons/modules', label: 'Сабақтар', detail: 'Модульдер мен дәрістер', Icon: BookOpen, tint: '#2563EB' },
+            { href: '#lessons/timetable', label: 'Сабақ кестесі', detail: 'Апталық кесте', Icon: CalendarDays, tint: '#7C3AED' },
+            { href: '#journal/grid', label: 'Журнал', detail: 'Сынып бағалары', Icon: NotebookText, tint: '#0F766E' },
+            { href: '#tasks/queue', label: 'Тексеру кезегі', detail: 'Оқушы жұмыстары', Icon: ClipboardCheck, tint: '#C2410C' },
+          ].map(({ href, label, detail, Icon, tint }) => (
+            <a key={href} href={href} className="glass group min-w-0 rounded-3xl p-4 transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+              <div className="flex items-start justify-between gap-2"><span className="liquid grid h-11 w-11 place-items-center rounded-2xl text-white" style={{ background: tint }}><Icon size={20} aria-hidden="true" /></span><ArrowUpRight size={17} aria-hidden="true" className="text-text-muted group-hover:text-accent" /></div>
               <span className="block mt-3 font-semibold text-sm">{label}</span><span className="block mt-1 text-xs text-text-muted">{detail}</span>
             </a>
           ))}
@@ -83,24 +85,28 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
       </section>
 
       {base.data && base.data.live.length > 0 && (
-        <section aria-label="Жүріп жатқан сабақтар" className="space-y-2">
-          <h2 className="font-semibold">🟢 Жүріп жатқан сабақтар</h2>
-          <div className="flex flex-wrap gap-2">
-            {base.data.live.map(s => <LinkButton key={s.id} href={'#remote/' + s.id} variant="success">{s.title} · {s.join_code}</LinkButton>)}
-          </div>
+        <section aria-label="Жүріп жатқан сабақтар" className="glass space-y-3 rounded-[1.75rem] p-5">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-success"><span className="h-2.5 w-2.5 rounded-full bg-success" aria-hidden="true" />Қазір жүріп жатыр</h2>
+          {base.data.live.map(s => (
+            <div key={s.id} className="flex flex-wrap items-center gap-3">
+              <b className="min-w-0 flex-1 text-lg">{s.title}</b>
+              <span className="glass-field rounded-full px-4 py-2 text-sm text-text-secondary">Код <b className="tracking-[.14em] text-text">{s.join_code}</b></span>
+              <LiquidLink href={'#remote/' + s.id}>Пультке өту →</LiquidLink>
+            </div>
+          ))}
         </section>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="space-y-3">
+        <section className="glass space-y-3 rounded-[1.75rem] p-5">
           <h2 className="font-semibold">Сабақты бастау</h2>
           {base.loading && <Skeleton rows={2} />}
           {base.error && <ErrorBox message={base.error} onRetry={base.reload} />}
           {DEMO && <p className="text-sm text-text-muted">Демо режимде сабақ тізімі жоқ.</p>}
           {base.data && !DEMO && <StartLesson key={base.data.lessons[0]?.id || 'none'} lessons={base.data.lessons} classes={base.data.classes} />}
-        </Card>
+        </section>
 
-        <Card className="space-y-3">
+        <section className="glass space-y-3 rounded-[1.75rem] p-5">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="font-semibold">Тексеруді күтетін жұмыстар</h2>
             {sum.data && <span className="text-sm text-text-muted">{pendingTotal}</span>}
@@ -118,21 +124,21 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
             </ul>
           )}
           <a href="#tasks/queue" className="inline-flex items-center min-h-[44px] text-sm font-semibold text-accent hover:underline">Тексеру кезегі →</a>
-        </Card>
+        </section>
 
-        <Card className="space-y-2">
+        <section className="glass space-y-2 rounded-[1.75rem] p-5">
           <h2 className="font-semibold">Ескертулер</h2>
           {sum.loading && <Skeleton rows={1} />}
           {sum.data && sum.data.openFlags === 0 && <p className="text-sm text-text-secondary">Көшіру белгісі бар жұмыс жоқ.</p>}
           {sum.data && sum.data.openFlags > 0 && <p className="text-sm">⚑ Көшіру белгісі бар жұмыс: <b>{sum.data.openFlags}</b> — <a className="text-accent underline" href="#tasks/queue">тексеру</a></p>}
           <p className="text-sm text-text-muted">Focus және қатысу ескертулері жақында осында шығады.</p>
-        </Card>
+        </section>
 
       </div>
 
       {(me as any).school_id && <FreshLessons me={me as any} />}
 
-      <details className="rounded-xl border border-border bg-surface p-4">
+      <details className="glass rounded-[1.75rem] p-4">
         <summary className="cursor-pointer text-sm font-semibold text-text-secondary">Жоспарланған мүмкіндіктер</summary>
         <div className="grid gap-4 md:grid-cols-2 mt-4">
           {(me as any).school_id && <TodayCard me={me as any} />}
