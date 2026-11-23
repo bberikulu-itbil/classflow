@@ -7,18 +7,20 @@
   --color-text: #14161A;
   --color-text-secondary: #3F4652;
   --color-text-muted: #5A606B;
-  --color-accent: #2A62E8;
-  --color-accent-hover: #1F52D0;
-  --color-accent-soft: #E3ECFE;
+  --color-accent: #4F41DC;
+  --color-accent-hover: #4034C2;
+  --color-accent-soft: #ECEAFD;
   --color-on-accent: #FFFFFF;
-  --color-on-accent-soft: #1A45B8;
+  --color-on-accent-soft: #352AAB;
+  --brand-ink: #1A1D4C;
+  --brand-flow: #4F41DC; /* ClassFlow 1.0 brand: #352AAB · #5F51E0 · #998CF8 · ink #1A1D4C */
   --color-danger: #B42318;
   --color-danger-soft: #FFE4E6;
   --color-success: #1B6B34;
   --color-success-soft: #E6F4EA;
   --color-warning: #9A3412;
   --color-warning-soft: #FFEDD5;
-  --color-info-soft: #EDF3FF;
+  --color-info-soft: #F0EEFE;
   --color-on-danger: #FFFFFF;
   --color-on-success: #FFFFFF;
   --color-code-bg: #0F172A;
@@ -35,16 +37,16 @@
   /* old screens use slate/blue/emerald... classes; index.html maps them onto these, so themes reach them too */
   --p-slate-600: #D5D8DE;
   --p-slate-500: #8A909B;
-  --p-blue-solid: #2A62E8;
-  --p-blue-hover: #1F52D0;
+  --p-blue-solid: #4F41DC;
+  --p-blue-hover: #4034C2;
   --p-emerald-700: #B7E1C3;
   --p-emerald-800: #9ED3B0;
   --p-emerald-900: #CDEBD6;
   --p-red-900: #FFD0D5;
   --p-amber-900: #FFE0BD;
-  --p-indigo-200: #1F52D0;
-  --p-indigo-500: #7FA0EC;
-  --p-indigo-700: #B9C7E6;
+  --p-indigo-200: #4034C2;
+  --p-indigo-500: #8C80EE;
+  --p-indigo-700: #C9C3F5;
   color-scheme: light;
   --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --font-mono: JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -90,11 +92,13 @@
   --color-text: #E6EAF0;
   --color-text-secondary: #B4BCC9;
   --color-text-muted: #98A2B3;
-  --color-accent: #6C9AFF;
-  --color-accent-hover: #8AB0FF;
-  --color-accent-soft: #1B2B52;
-  --color-on-accent: #0B1220;
-  --color-on-accent-soft: #C3D5FF;
+  --color-accent: #998CF8;
+  --color-accent-hover: #B5A8FF;
+  --color-accent-soft: #25204F;
+  --color-on-accent: #0D0B24;
+  --color-on-accent-soft: #D4CEFF;
+  --brand-ink: #FFFFFF;
+  --brand-flow: #B5A8FF;
   --color-danger: #FF8F85;
   --color-danger-soft: #3B1F22;
   --color-success: #5FD38D;
@@ -106,16 +110,16 @@
   --color-on-success: #04140A;
   --p-slate-600: #3A4453;
   --p-slate-500: #8893A3;
-  --p-blue-solid: #3B6FE0;
-  --p-blue-hover: #2F63D6;
+  --p-blue-solid: #5F51E0;
+  --p-blue-hover: #4F41DC;
   --p-emerald-700: #1F5133;
   --p-emerald-800: #2A6B45;
   --p-emerald-900: #173D27;
   --p-red-900: #5A2226;
   --p-amber-900: #4A2E12;
-  --p-indigo-200: #A9C2FF;
-  --p-indigo-500: #5E82D6;
-  --p-indigo-700: #34456E;
+  --p-indigo-200: #B5A8FF;
+  --p-indigo-500: #7A6EE6;
+  --p-indigo-700: #3A3470;
   --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
   --shadow-pop: 0 12px 32px rgba(0,0,0,.6);
   color-scheme: dark;
@@ -222,13 +226,13 @@
   --glass-bg: color-mix(in srgb, var(--color-surface) 55%, transparent);
   --glass-field: color-mix(in srgb, var(--color-surface) 70%, transparent);
   --glass-edge: color-mix(in srgb, #FFFFFF 75%, transparent);
-  --glass-blob-a: #93C5FD; --glass-blob-b: #C4B5FD; --glass-blob-c: #67E8F9; --glass-blob-d: #FDBA74;
+  --glass-blob-a: #B5A8FF; --glass-blob-b: #93C5FD; --glass-blob-c: #67E8F9; --glass-blob-d: #FDBA74;
   --liquid-shadow: 0 0 6px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08), inset 3px 3px .5px -3px rgba(0,0,0,.9), inset -3px -3px .5px -3px rgba(0,0,0,.85),
     inset 1px 1px 1px -.5px rgba(0,0,0,.6), inset -1px -1px 1px -.5px rgba(0,0,0,.6), inset 0 0 6px 6px rgba(0,0,0,.12), inset 0 0 2px 2px rgba(0,0,0,.06), 0 0 12px rgba(255,255,255,.15);
 }
 [data-theme="dark"] {
   --glass-edge: color-mix(in srgb, #FFFFFF 14%, transparent);
-  --glass-blob-a: #1E3A8A; --glass-blob-b: #4C1D95; --glass-blob-c: #155E75; --glass-blob-d: #7C2D12;
+  --glass-blob-a: #352AAB; --glass-blob-b: #1E3A8A; --glass-blob-c: #155E75; --glass-blob-d: #7C2D12;
   --liquid-shadow: 0 0 8px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08), inset 3px 3px .5px -3.5px rgba(255,255,255,.09), inset -3px -3px .5px -3.5px rgba(255,255,255,.85),
     inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6), inset 0 0 6px 6px rgba(255,255,255,.12), inset 0 0 2px 2px rgba(255,255,255,.06), 0 0 12px rgba(0,0,0,.15);
 }

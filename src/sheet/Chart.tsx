@@ -2,7 +2,7 @@ import React from 'react';
 import { parseAddr, addr, literal } from './engine';
 import type { ChartCfg } from './format';
 
-const COLORS = ['#2563eb', '#f97316', '#10b981', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
+const COLORS = ['#4f41dc', '#f97316', '#10b981', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
 /** Bar / line / pie chart of a range: first column = labels, the other columns = series, a text first row = series names. */
 export function ChartView({ cfg, get, onDelete }: { cfg: ChartCfg; get: (a: string) => string; onDelete?: () => void }) {
   const [a, b] = cfg.range.split(':').map(parseAddr);

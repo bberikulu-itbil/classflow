@@ -55,7 +55,7 @@ export const PRESET_COVERS = [
     id: 'cs',
     title: 'Информатика',
     url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80',
-    color: '#2563EB',
+    color: '#4F41DC',
   },
   {
     id: 'robotics',

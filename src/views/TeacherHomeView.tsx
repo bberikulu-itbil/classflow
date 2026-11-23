@@ -71,7 +71,7 @@ export function TeacherHomeView({ me }: { me: { id: string; full_name: string } 
         <h2 id="quick-links-title" className="text-sm font-semibold text-text-secondary">Жылдам өту</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { href: '#lessons/modules', label: 'Сабақтар', detail: 'Модульдер мен дәрістер', Icon: BookOpen, tint: '#2563EB' },
+            { href: '#lessons/modules', label: 'Сабақтар', detail: 'Модульдер мен дәрістер', Icon: BookOpen, tint: '#4F41DC' },
             { href: '#lessons/timetable', label: 'Сабақ кестесі', detail: 'Апталық кесте', Icon: CalendarDays, tint: '#7C3AED' },
             { href: '#journal/grid', label: 'Журнал', detail: 'Сынып бағалары', Icon: NotebookText, tint: '#0F766E' },
             { href: '#tasks/queue', label: 'Тексеру кезегі', detail: 'Оқушы жұмыстары', Icon: ClipboardCheck, tint: '#C2410C' },
