@@ -100,13 +100,13 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
   const myClasses = classes.filter(c => c.school_id === schoolId);
 
   return (
-    <div className="relative min-h-screen px-4 pb-10 pt-6 text-text">
+    <div className="relative isolate flex min-h-screen flex-col px-4 pb-10 pt-6 text-text">
       <GlassBackdrop />
-      <div className="mx-auto flex max-w-md justify-between items-center gap-3">
+      <div className="mx-auto flex w-full max-w-md justify-between items-center gap-3">
         <span className="text-2xl font-black"><Logo size={36} /></span>
         <div className="glass rounded-full p-1"><LangSwitch /></div>
       </div>
-      <main className="glass mx-auto mt-10 max-w-md space-y-4 rounded-[2rem] p-7 sm:p-9">
+      <main className="glass mx-auto my-auto w-full max-w-md space-y-4 rounded-[2rem] p-7 sm:p-9">
       <div className="space-y-1 text-center">
         <h1 className="text-3xl font-extrabold tracking-tight">{mode === 'in' ? 'Қош келдіңіз' : 'Тіркелу'}</h1>
         <p className="text-sm text-text-secondary">{mode === 'in' ? 'KeyToLife аккаунтыңызбен кіріңіз' : 'KeyToLife-та тіркеліңіз'}</p>
