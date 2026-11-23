@@ -58,9 +58,23 @@ tailwind.config = { theme: { extend: { borderRadius: { md: 'var(--radius-sm)', l
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ClassFlow loader: the CF cube builds itself face by face, holds, fades, repeats (also used by src/ui/Loading.tsx) */
+.cf-load{display:flex;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:600 15px Inter,system-ui,sans-serif;color:#5A606B}
+.cf-load svg{width:84px;height:84px;overflow:visible}
+.cf-load path{transform-box:fill-box;transform-origin:center;animation:cf-build 2.2s cubic-bezier(.2,.8,.2,1) infinite both}
+.cf-load .t{--from:translate(0,-38%)}
+.cf-load .l{--from:translate(-38%,0);animation-delay:.18s}
+.cf-load .f{--from:translate(38%,0);animation-delay:.36s}
+@keyframes cf-build{0%{opacity:0;transform:var(--from) scale(.9)}22%{opacity:1;transform:none}72%{opacity:1;transform:none}90%,100%{opacity:0;transform:scale(.96)}}
+.cf-load .dots{padding-left:1.2em}.cf-load .dots::after{content:'';display:inline-block;width:1.2em;text-align:left;animation:cf-dots 1.2s steps(4) infinite}
+@keyframes cf-dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.cf-load path{animation:cf-pulse 1.6s ease-in-out infinite}.cf-load .l,.cf-load .f{animation-delay:0s}}
+@keyframes cf-pulse{50%{opacity:.45}}
+</style>
 </head>
 <body class="min-h-screen bg-bg text-text font-sans">
-<div id="root"></div>
+<div id="root"><div class="cf-load" role="status" aria-live="polite"><svg viewBox="65 58 411 411" aria-hidden="true"><path class="t" d="M99.5 176.2 270.5 76.4 441.5 176.2 384.8 209.3 270.5 143 158 209.8Z" fill="#998CF8"/><path class="l" d="M99.5 176.2 158 209.8V314l112.5 66.8v70.8L99.5 352.1Z" fill="#352AAB"/><path class="f" d="M270.5 276.5 441.5 176.2v71.1L333 310.1v33.5l83.7-50.5v32.2L333 375.1v39.2l-62.5 37.3Z" fill="#5F51E0"/></svg><span class="dots">Жүктелуде</span></div></div>
 <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

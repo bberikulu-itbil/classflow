@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Loading } from '../ui/Loading';
 import { ArrowLeft, ArrowRight, Binary, BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, Languages, LogOut, Maximize, Minimize, Pencil, Share2, Sparkles, Timer as TimerIcon, Wrench } from 'lucide-react';
 import { sb } from '../config';
 import { tr, useLang, LANG_LABEL } from '../lessons/lang';
@@ -139,7 +140,7 @@ export function BoardView({ sid }: { sid: string }) {
     }
   };
 
-  if (!session) return <div data-theme="dark" className="min-h-screen bg-bg flex items-center justify-center text-text text-2xl">Жүктелуде...</div>;
+  if (!session) return <div data-theme="dark" className="bg-bg"><Loading /></div>;
 
   const qrSvg = (() => {
     try {

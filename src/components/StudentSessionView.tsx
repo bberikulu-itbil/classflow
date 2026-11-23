@@ -12,6 +12,7 @@ import { CriteriaPanel, criteriaAnswer, type Criterion } from './CriteriaPanel';
 import { coalesce } from '../utils/coalesce';
 import { Icon } from './Icons';
 import { ThemeMenu } from '../ui/ThemePicker';
+import { Loading } from '../ui/Loading';
 import { LessonMap } from './LessonMap';
 import { AskPanel } from './AskPanel';
 import { qvariantOf } from '../utils/qvariant';
@@ -228,7 +229,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   }
 
   if (!session || !currentSlideData) {
-    return <div className="min-h-screen bg-bg text-text flex items-center justify-center">Жүктелуде...</div>;
+    return <Loading lang={lang} />;
   }
 
   const slide = tr(currentSlideData.slide || {}, lang);

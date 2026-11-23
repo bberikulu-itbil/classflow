@@ -24,6 +24,7 @@ import { SectionFrame, SectionPage } from './nav/SectionPage';
 import { activeSection, hasDuty, setDuties } from './nav/config';
 import type { Role } from './nav/config';
 import { TeacherHomeView } from './views/TeacherHomeView';
+import { Loading } from './ui/Loading';
 import { StudentHomeView } from './views/StudentHomeView';
 import { SharedEdit, SharedGame } from './views/Jeopardy';
 import { LessonDetail } from './lessons/LessonDetail';
@@ -98,7 +99,7 @@ export default function App() {
   }, [routeKey, routeId]);
 
   if (loading) {
-    return <div data-theme="dark" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Жүктелуде...</div>;
+    return <Loading />;
   }
 
   if (routeKey === 'b' && routeId) return <PublicBoard key={routeId} token={routeId} />;
