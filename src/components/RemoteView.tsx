@@ -276,6 +276,8 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   return (
     <div className="min-h-screen bg-bg text-text pb-44 sm:pb-28">
       <header className="border-b lg:sticky lg:top-0 lg:z-10 border-border bg-surface">
+        {session.mode === 'demo' && <p role="note" className="bg-warning-soft px-4 py-1.5 text-center text-xs font-semibold text-warning">
+          Демо режим. Оқушылар қосылса, сабақ өшірілмейді — журналға қалыпты сабақ болып сақталады.</p>}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 lg:px-4">
           <a href="#" className="min-h-[44px] inline-flex items-center text-xl font-black" aria-label="ClassFlow: басты бет"><Logo /></a>
           <div className="min-w-0 flex-1 basis-40">
