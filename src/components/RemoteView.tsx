@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Logo } from '../ui/Logo';
-import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X, MoreHorizontal, SlidersHorizontal, MessageCircleQuestion, FastForward, History, Zap, Users, Trophy, CalendarCheck, Presentation, ClipboardList, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Hand, Layers, Lock, LockOpen, Monitor, Plus, Share2, Square, Play, Sparkles, Check, Eye, X, MoreHorizontal, SlidersHorizontal, MessageCircleQuestion, FastForward, History, Zap, Users, Trophy, CalendarCheck, Presentation, ClipboardList, LayoutGrid, Languages } from 'lucide-react';
 import { sb } from '../config';
 import { ShareBoard } from './ShareBoard';
 import { Button, Card, EmptyState, Skeleton, inputCls } from '../ui';
@@ -23,6 +23,7 @@ const RULES = [
   { key: 'ahead', icon: FastForward, name: 'Алға өту', hint: 'Тапсырманы бітірген оқушы келесі слайдқа өтуді сұрайды; рұқсат берсеңіз, сол слайдтың тапсырмасын бұрын орындайды' },
   { key: 'nav', icon: History, name: 'Өз бетімен жылжу', hint: 'Оқушы өткен слайдтарды өз экранында ашады' },
   { key: 'auto', icon: Zap, name: 'Авто-тапсырма', hint: 'Тапсырма слайдына өткенде өзі ашылады; келесі слайдқа өткенде жібермегендерге 5 секунд беріледі' },
+  { key: 'lang', icon: Languages, name: 'Тілді ауыстыру', hint: 'Оқушы сабақ тілін өзі ауыстырады (қаз / орыс / ағыл). Өшірсеңіз, батырма жасырылады' },
   { key: 'lock', icon: Lock, name: 'Экрандарды бұғаттау', hint: 'Барлық оқушының экраны жабылады' },
 ];
 const slideText = (s: any) => (s.bullets && s.bullets.join(' · ')) || s.prompt || s.subtitle || '';
@@ -244,7 +245,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
   const toggleNav = () => run(() => sb.rpc('cf_set_nav', { p_session: sid, p_on: !session.student_nav }));
   const lockAll = () => run(() => sb.rpc('cf_lock', { p_session: sid, p_student: null, p_locked: !session.locked }));
   // allow_ask / allow_hand come with migration 063: without the column the rule counts as on
-  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : k === 'auto' ? !!session.auto_task : k === 'ahead' ? !!session.allow_ahead : session.allow_hand !== false;
+  const ruleOn = (k: string) => k === 'nav' ? !!session.student_nav : k === 'lock' ? !!session.locked : k === 'ask' ? session.allow_ask !== false : k === 'auto' ? !!session.auto_task : k === 'ahead' ? !!session.allow_ahead : k === 'lang' ? session.allow_lang !== false : session.allow_hand !== false;
   const setRule = (k: string, on: boolean) => k === 'nav' ? toggleNav() : k === 'lock' ? lockAll() : run(() => sb.rpc('cf_set_rule', { p_session: sid, p_rule: k, p_on: on }));
   const subsDone = new Set(subs.map(x => x.student_id)).size;
   /** What the class grid shows beside a name: the level reached (L1-L3), ✓ answered, … still working. */
@@ -595,7 +596,7 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
                     </button>
                   );
                 })}
-                <p className="px-1 pt-1 text-xs text-text-muted">Бірден әсер етеді. Жаңа сабақ «Сұрақ қою», «Қол көтеру», «Алға өту», «Авто-тапсырма» қосулы күйде басталады.</p>
+                <p className="px-1 pt-1 text-xs text-text-muted">Бірден әсер етеді. Жаңа сабақ «Сұрақ қою», «Қол көтеру», «Алға өту», «Авто-тапсырма», «Тілді ауыстыру» қосулы күйде басталады.</p>
               </div>
             )}
           </div>

@@ -220,7 +220,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
 
   if (ended) {
     return (
-      <div data-theme="light" className="min-h-screen bg-bg text-text flex flex-col items-center justify-center pt-24 text-center">
+      <div className="min-h-screen bg-bg text-text flex flex-col items-center justify-center pt-24 text-center">
         <h1 className="text-4xl font-black">Сабақ аяқталды</h1>
         <a href="#" className={`${BTN_P} inline-block mt-6`}>Басты бет</a>
       </div>
@@ -228,7 +228,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   }
 
   if (!session || !currentSlideData) {
-    return <div data-theme="light" className="min-h-screen bg-bg text-text flex items-center justify-center">Жүктелуде...</div>;
+    return <div className="min-h-screen bg-bg text-text flex items-center justify-center">Жүктелуде...</div>;
   }
 
   const slide = tr(currentSlideData.slide || {}, lang);
@@ -265,14 +265,14 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
   };
 
   return (
-    <div data-theme="light" className="min-h-screen bg-bg text-text flex flex-col">
+    <div className="min-h-screen bg-bg text-text flex flex-col">
       {bannerShow && <div className="bg-red-600 text-center font-bold p-2">{bannerText}</div>}
       {hold && <HoldTimer until={hold} lang={lang} onEnd={autoSend} />}
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 text-sm sm:px-5">
         <b className="min-w-0 truncate">{session.title}</b>
         <div className="flex items-center gap-2">
           <span data-testid="my-points" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-amber-100 px-3 font-bold text-amber-900"><Icon n="star" />{mineRow ? mineRow.points : 0}<span className="hidden sm:inline">{pick(lang, 'ұпай', 'балл', 'pts')}</span></span>
-          <button className={TOP} onClick={flipLang} aria-label={pick(lang, 'Тілді ауыстыру', 'Сменить язык', 'Change language')}><Icon n="globe" />{LANG_LABEL[lang]}</button>
+          {session.allow_lang !== false && <button className={TOP} onClick={flipLang} aria-label={pick(lang, 'Тілді ауыстыру', 'Сменить язык', 'Change language')}><Icon n="globe" />{LANG_LABEL[lang]}</button>}
           <ThemeMenu lang={lang} className={TOP} />
           {session.allow_hand !== false && (
           <button

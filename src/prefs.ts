@@ -1,12 +1,12 @@
 // Teacher settings (Профиль → Сабақ баптаулары): the quarter calendar, start values and the rules a new lesson starts with.
 // Kept on the account (profiles.prefs, 082) and cached in this browser, so reading them stays synchronous.
 export interface Span { from: string; to: string } // 'MM-DD', the year is not stored: the same dates repeat every school year
-export type Rules = { ask: boolean; hand: boolean; ahead: boolean; nav: boolean; auto: boolean };
+export type Rules = { ask: boolean; hand: boolean; ahead: boolean; nav: boolean; auto: boolean; lang: boolean };
 export interface Prefs { quarters: Span[]; groups: number; kbMax: number; examMin: number; room: string; rules: Rules }
 export const DEFAULT_PREFS: Prefs = {
   quarters: [{ from: '09-01', to: '10-25' }, { from: '11-03', to: '12-27' }, { from: '01-12', to: '03-20' }, { from: '03-30', to: '05-31' }],
   groups: 3, kbMax: 10, examMin: 40, room: '',
-  rules: { ask: true, hand: true, ahead: true, nav: false, auto: true },
+  rules: { ask: true, hand: true, ahead: true, nav: false, auto: true, lang: true },
 };
 const KEY = 'cf_prefs';
 const md = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -30,7 +30,7 @@ export function clean(v: any): Prefs {
   return {
     quarters: quartersError(q) ? DEFAULT_PREFS.quarters : q, groups: clampInt(v?.groups, 1, 8, DEFAULT_PREFS.groups), kbMax: clampInt(v?.kbMax, 1, 100, DEFAULT_PREFS.kbMax),
     examMin: clampInt(v?.examMin, 5, 240, DEFAULT_PREFS.examMin), room: typeof v?.room === 'string' ? v.room.slice(0, 64) : '',
-    rules: { ask: r('ask'), hand: r('hand'), ahead: r('ahead'), nav: r('nav'), auto: r('auto') },
+    rules: { ask: r('ask'), hand: r('hand'), ahead: r('ahead'), nav: r('nav'), auto: r('auto'), lang: r('lang') },
   };
 }
 let cache: Prefs | null = null;

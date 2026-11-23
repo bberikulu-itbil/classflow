@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays, FastForward, Hand, History, LogOut, MessageCircleQuestion, Palette, Send, ShieldCheck, UserRound, X, Zap } from 'lucide-react';
+import { CalendarDays, FastForward, Hand, History, LogOut, MessageCircleQuestion, Palette, Send, ShieldCheck, UserRound, X, Zap, Languages } from 'lucide-react';
 import { LangSwitch } from '../i18n/LangSwitch';
 import { givenName } from '../ui/names';
 import { FontPicker, ThemePicker } from '../ui/ThemePicker';
@@ -13,7 +13,7 @@ import type { Prefs, Span } from '../prefs';
 const toDate = (md: string) => (md ? `${+md.slice(0, 2) >= 9 ? 2001 : 2002}-${md}` : '');
 const Msg = ({ m }: { m: { t: string; bad?: boolean } | null }) => (m ? <p role={m.bad ? 'alert' : 'status'} className={'text-sm ' + (m.bad ? 'text-danger' : 'text-success')}>{m.t}</p> : null);
 
-const RULE_LIST: [keyof Prefs['rules'], string, typeof Hand][] = [['ask', 'Сұрақ қою', MessageCircleQuestion], ['hand', 'Қол көтеру', Hand], ['ahead', 'Алға өту', FastForward], ['nav', 'Өз бетімен жылжу', History], ['auto', 'Авто-тапсырма', Zap]];
+const RULE_LIST: [keyof Prefs['rules'], string, typeof Hand][] = [['ask', 'Сұрақ қою', MessageCircleQuestion], ['hand', 'Қол көтеру', Hand], ['ahead', 'Алға өту', FastForward], ['nav', 'Өз бетімен жылжу', History], ['auto', 'Авто-тапсырма', Zap], ['lang', 'Тілді ауыстыру', Languages]];
 
 /** Teaching defaults: the quarter calendar (drives the quarter filters and the schedule) and two start values. Stored on this device. */
 function TeachingSettings() {
