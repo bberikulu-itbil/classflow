@@ -11,6 +11,7 @@ import { tr, useLang, pick, LANG_LABEL } from '../lessons/lang';
 import { CriteriaPanel, criteriaAnswer, type Criterion } from './CriteriaPanel';
 import { coalesce } from '../utils/coalesce';
 import { Icon } from './Icons';
+import { ThemeMenu } from '../ui/ThemePicker';
 import { LessonMap } from './LessonMap';
 import { AskPanel } from './AskPanel';
 import { qvariantOf } from '../utils/qvariant';
@@ -272,6 +273,7 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
         <div className="flex items-center gap-2">
           <span data-testid="my-points" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-amber-100 px-3 font-bold text-amber-900"><Icon n="star" />{mineRow ? mineRow.points : 0}<span className="hidden sm:inline">{pick(lang, 'ұпай', 'балл', 'pts')}</span></span>
           <button className={TOP} onClick={flipLang} aria-label={pick(lang, 'Тілді ауыстыру', 'Сменить язык', 'Change language')}><Icon n="globe" />{LANG_LABEL[lang]}</button>
+          <ThemeMenu lang={lang} className={TOP} />
           {session.allow_hand !== false && (
           <button
             className={TOP + (mePart && mePart.hand ? ' !border-amber-600 !bg-amber-100 !text-amber-900' : '')}
