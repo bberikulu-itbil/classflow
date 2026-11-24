@@ -167,8 +167,13 @@ export function StudentSessionView({ sid, me }: { sid: string; me: any }) {
     const ch = sb.channel('student-session-' + sid);
     // slide / task / lock changes show at once; scores and answers (a burst of events when the whole class submits) are batched
     const fast = coalesce(refresh, 100, 400), slow = coalesce(refresh, 2000, 2500);
-    ['cf_sessions', 'cf_participants', 'cf_tasks', 'cf_pairs'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, fast));
-    ['cf_scores', 'cf_submissions'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, slow));
+    // Every subscription is filtered to this session (or this student): unfiltered, each heartbeat of every student in the
+    // school made every student reload, and two classes at once overloaded the database (2026-11-24).
+    const S = `session_id=eq.${sid}`;
+    ([['cf_sessions', `id=eq.${sid}`], ['cf_participants', `student_id=eq.${me.id}`], ['cf_tasks', S], ['cf_pairs', S]] as const)
+      .forEach(([tb, filter]) => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb, filter }, fast));
+    ([['cf_scores', S], ['cf_submissions', `student_id=eq.${me.id}`]] as const)
+      .forEach(([tb, filter]) => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb, filter }, slow));
 
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cf_commands', filter: `session_id=eq.${sid}` }, e => {
       const c = e.new;

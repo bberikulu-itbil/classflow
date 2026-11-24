@@ -143,8 +143,10 @@ export function RemoteView({ sid, me }: { sid: string; me: any; onLogout: () => 
     refresh();
     const ch = sb.channel('cf-remote-' + sid);
     const fast = coalesce(refresh, 150), slow = coalesce(refresh, 1200); // many students' answers and heartbeats arrive as one refresh
-    ['cf_sessions', 'cf_tasks', 'cf_pairs'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, fast));
-    ['cf_participants', 'cf_submissions', 'cf_scores'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb }, slow));
+    const S = `session_id=eq.${sid}`; // only this session's changes (see StudentSessionView)
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'cf_sessions', filter: `id=eq.${sid}` }, fast);
+    ['cf_tasks', 'cf_pairs'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb, filter: S }, fast));
+    ['cf_participants', 'cf_submissions', 'cf_scores'].forEach(tb => ch.on('postgres_changes', { event: '*', schema: 'public', table: tb, filter: S }, slow));
     loadAsks();
     ch.on('postgres_changes', { event: '*', schema: 'public', table: 'cf_questions', filter: `session_id=eq.${sid}` }, () => loadAsks());
     ch.subscribe();
