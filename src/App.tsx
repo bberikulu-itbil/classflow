@@ -6,6 +6,7 @@ import { sb, STAFF, DEMO } from './config';
 import { LoginView } from './components/LoginView';
 import { RemoteView } from './components/RemoteView';
 import { BoardView } from './components/BoardView';
+import { ExamPage } from './curriculum/ExamPage';
 import { PublicBoard } from './components/PublicBoard';
 import { StudentSessionView } from './components/StudentSessionView';
 import { PlansView } from './components/PlansView';
@@ -156,6 +157,9 @@ export default function App() {
   }
   if (routeKey === 'board' && isStaff) {
     return <BoardView sid={routeId} />;
+  }
+  if (routeKey === 'exam-take' && me.role === 'student') { // the exam page: full screen, no menus (087)
+    return <ExamPage lessonId={routeId} />;
   }
   if (routeKey === 's') {
     return <StudentSessionView sid={routeId} me={me} />;

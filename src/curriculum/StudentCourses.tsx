@@ -68,7 +68,7 @@ export function StudentCourses() {
   // The home page can send the student straight to a course (and an exam in it): sessionStorage cf_open = {course, lesson?}.
   const [want] = useState<{ course?: string; lesson?: string }>(() => { try { const v = JSON.parse(sessionStorage.getItem('cf_open') || '{}'); sessionStorage.removeItem('cf_open'); return v; } catch { return {}; } });
   const [cid, setCid] = useState(want.course || ''), [les, setLes] = useState<L | null>(null);
-  useEffect(() => { if (want.lesson && data && !les) { const l = data.find(c => c.id === want.course)?.modules.flatMap(m => m.lessons).find(x => x.id === want.lesson); if (l) setLes(l); } }, [data]);
+  useEffect(() => { if (want.lesson && data && !les) { const l = data.find(c => c.id === want.course)?.modules.flatMap(m => m.lessons).find(x => x.id === want.lesson); if (l) { if (l.exam) window.location.hash = 'exam-take/' + l.id; else setLes(l); } } }, [data]);
   if (loading && !data) return <Skeleton rows={3} />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   const course = data?.find(c => c.id === cid);
@@ -80,7 +80,7 @@ export function StudentCourses() {
       {course.modules.length === 0 ? <EmptyState text="Бұл курста әзірге модуль жоқ." /> : course.modules.map(m => (
         <section key={m.id} aria-label={m.title} className="space-y-2"><h3 className="font-semibold">{m.title}{m.quarter ? <span className="ml-2 text-sm font-normal text-text-secondary">{m.quarter}-тоқсан</span> : null}</h3>
           {m.lessons.length === 0 ? <p className="text-sm text-text-secondary">Дәріс жоқ.</p> : <ul className="grid gap-2 sm:grid-cols-2">{m.lessons.map(l => (
-            <li key={l.id}>{l.exam ? <ExamItem l={l} onTake={() => setLes(l)} /> : l.open === false ? <div className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-surface-2/50 px-3 py-2 text-text-muted" title="Сыныпта өтілгеннен кейін ашылады"><span className="min-w-0 truncate">{l.title}</span><Lock size={15} aria-hidden="true" className="shrink-0" /><span className="sr-only">сыныпта өткен соң ашылады</span></div> : <button type="button" disabled={!l.n} onClick={() => setLes(l)} className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2 disabled:opacity-50"><span className="min-w-0 break-words font-medium">{l.title}</span><span className="shrink-0 text-xs text-text-secondary">{l.n ? `${l.n} бет` : 'бос'}</span></button>}</li>))}</ul>}
+            <li key={l.id}>{l.exam ? <ExamItem l={l} onTake={() => { window.location.hash = 'exam-take/' + l.id; }} /> : l.open === false ? <div className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-surface-2/50 px-3 py-2 text-text-muted" title="Сыныпта өтілгеннен кейін ашылады"><span className="min-w-0 truncate">{l.title}</span><Lock size={15} aria-hidden="true" className="shrink-0" /><span className="sr-only">сыныпта өткен соң ашылады</span></div> : <button type="button" disabled={!l.n} onClick={() => setLes(l)} className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2 disabled:opacity-50"><span className="min-w-0 break-words font-medium">{l.title}</span><span className="shrink-0 text-xs text-text-secondary">{l.n ? `${l.n} бет` : 'бос'}</span></button>}</li>))}</ul>}
         </section>))}
     </div>
   );
@@ -107,9 +107,9 @@ function ExamItem({ l, onTake }: { l: L; onTake: () => void }) {
 }
 
 /** Taking an exam: the questions of my variant on one page, a countdown to the closing time, one submission. */
-export function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
+export function ExamTaker({ lesson, back, onDone }: { lesson: L; back: () => void; onDone?: () => void }) {
   const [lang, flip] = useLang();
-  const q = useLoad(async () => { const r = await sb.rpc('cf_exam_get', { p_lesson: lesson.id }); if (r.error) throw new Error(r.error.message); return r.data as { closes_at: string | null; slides: any[] }; }, [lesson.id]);
+  const q = useLoad(async () => { const r = await sb.rpc('cf_exam_get', { p_lesson: lesson.id }); if (r.error) throw new Error(r.error.message); return r.data as { title?: string; closes_at: string | null; slides: any[] }; }, [lesson.id]);
   const key = `cf_exam_${lesson.id}`;
   // Answers survive a reload or a dropped connection until the exam is sent.
   const [ans, setAnsRaw] = useState<Record<number, string>>(() => { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } });
@@ -127,7 +127,7 @@ export function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
     setBusy(true); setErr('');
     const r = await sb.rpc('cf_exam_submit', { p_lesson: lesson.id, p_answers: Object.fromEntries(Object.entries(ans).map(([k, v]) => [k, v])) });
     setBusy(false);
-    if (r.error) setErr(r.error.message); else { setResult(r.data as { points: number; max: number }); try { sessionStorage.removeItem(key); } catch { /* ignore */ } }
+    if (r.error) setErr(r.error.message); else { setResult(r.data as { points: number; max: number }); onDone?.(); try { sessionStorage.removeItem(key); } catch { /* ignore */ } }
   };
   if (result) return <div className="space-y-3">{backBtn}<Card className="text-center"><p className="text-sm text-text-secondary">Емтихан тапсырылды</p><p className="text-4xl font-black">{result.points} / {result.max}</p></Card></div>;
   const done = (x: { s: any; i: number }) => (ans[x.i] ?? '').trim() !== '' && !(x.s.match && (ans[x.i] ?? '').includes('-'));
@@ -139,7 +139,7 @@ export function ExamTaker({ lesson, back }: { lesson: L; back: () => void }) {
       {backBtn}
       <div className="sticky top-0 z-10 space-y-2 rounded-xl border border-violet-300 bg-violet-50 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="min-w-0 flex-1 break-words text-lg font-bold">{lesson.title}</h2>
+          <h2 className="min-w-0 flex-1 break-words text-lg font-bold">{lesson.title || q.data?.title}</h2>
           {left !== null && <span className={`rounded-lg px-2 py-1 font-mono text-sm font-bold ${left < 60000 ? 'bg-danger text-white' : 'bg-surface'}`}>{left > 0 ? `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}` : '0:00'}</span>}
           <button type="button" onClick={flip} aria-label={`Тіл: ${LANG_LABEL[lang]}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-surface px-2 text-sm"><Languages size={15} aria-hidden="true" />{LANG_LABEL[lang]}</button>
         </div>
