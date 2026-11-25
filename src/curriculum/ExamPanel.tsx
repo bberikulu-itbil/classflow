@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Eye, Lock, Play, X } from 'lucide-react';
+import { ChevronDown, Eye, FlaskConical, Lock, Play, X } from 'lucide-react';
+import { ScratchView, type Sheet } from './Scratch';
 import { sb } from '../config';
 import { Button } from '../ui';
 import { loadClasses } from '../journal/store';
@@ -35,6 +36,7 @@ export function ExamDialog({ lessonId, title, onClose }: { lessonId: string; tit
   const [exams, setExams] = useState<Exam[]>([]), [res, setRes] = useState<Res[]>([]);
   const [focus, setFocus] = useState<Focus[]>([]), [slides, setSlides] = useState<any[]>([]), [open, setOpen] = useState('');
   const [names, setNames] = useState<Record<string, string>>({});
+  const [scratch, setScratch] = useState<{ exam_id: string; student_id: string; sheet: number; strokes: Sheet }[]>([]);
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   const name = (id: string | null) => (id ? classes.find(c => c.id === id)?.name || 'сынып' : 'Барлығы');
 
@@ -48,6 +50,8 @@ export function ExamDialog({ lessonId, title, onClose }: { lessonId: string; tit
     const ids = ((e.data || []) as Exam[]).map(x => x.id);
     const f = ids.length ? await sb.from('cf_exam_focus').select('exam_id,student_id,kind,ms,at').in('exam_id', ids).order('at') : { data: [] };
     const fs = ((f as any).data || []) as Focus[]; setFocus(fs);
+    const sc = ids.length ? await sb.from('cf_exam_scratch').select('exam_id,student_id,sheet,strokes').in('exam_id', ids).order('sheet') : { data: [] };
+    setScratch(((sc as any).data || []) as any[]);
     const busyIds = [...new Set(fs.map(x => x.student_id))];
     if (busyIds.length) { const p = await sb.from('profiles').select('id,full_name').in('id', busyIds); setNames(Object.fromEntries(((p.data || []) as any[]).map(x => [x.id, x.full_name]))); }
     setRes(((r.data || []) as any[]).sort((a, b) => byName(a.profiles?.full_name || '', b.profiles?.full_name || '')));
@@ -83,6 +87,7 @@ export function ExamDialog({ lessonId, title, onClose }: { lessonId: string; tit
               {[...new Set([15, 20, 30, 40, 45, 60, 90, mins || 45])].sort((a, b) => a - b).map(m => <option key={m} value={m}>{m} минут</option>)}<option value={0}>Мен жапқанша</option>
             </select></label>
           <Button onClick={() => act(() => sb.rpc('cf_exam_open', { p_lesson: lessonId, p_class: cls || null, p_minutes: mins }))} loading={busy} className="gap-1.5"><Play size={14} aria-hidden="true" />Ашу</Button>
+          <a href={'#exam-try/' + lessonId} className="ml-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-surface-2"><FlaskConical size={15} aria-hidden="true" />Демо оқушы ретінде тапсыру</a>
         </div>
         {err && <p role="alert" className="mt-2 text-sm text-danger">{err}</p>}
 
@@ -128,6 +133,9 @@ export function ExamDialog({ lessonId, title, onClose }: { lessonId: string; tit
                       {p.prompt && <p className="text-xs text-text-secondary">{p.prompt}</p>}
                       <p className="mt-0.5 font-mono text-sm">Жауабы: <b className={p.d.ok ? 'text-success' : 'text-danger'}>{p.mine || '— жоқ'}</b>{!p.d.ok && <> · дұрысы: <b>{p.right}</b></>}</p>
                     </li>))}</ol>
+                  {(() => { const sh = scratch.filter(x => x.exam_id === r.exam_id && x.student_id === r.student_id && x.strokes?.length); return sh.length ? <div className="mt-2">
+                    <p className="mb-1 text-xs font-bold text-text-secondary">Шимай қағаз: {sh.length} парақ</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{sh.map(x => <ScratchView key={x.sheet} sheet={x.strokes} className="w-full" />)}</div></div> : null; })()}
                   {mine.some(x => x.kind !== 'start') && <p className="mt-2 text-xs text-text-secondary"><b>Назардан тыс:</b> {mine.filter(x => x.kind !== 'start' && (x.ms === null || x.kind === 'paste')).map(x => `${clock(x.at)} ${KIND[x.kind] || x.kind}`).join(' · ')}</p>}
                 </td></tr>,
               ];

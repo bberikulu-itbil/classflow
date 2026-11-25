@@ -159,7 +159,10 @@ export default function App() {
     return <BoardView sid={routeId} />;
   }
   if (routeKey === 'exam-take' && me.role === 'student') { // the exam page: full screen, no menus (087)
-    return <ExamPage lessonId={routeId} />;
+    return <ExamPage lessonId={routeId} me={me} />;
+  }
+  if (routeKey === 'exam-try' && isStaff) { // the teacher takes the exam as a demo student: nothing is saved
+    return <ExamPage lessonId={routeId} me={me} demo />;
   }
   if (routeKey === 's') {
     return <StudentSessionView sid={routeId} me={me} />;

@@ -107,9 +107,12 @@ function ExamItem({ l, onTake }: { l: L; onTake: () => void }) {
 }
 
 /** Taking an exam: the questions of my variant on one page, a countdown to the closing time, one submission. */
-export function ExamTaker({ lesson, back, onDone }: { lesson: L; back: () => void; onDone?: () => void }) {
+type ExamData = { title?: string; closes_at: string | null; slides: any[] };
+/** `load` / `submit` replace the server calls (the teacher's demo run: their own variant, scored in the browser, nothing saved). */
+export function ExamTaker({ lesson, back, onDone, load, submit }: { lesson: L; back: () => void; onDone?: () => void;
+  load?: () => Promise<ExamData>; submit?: (answers: Record<string, string>) => Promise<{ points: number; max: number }> }) {
   const [lang, flip] = useLang();
-  const q = useLoad(async () => { const r = await sb.rpc('cf_exam_get', { p_lesson: lesson.id }); if (r.error) throw new Error(r.error.message); return r.data as { title?: string; closes_at: string | null; slides: any[] }; }, [lesson.id]);
+  const q = useLoad(async () => { if (load) return load(); const r = await sb.rpc('cf_exam_get', { p_lesson: lesson.id }); if (r.error) throw new Error(r.error.message); return r.data as ExamData; }, [lesson.id, load]);
   const key = `cf_exam_${lesson.id}`;
   // Answers survive a reload or a dropped connection until the exam is sent.
   const [ans, setAnsRaw] = useState<Record<number, string>>(() => { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } });
@@ -125,7 +128,8 @@ export function ExamTaker({ lesson, back, onDone }: { lesson: L; back: () => voi
   const left = q.data?.closes_at ? new Date(q.data.closes_at).getTime() - now : null;
   const send = async () => {
     setBusy(true); setErr('');
-    const r = await sb.rpc('cf_exam_submit', { p_lesson: lesson.id, p_answers: Object.fromEntries(Object.entries(ans).map(([k, v]) => [k, v])) });
+    const answers = Object.fromEntries(Object.entries(ans).map(([k, v]) => [k, v]));
+    const r = submit ? await submit(answers).then(data => ({ data, error: null }), (e: Error) => ({ data: null, error: e })) : await sb.rpc('cf_exam_submit', { p_lesson: lesson.id, p_answers: answers });
     setBusy(false);
     if (r.error) setErr(r.error.message); else { setResult(r.data as { points: number; max: number }); onDone?.(); try { sessionStorage.removeItem(key); } catch { /* ignore */ } }
   };
