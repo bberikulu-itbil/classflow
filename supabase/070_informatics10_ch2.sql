@@ -4,8 +4,8 @@
 do $info10$
 declare v_course uuid; v_owner uuid; v_school uuid; v_module uuid; v_lesson uuid; v_spec record; v_ids uuid[] := '{}';
 begin
-  select c.id, c.owner_id, c.school_id into v_course, v_owner, v_school from public.cf_curr_courses c where c.title = $i10$informatics 10th$i10$ and c.grade = 10 order by c.created_at limit 1;
-  if v_course is null then raise exception 'Курс табылмады: informatics 10th'; end if;
+  select c.id, c.owner_id, c.school_id into v_course, v_owner, v_school from public.cf_curr_courses c where c.title = $i10$Informatics 10th grade$i10$ and c.grade = 10 order by c.created_at limit 1;
+  if v_course is null then raise exception 'Курс табылмады: Informatics 10th grade'; end if;
   select m.id into v_module from public.cf_curr_modules m where m.course_id = v_course and m.title = $i10$2-тарау. Деректерді көрсету$i10$ limit 1;
   if v_module is null then raise exception 'Модуль табылмады: 2-тарау. Деректерді көрсету'; end if;
 

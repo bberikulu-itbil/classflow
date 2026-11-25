@@ -9,7 +9,7 @@ import { markLesson } from '../sheetsLab/cv';
 
 export const INFO10_LESSONS: LabLesson[] = [L1, L2, L3, L4, L5].map(markLesson);
 /** The teacher's own course and module (found by title by the SQL generator). */
-export const INFO10_COURSE = { title: 'informatics 10th', grade: 10 };
+export const INFO10_COURSE = { title: 'Informatics 10th grade', grade: 10 }; // the teacher's current course title
 export const INFO10_MODULE = { title: '2-тарау. Деректерді көрсету' };
 
 export const INFO10_LESSONS_DATA = INFO10_LESSONS.map(l => ({
